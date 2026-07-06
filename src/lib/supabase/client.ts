@@ -1,27 +1,30 @@
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)?.replace(/\/$/, "");
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+
+let cachedClient: SupabaseClient | null = null;
 
 export function isSupabaseReadConfigured() {
   return Boolean(supabaseUrl && supabasePublishableKey);
 }
 
-export async function readSupabaseTable<T>(path: string): Promise<T[] | null> {
+export function getSupabaseClient() {
   if (!supabaseUrl || !supabasePublishableKey) {
     return null;
   }
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-    headers: {
-      apikey: supabasePublishableKey,
-      Authorization: `Bearer ${supabasePublishableKey}`
-    },
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    console.warn(`Supabase read failed for ${path}: ${response.status}`);
-    return null;
+  if (!cachedClient) {
+    cachedClient = createClient(supabaseUrl, supabasePublishableKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      },
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" })
+      }
+    });
   }
 
-  return response.json();
+  return cachedClient;
 }

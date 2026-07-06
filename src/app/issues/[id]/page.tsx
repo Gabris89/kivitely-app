@@ -8,6 +8,8 @@ import { EvidenceChecklist } from "@/components/EvidenceChecklist";
 import { IssueWorkflowPanel } from "@/components/IssueWorkflowPanel";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
+export const dynamic = "force-dynamic";
+
 export default async function IssueDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const issue = await getIssue(id);

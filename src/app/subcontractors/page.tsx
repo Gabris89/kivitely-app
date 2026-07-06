@@ -1,6 +1,8 @@
 import { listSubcontractors } from "@/lib/repository";
 import { PageHeader } from "@/components/PageHeader";
 
+export const dynamic = "force-dynamic";
+
 export default async function SubcontractorsPage() {
   const subcontractors = await listSubcontractors();
 

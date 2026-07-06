@@ -6,6 +6,8 @@ import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { IssueTable } from "@/components/IssueTable";
 import { KpiCard } from "@/components/KpiCard";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const [project, issues, subcontractors] = await Promise.all([getProject(), listIssues(), listSubcontractors()]);
   const tigItems = listTigItems();

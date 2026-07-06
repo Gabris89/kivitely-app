@@ -4,6 +4,8 @@ import { issueStatusLabels, issueStatusOrder } from "@/lib/workflow";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkflowPage() {
   const issues = await listIssues();
 

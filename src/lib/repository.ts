@@ -9,7 +9,7 @@ import {
 } from "@/data/mock";
 import type { EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, Subcontractor, TigItem, TigPackage } from "@/types";
 import { canMoveIssue } from "@/lib/workflow";
-import { readSupabaseTable } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export type CreateIssueInput = {
   title: string;
@@ -187,23 +187,57 @@ function mapTigPackage(row: SupabaseTigPackageRow): TigPackage {
   };
 }
 
-async function listSupabaseIssues() {
-  const rows = await readSupabaseTable<SupabaseIssueRow>(
-    "issues?select=*,subcontractors(name),issue_evidence(evidence_type)&order=updated_at.desc"
-  );
+function logSupabaseReadError(scope: string, error: { message?: string } | null) {
+  if (error) {
+    console.warn(`Supabase read failed for ${scope}: ${error.message || "unknown error"}`);
+  }
+}
 
-  if (!rows?.length) return null;
+async function listSupabaseIssues() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("issues")
+    .select("*,subcontractors(name),issue_evidence(evidence_type)")
+    .order("updated_at", { ascending: false });
+
+  logSupabaseReadError("issues", error);
+
+  const rows = data as SupabaseIssueRow[] | null;
+  if (error || !rows?.length) return null;
   return rows.map(mapIssue);
 }
 
 async function getSupabaseIssueDbId(publicId: string) {
-  const rows = await readSupabaseTable<{ id: string }>(`issues?select=id&public_id=eq.${encodeURIComponent(publicId)}&limit=1`);
-  return rows?.[0]?.id || null;
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("issues")
+    .select("id")
+    .eq("public_id", publicId)
+    .maybeSingle();
+
+  logSupabaseReadError("issue id lookup", error);
+
+  return error ? null : data?.id || null;
 }
 
 export async function getProject() {
-  const rows = await readSupabaseTable<SupabaseProjectRow>("projects?select=*&order=created_at.asc&limit=1");
-  return rows?.[0] ? mapProject(rows[0]) : mockProject;
+  const supabase = getSupabaseClient();
+  if (!supabase) return mockProject;
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  logSupabaseReadError("projects", error);
+
+  return !error && data ? mapProject(data as SupabaseProjectRow) : mockProject;
 }
 
 export async function listIssues() {
@@ -217,29 +251,50 @@ export async function getIssue(id: string) {
 
 export async function getIssueEvidence(issueId: string) {
   const issueDbId = await getSupabaseIssueDbId(issueId);
-  const rows = issueDbId
-    ? await readSupabaseTable<SupabaseEvidenceRow>(
-        `issue_evidence?select=*&issue_id=eq.${encodeURIComponent(issueDbId)}&order=uploaded_at.asc`
-      )
+  const supabase = getSupabaseClient();
+  const result = issueDbId && supabase
+    ? await supabase
+        .from("issue_evidence")
+        .select("*")
+        .eq("issue_id", issueDbId)
+        .order("uploaded_at", { ascending: true })
     : null;
+  const rows = result?.data as SupabaseEvidenceRow[] | null | undefined;
+
+  logSupabaseReadError("issue_evidence", result?.error || null);
 
   return rows?.length ? rows.map((row) => mapEvidence(row, issueId)) : mockEvidencePhotos.filter((photo) => photo.issueId === issueId);
 }
 
 export async function getIssueEvents(issueId: string) {
   const issueDbId = await getSupabaseIssueDbId(issueId);
-  const rows = issueDbId
-    ? await readSupabaseTable<SupabaseIssueEventRow>(
-        `issue_events?select=*&issue_id=eq.${encodeURIComponent(issueDbId)}&order=created_at.asc`
-      )
+  const supabase = getSupabaseClient();
+  const result = issueDbId && supabase
+    ? await supabase
+        .from("issue_events")
+        .select("*")
+        .eq("issue_id", issueDbId)
+        .order("created_at", { ascending: true })
     : null;
+  const rows = result?.data as SupabaseIssueEventRow[] | null | undefined;
+
+  logSupabaseReadError("issue_events", result?.error || null);
 
   return rows?.length ? rows.map((row) => mapIssueEvent(row, issueId)) : mockIssueEvents.filter((event) => event.issueId === issueId);
 }
 
 export async function listSubcontractors() {
-  const rows = await readSupabaseTable<SupabaseSubcontractorRow>("subcontractors?select=*&order=name.asc");
+  const supabase = getSupabaseClient();
   const issues = await listIssues();
+  const result = supabase
+    ? await supabase
+        .from("subcontractors")
+        .select("*")
+        .order("name", { ascending: true })
+    : null;
+  const rows = result?.data as SupabaseSubcontractorRow[] | null | undefined;
+
+  logSupabaseReadError("subcontractors", result?.error || null);
 
   return rows?.length ? rows.map((row) => mapSubcontractor(row, issues)) : mockSubcontractors;
 }
@@ -249,10 +304,18 @@ export function listTigItems(): TigItem[] {
 }
 
 export async function listTigPackages() {
-  const rows = await readSupabaseTable<SupabaseTigPackageRow>(
-    "tig_packages?select=*,subcontractors(name),tig_package_issues(issue_id)&order=updated_at.desc"
-  );
+  const supabase = getSupabaseClient();
+  if (!supabase) return mockTigPackages;
 
+  const { data, error } = await supabase
+    .from("tig_packages")
+    .select("*,subcontractors(name),tig_package_issues(issue_id)")
+    .order("updated_at", { ascending: false });
+
+  logSupabaseReadError("tig_packages", error);
+
+  const rows = data as SupabaseTigPackageRow[] | null;
+  if (error) return mockTigPackages;
   return rows?.length ? rows.map(mapTigPackage) : mockTigPackages;
 }
 

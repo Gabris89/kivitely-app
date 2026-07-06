@@ -9,6 +9,8 @@ const packageStatusLabels = {
   sent: "Kiküldve"
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function TigPage() {
   const [project, tigPackages] = await Promise.all([getProject(), listTigPackages()]);
   const tigItems = listTigItems();

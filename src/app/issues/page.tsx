@@ -2,6 +2,8 @@ import { listIssues } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { IssueFilters } from "@/components/IssueFilters";
 
+export const dynamic = "force-dynamic";
+
 export default async function IssuesPage() {
   const issues = await listIssues();
 

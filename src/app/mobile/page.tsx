@@ -3,6 +3,8 @@ import { listIssues } from "@/lib/repository";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 
+export const dynamic = "force-dynamic";
+
 export default async function MobilePage() {
   const issues = await listIssues();
 
