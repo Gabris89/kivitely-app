@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createIssue, listIssues } from "@/lib/repository";
 
 export async function GET() {
-  return NextResponse.json({ data: listIssues() });
+  return NextResponse.json({ data: await listIssues() });
 }
 
 export async function POST(request: NextRequest) {

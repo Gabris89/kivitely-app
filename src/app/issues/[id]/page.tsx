@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { evidencePhotos, findIssue, issueEvents } from "@/data/mock";
+import { getIssue, getIssueEvents, getIssueEvidence } from "@/lib/repository";
 import { formatDate, formatHuf } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,12 +10,11 @@ import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export default async function IssueDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const issue = findIssue(id);
+  const issue = await getIssue(id);
 
   if (!issue) notFound();
 
-  const photos = evidencePhotos.filter((photo) => photo.issueId === issue.id);
-  const events = issueEvents.filter((event) => event.issueId === issue.id);
+  const [photos, events] = await Promise.all([getIssueEvidence(issue.id), getIssueEvents(issue.id)]);
   const tigReadiness = getIssueTigReadiness(issue);
 
   return (

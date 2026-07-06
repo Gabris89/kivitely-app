@@ -3,7 +3,7 @@ import { getIssue, getIssueEvents, getIssueEvidence } from "@/lib/repository";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const issue = getIssue(id);
+  const issue = await getIssue(id);
 
   if (!issue) {
     return NextResponse.json({ error: "Issue not found" }, { status: 404 });
@@ -11,7 +11,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   return NextResponse.json({
     data: issue,
-    evidence: getIssueEvidence(id),
-    events: getIssueEvents(id)
+    evidence: await getIssueEvidence(id),
+    events: await getIssueEvents(id)
   });
 }

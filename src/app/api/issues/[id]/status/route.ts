@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Érvénytelen státusz" }, { status: 400 });
   }
 
-  const issue = getIssue(id);
+  const issue = await getIssue(id);
   if (!issue) {
     return NextResponse.json({ error: "Issue not found" }, { status: 404 });
   }

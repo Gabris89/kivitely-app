@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { issues } from "@/data/mock";
+import { listIssues } from "@/lib/repository";
 import { issueStatusLabels, issueStatusOrder } from "@/lib/workflow";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
-export default function WorkflowPage() {
+export default async function WorkflowPage() {
+  const issues = await listIssues();
+
   return (
     <>
       <PageHeader title="Workflow tábla" subtitle="A hibalista Kanban nézete: innen látszik, hol akad el a kivitelezési folyamat.">

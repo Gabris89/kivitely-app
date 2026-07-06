@@ -1,7 +1,9 @@
-import { subcontractors } from "@/data/mock";
+import { listSubcontractors } from "@/lib/repository";
 import { PageHeader } from "@/components/PageHeader";
 
-export default function SubcontractorsPage() {
+export default async function SubcontractorsPage() {
+  const subcontractors = await listSubcontractors();
+
   return (
     <>
       <PageHeader title="Alvállalkozók" subtitle="Egyszerű teljesítmény- és terhelésnézet projektvezetőknek." />

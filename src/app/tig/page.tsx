@@ -1,5 +1,5 @@
-import { project, tigItems, tigPackages } from "@/data/mock";
 import { formatHuf } from "@/lib/format";
+import { getProject, listTigItems, listTigPackages } from "@/lib/repository";
 import { PageHeader } from "@/components/PageHeader";
 
 const packageStatusLabels = {
@@ -9,7 +9,9 @@ const packageStatusLabels = {
   sent: "Kiküldve"
 };
 
-export default function TigPage() {
+export default async function TigPage() {
+  const [project, tigPackages] = await Promise.all([getProject(), listTigPackages()]);
+  const tigItems = listTigItems();
   const included = tigItems.filter((item) => item.included);
   const total = included.reduce((sum, item) => sum + item.valueHuf, 0);
   const proofCount = included.reduce((sum, item) => sum + item.proofCount, 0);

@@ -1,10 +1,27 @@
-/*
- * Supabase is intentionally not connected in this baseline.
- *
- * This file marks the future client location for the Kivitely app.
- * Do not import @supabase packages here until the project is ready to
- * connect PostgreSQL, Auth and Storage using the project URL and
- * publishable key from .env.local.
- */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export const supabaseNotConnected = true;
+export function isSupabaseReadConfigured() {
+  return Boolean(supabaseUrl && supabasePublishableKey);
+}
+
+export async function readSupabaseTable<T>(path: string): Promise<T[] | null> {
+  if (!supabaseUrl || !supabasePublishableKey) {
+    return null;
+  }
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    headers: {
+      apikey: supabasePublishableKey,
+      Authorization: `Bearer ${supabasePublishableKey}`
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    console.warn(`Supabase read failed for ${path}: ${response.status}`);
+    return null;
+  }
+
+  return response.json();
+}

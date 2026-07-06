@@ -1,11 +1,14 @@
-import { activities, issues, project, subcontractors, tigItems } from "@/data/mock";
+import { activities } from "@/data/mock";
 import { formatHuf } from "@/lib/format";
 import { calculateDashboardMetrics } from "@/lib/issueMetrics";
+import { getProject, listIssues, listSubcontractors, listTigItems } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { IssueTable } from "@/components/IssueTable";
 import { KpiCard } from "@/components/KpiCard";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const [project, issues, subcontractors] = await Promise.all([getProject(), listIssues(), listSubcontractors()]);
+  const tigItems = listTigItems();
   const metrics = calculateDashboardMetrics(issues, tigItems);
 
   return (

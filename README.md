@@ -13,14 +13,14 @@ Kivitely is a mobile-first construction workflow MVP for field teams, site manag
 
 ## Current Status
 
-This is the first real development baseline for Kivitely. It is still a mock-data MVP:
+This is the first real development baseline for Kivitely. It is still an MVP with mock fallback:
 
-- No Supabase connection yet
+- Optional Supabase read-only data source for issue, project, subcontractor and TIG package reads
 - Supabase migration baseline is present under `supabase/migrations`
 - No authentication yet
 - No real backend persistence yet
 - No real photo upload yet
-- Mock API routes are present for local workflow modeling
+- Write API routes are still mock-only for local workflow modeling
 
 ## Repository Notes
 
@@ -58,9 +58,9 @@ http://localhost:3000
 /mobile                 Mobile/PWA field view
 ```
 
-## Future Supabase Integration
+## Supabase Integration
 
-The project is prepared for a later Supabase integration, but Supabase is not connected yet.
+The project is prepared for Supabase and can read data from Supabase when public environment values are present. If Supabase is not configured or a read fails, the app falls back to the mock dataset so local development remains usable.
 
 The database baseline is versioned as a Supabase migration:
 

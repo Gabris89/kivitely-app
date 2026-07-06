@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { issues } from "@/data/mock";
+import { listIssues } from "@/lib/repository";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 
-export default function MobilePage() {
+export default async function MobilePage() {
+  const issues = await listIssues();
+
   return (
     <>
       <PageHeader title="Mobil/PWA terepi nézet" subtitle="Ez lenne a művezető és alvállalkozó egyszerű, telefonos munkafelülete." />

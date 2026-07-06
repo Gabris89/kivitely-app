@@ -1,8 +1,10 @@
-import { issues } from "@/data/mock";
+import { listIssues } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { IssueFilters } from "@/components/IssueFilters";
 
-export default function IssuesPage() {
+export default async function IssuesPage() {
+  const issues = await listIssues();
+
   return (
     <>
       <PageHeader title="Hibalista" subtitle="Excel helyett kereshető, státuszos, fotóval bizonyítható lista.">
