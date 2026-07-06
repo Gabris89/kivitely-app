@@ -21,6 +21,11 @@ This is the first real development baseline for Kivitely. It is still a mock-dat
 - No real photo upload yet
 - Mock API routes are present for local workflow modeling
 
+## Repository Notes
+
+- Hungarian UI copy is stored as UTF-8. If a Windows shell shows mojibake, read files with explicit UTF-8 encoding before changing text.
+- `PROJECT_TREE.txt` is a first-baseline project snapshot. Regenerate or remove it only when the repository structure policy is decided.
+
 ## Install
 
 ```bash
