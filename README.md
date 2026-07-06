@@ -16,6 +16,7 @@ Kivitely is a mobile-first construction workflow MVP for field teams, site manag
 This is the first real development baseline for Kivitely. It is still a mock-data MVP:
 
 - No Supabase connection yet
+- Supabase migration baseline is present under `supabase/migrations`
 - No authentication yet
 - No real backend persistence yet
 - No real photo upload yet
@@ -60,6 +61,12 @@ http://localhost:3000
 ## Future Supabase Integration
 
 The project is prepared for a later Supabase integration, but Supabase is not connected yet.
+
+The database baseline is versioned as a Supabase migration:
+
+```text
+supabase/migrations/20260706210901_initial_kivitely_schema.sql
+```
 
 Planned services:
 
