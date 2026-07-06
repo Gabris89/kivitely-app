@@ -13,6 +13,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 
 export type CreateIssueInput = {
   title: string;
+  project?: string;
   description?: string;
   location: string;
   area?: string;
@@ -22,6 +23,11 @@ export type CreateIssueInput = {
   dueDate: string;
   priority?: Priority;
   valueHuf?: number;
+};
+
+export type CreateIssueResult = {
+  issue: Issue;
+  mode: "supabase" | "mock";
 };
 
 type SupabaseIssueRow = {
@@ -193,6 +199,28 @@ function logSupabaseReadError(scope: string, error: { message?: string } | null)
   }
 }
 
+function logSupabaseWriteError(scope: string, error: { message?: string } | null) {
+  if (error) {
+    console.warn(`Supabase write failed for ${scope}: ${error.message || "unknown error"}`);
+  }
+}
+
+function normalizePriority(priority?: Priority) {
+  const allowed: Priority[] = ["low", "normal", "high", "critical"];
+  return priority && allowed.includes(priority) ? priority : "normal";
+}
+
+function nextPublicIssueId(publicIds: string[]) {
+  const nextNumber = Math.max(
+    100,
+    ...publicIds
+      .map((id) => Number(id.replace("KIV-", "")))
+      .filter((value) => Number.isFinite(value))
+  ) + 1;
+
+  return `KIV-${nextNumber}`;
+}
+
 async function listSupabaseIssues() {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
@@ -319,6 +347,53 @@ export async function listTigPackages() {
   return rows?.length ? rows.map(mapTigPackage) : mockTigPackages;
 }
 
+async function createSupabaseIssue(input: CreateIssueInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const [{ data: projects, error: projectError }, { data: subcontractors, error: subcontractorError }, { data: existingIssues, error: issueIdError }] = await Promise.all([
+    supabase.from("projects").select("id,name").order("created_at", { ascending: true }),
+    supabase.from("subcontractors").select("id,name").order("created_at", { ascending: true }),
+    supabase.from("issues").select("public_id")
+  ]);
+
+  logSupabaseReadError("projects for issue insert", projectError);
+  logSupabaseReadError("subcontractors for issue insert", subcontractorError);
+  logSupabaseReadError("issue public ids for issue insert", issueIdError);
+
+  if (projectError || subcontractorError || issueIdError || !projects?.length) {
+    return null;
+  }
+
+  const project = projects.find((item) => item.name === input.project) || projects[0];
+  const subcontractor = subcontractors?.find((item) => item.name === input.subcontractor) || subcontractors?.[0] || null;
+  const publicId = nextPublicIssueId((existingIssues || []).map((issue) => issue.public_id));
+
+  const { data, error } = await supabase
+    .from("issues")
+    .insert({
+      public_id: publicId,
+      project_id: project.id,
+      subcontractor_id: subcontractor?.id || null,
+      title: input.title,
+      description: input.description || "",
+      location: input.location,
+      area: input.area || "Nincs megadva",
+      trade: input.trade || "Nincs megadva",
+      assignee_name: input.assignee || subcontractor?.name || "Nincs megadva",
+      due_date: input.dueDate,
+      status: "open",
+      priority: normalizePriority(input.priority),
+      value_huf: input.valueHuf || 0
+    })
+    .select("*,subcontractors(name),issue_evidence(evidence_type)")
+    .single();
+
+  logSupabaseWriteError("issues", error);
+
+  return error || !data ? null : mapIssue(data as SupabaseIssueRow);
+}
+
 export function createIssue(input: CreateIssueInput): Issue {
   const nextNumber = Math.max(...mockIssues.map((issue) => Number(issue.id.replace("KIV-", "")))) + 1;
   const today = new Date().toISOString().slice(0, 10);
@@ -341,6 +416,22 @@ export function createIssue(input: CreateIssueInput): Issue {
     createdAt: today,
     updatedAt: today,
     tags: ["demo", "új"]
+  };
+}
+
+export async function createIssueRecord(input: CreateIssueInput): Promise<CreateIssueResult> {
+  const supabaseIssue = await createSupabaseIssue(input);
+
+  if (supabaseIssue) {
+    return {
+      issue: supabaseIssue,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    issue: createIssue(input),
+    mode: "mock"
   };
 }
 

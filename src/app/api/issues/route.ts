@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createIssue, listIssues } from "@/lib/repository";
+import { createIssueRecord, listIssues } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const issue = createIssue(body);
-  return NextResponse.json({ data: issue, mode: "mock" }, { status: 201 });
+  const result = await createIssueRecord(body);
+  return NextResponse.json({ data: result.issue, mode: result.mode }, { status: 201 });
 }

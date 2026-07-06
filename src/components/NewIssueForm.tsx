@@ -41,7 +41,8 @@ export function NewIssueForm() {
     }
 
     const result = await response.json();
-    setSaveState({ status: "saved", message: `Demo mentés kész: ${result.data.id} létrejött mock backend válaszként.` });
+    const modeLabel = result.mode === "supabase" ? "Supabase" : "mock fallback";
+    setSaveState({ status: "saved", message: `Mentés kész (${modeLabel}): ${result.data.id} létrejött.` });
   }
 
   return (
