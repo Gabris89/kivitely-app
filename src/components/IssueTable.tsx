@@ -1,0 +1,88 @@
+import Link from "next/link";
+import { formatDate, formatHuf } from "@/lib/format";
+import { getEvidenceChecklistStatus, getIssueTigReadiness } from "@/lib/issueMetrics";
+import type { Issue } from "@/types";
+import { PriorityBadge, StatusBadge } from "./StatusBadge";
+
+function IssueFieldCard({ issue }: { issue: Issue }) {
+  const evidence = getEvidenceChecklistStatus(issue);
+  const tig = getIssueTigReadiness(issue);
+  const photoCount = issue.photosBefore + issue.photosAfter;
+
+  return (
+    <Link href={`/issues/${issue.id}`} className="issue-card">
+      <div className="issue-card-head">
+        <span className="id-link">{issue.id}</span>
+        <StatusBadge status={issue.status} />
+      </div>
+      <strong>{issue.title}</strong>
+      <div className="issue-card-meta">
+        <span>{issue.location}</span>
+        <span>{issue.subcontractor}</span>
+      </div>
+      <div className="issue-card-flags">
+        <PriorityBadge priority={issue.priority} />
+        <span className={photoCount > 0 ? "readiness ok" : "readiness warn"}>{photoCount} fotó</span>
+        <span className={evidence.afterPhoto ? "readiness ok" : "readiness warn"}>
+          {evidence.afterPhoto ? "utána kész" : "utána hiányzik"}
+        </span>
+        <span className={tig.ready ? "readiness ok" : "readiness warn"}>{tig.label}</span>
+      </div>
+      <small>Határidő: {formatDate(issue.dueDate)} · {formatHuf(issue.valueHuf)}</small>
+    </Link>
+  );
+}
+
+export function IssueTable({ issues, compact = false }: { issues: Issue[]; compact?: boolean }) {
+  return (
+    <>
+      <div className="issue-card-list">
+        {issues.map((issue) => (
+          <IssueFieldCard issue={issue} key={issue.id} />
+        ))}
+      </div>
+
+      <div className="table-wrap">
+        <table className="issue-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Hiba</th>
+              {!compact ? <th>Helyszín</th> : null}
+              <th>Felelős</th>
+              <th>Határidő</th>
+              {!compact ? <th>Érték</th> : null}
+              <th>Státusz</th>
+            </tr>
+          </thead>
+          <tbody>
+            {issues.map((issue) => (
+              <tr key={issue.id}>
+                <td>
+                  <Link href={`/issues/${issue.id}`} className="id-link">
+                    {issue.id}
+                  </Link>
+                </td>
+                <td>
+                  <div className="issue-title-cell">
+                    <strong>{issue.title}</strong>
+                    <span>
+                      <PriorityBadge priority={issue.priority} /> {issue.photosBefore + issue.photosAfter} fotó · {getIssueTigReadiness(issue).label}
+                    </span>
+                  </div>
+                </td>
+                {!compact ? <td>{issue.location}</td> : null}
+                <td>{issue.subcontractor}</td>
+                <td>{formatDate(issue.dueDate)}</td>
+                {!compact ? <td>{formatHuf(issue.valueHuf)}</td> : null}
+                <td>
+                  <StatusBadge status={issue.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
