@@ -5,6 +5,7 @@ import { formatDate, formatHuf } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { PageHeader } from "@/components/PageHeader";
 import { EvidenceChecklist } from "@/components/EvidenceChecklist";
+import { EvidenceMetadataControls } from "@/components/EvidenceMetadataControls";
 import { IssueWorkflowPanel } from "@/components/IssueWorkflowPanel";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
@@ -52,6 +53,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
           <p className="description-text">
             Előtte: {issue.photosBefore} db · utána: {issue.photosAfter} db. A valós feltöltés később Supabase Storage-ra kerül.
           </p>
+          <EvidenceMetadataControls issueId={issue.id} />
           <div className="photo-grid">
             {photos.length > 0 ? photos.map((photo) => (
               <div className="photo-card" key={photo.id}>

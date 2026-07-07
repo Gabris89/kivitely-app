@@ -30,6 +30,16 @@ export type CreateIssueResult = {
   mode: "supabase" | "mock";
 };
 
+export type CreateIssueEvidenceInput = {
+  type: "before_photo" | "after_photo";
+  label?: string;
+};
+
+export type CreateIssueEvidenceResult = {
+  evidence: EvidencePhoto;
+  mode: "supabase" | "mock";
+};
+
 export type MoveIssueStatusResult =
   | {
       ok: true;
@@ -178,6 +188,19 @@ function mapEvidence(row: SupabaseEvidenceRow, issueId: string): EvidencePhoto {
   };
 }
 
+function createMockEvidence(issueId: string, input: CreateIssueEvidenceInput): EvidencePhoto {
+  const now = new Date().toISOString();
+
+  return {
+    id: `mock-${issueId}-${input.type}-${Date.now()}`,
+    issueId,
+    type: input.type,
+    label: input.label || (input.type === "before_photo" ? "Előtte fotó metadata" : "Utána fotó metadata"),
+    uploadedBy: "Mock fallback",
+    uploadedAt: now
+  };
+}
+
 function mapIssueEvent(row: SupabaseIssueEventRow, issueId: string): IssueEvent {
   return {
     id: row.id,
@@ -303,6 +326,48 @@ export async function getIssueEvidence(issueId: string) {
   logSupabaseReadError("issue_evidence", result?.error || null);
 
   return rows?.length ? rows.map((row) => mapEvidence(row, issueId)) : mockEvidencePhotos.filter((photo) => photo.issueId === issueId);
+}
+
+async function createSupabaseIssueEvidence(issueId: string, input: CreateIssueEvidenceInput) {
+  const issueDbId = await getSupabaseIssueDbId(issueId);
+  const supabase = getSupabaseClient();
+
+  if (!issueDbId || !supabase) return null;
+
+  const uploadedAt = new Date().toISOString();
+  const evidenceLabel = input.label || (input.type === "before_photo" ? "Előtte fotó metadata" : "Utána fotó metadata");
+  const storagePath = `metadata-only/${issueId}/${input.type}/${Date.now()}`;
+  const { data, error } = await supabase
+    .from("issue_evidence")
+    .insert({
+      issue_id: issueDbId,
+      evidence_type: input.type,
+      storage_path: storagePath,
+      label: evidenceLabel,
+      uploaded_at: uploadedAt
+    })
+    .select("*")
+    .single();
+
+  logSupabaseWriteError("issue evidence", error);
+
+  return error || !data ? null : mapEvidence(data as SupabaseEvidenceRow, issueId);
+}
+
+export async function createIssueEvidenceRecord(issueId: string, input: CreateIssueEvidenceInput): Promise<CreateIssueEvidenceResult> {
+  const supabaseEvidence = await createSupabaseIssueEvidence(issueId, input);
+
+  if (supabaseEvidence) {
+    return {
+      evidence: supabaseEvidence,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    evidence: createMockEvidence(issueId, input),
+    mode: "mock"
+  };
 }
 
 export async function getIssueEvents(issueId: string) {

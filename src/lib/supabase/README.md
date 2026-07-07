@@ -9,7 +9,8 @@ Current scope:
 - new issue creation can insert into the `issues` table when Supabase is configured
 - issue status changes can update `issues.status` and `issues.updated_at` when Supabase is configured
 - successful Supabase status changes can insert `status_changed` rows into `issue_events`
-- evidence photo, TIG and Storage write paths still stay mock-only
+- evidence metadata can insert `before_photo` and `after_photo` rows into `issue_evidence`
+- Supabase Storage, real file uploads and TIG write paths still stay mock-only
 - no service role keys, database passwords, or direct connection strings are required
 
 Run the migrations in order before testing reads from a hosted Supabase project:
@@ -19,7 +20,8 @@ Run the migrations in order before testing reads from a hosted Supabase project:
 3. `supabase/migrations/20260706222250_issue_insert_policy.sql`
 4. `supabase/migrations/20260707084021_issue_status_update_policy.sql`
 5. `supabase/migrations/20260707091122_issue_event_insert_policy.sql`
-6. `supabase/seed.sql`
+6. `supabase/migrations/20260707092854_issue_evidence_insert_policy.sql`
+7. `supabase/seed.sql`
 
 Local development values can live in `.env.local`, which is ignored by git:
 

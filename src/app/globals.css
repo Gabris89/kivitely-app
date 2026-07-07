@@ -259,6 +259,14 @@ button, input, select, textarea { font: inherit; }
 .meta-grid span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
 .block-heading { margin-top: 20px; font-size: 18px; }
 .photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0;
+}
+.evidence-actions .inline-note { margin-top: 0; }
 .photo-card {
   position: relative;
   min-height: 130px;
