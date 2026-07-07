@@ -8,7 +8,7 @@ import {
   tigPackages as mockTigPackages
 } from "@/data/mock";
 import type { EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, Subcontractor, TigItem, TigPackage } from "@/types";
-import { canMoveIssue } from "@/lib/workflow";
+import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
 export type CreateIssueInput = {
@@ -484,7 +484,30 @@ async function updateSupabaseIssueStatus(issue: Issue, targetStatus: IssueStatus
 
   logSupabaseWriteError("issue status", error);
 
-  return error || !data ? null : mapIssue(data as SupabaseIssueRow);
+  return error || !data ? null : {
+    issue: mapIssue(data as SupabaseIssueRow),
+    issueDbId
+  };
+}
+
+async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, targetStatus: IssueStatus) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  const { error } = await supabase
+    .from("issue_events")
+    .insert({
+      issue_id: issueDbId,
+      event_type: "status_changed",
+      from_status: issue.status,
+      to_status: targetStatus,
+      title: "Státuszváltás rögzítve",
+      description: `${issueStatusLabels[issue.status]} → ${issueStatusLabels[targetStatus]}`
+    });
+
+  logSupabaseWriteError("issue status event", error);
+
+  return !error;
 }
 
 export async function moveIssueStatusRecord(issue: Issue, targetStatus: IssueStatus): Promise<MoveIssueStatusResult> {
@@ -495,12 +518,14 @@ export async function moveIssueStatusRecord(issue: Issue, targetStatus: IssueSta
     };
   }
 
-  const supabaseIssue = await updateSupabaseIssueStatus(issue, targetStatus);
+  const supabaseResult = await updateSupabaseIssueStatus(issue, targetStatus);
 
-  if (supabaseIssue) {
+  if (supabaseResult) {
+    await createSupabaseStatusEvent(issue, supabaseResult.issueDbId, targetStatus);
+
     return {
       ok: true,
-      issue: supabaseIssue,
+      issue: supabaseResult.issue,
       mode: "supabase"
     };
   }
