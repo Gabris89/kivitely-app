@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { IssueStatus } from "@/types";
-import { getIssue, moveIssueStatus } from "@/lib/repository";
+import { getIssue, moveIssueStatusRecord } from "@/lib/repository";
 
 const allowedStatuses: IssueStatus[] = [
   "draft",
@@ -28,10 +28,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Issue not found" }, { status: 404 });
   }
 
-  const result = moveIssueStatus(issue, targetStatus);
+  const result = await moveIssueStatusRecord(issue, targetStatus);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }
 
-  return NextResponse.json({ data: result.issue, mode: "mock" });
+  return NextResponse.json({ data: result.issue, mode: result.mode });
 }

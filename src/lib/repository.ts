@@ -30,6 +30,17 @@ export type CreateIssueResult = {
   mode: "supabase" | "mock";
 };
 
+export type MoveIssueStatusResult =
+  | {
+      ok: true;
+      issue: Issue;
+      mode: "supabase" | "mock";
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
 type SupabaseIssueRow = {
   id: string;
   public_id: string;
@@ -435,7 +446,7 @@ export async function createIssueRecord(input: CreateIssueInput): Promise<Create
   };
 }
 
-export function moveIssueStatus(issue: Issue, targetStatus: IssueStatus) {
+export function moveIssueStatus(issue: Issue, targetStatus: IssueStatus): MoveIssueStatusResult {
   if (!canMoveIssue(issue, targetStatus, "project_manager")) {
     return {
       ok: false,
@@ -449,6 +460,50 @@ export function moveIssueStatus(issue: Issue, targetStatus: IssueStatus) {
       ...issue,
       status: targetStatus,
       updatedAt: new Date().toISOString().slice(0, 10)
-    }
+    },
+    mode: "mock"
   };
+}
+
+async function updateSupabaseIssueStatus(issue: Issue, targetStatus: IssueStatus) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const issueDbId = await getSupabaseIssueDbId(issue.id);
+  if (!issueDbId) return null;
+
+  const { data, error } = await supabase
+    .from("issues")
+    .update({
+      status: targetStatus,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", issueDbId)
+    .select("*,subcontractors(name),issue_evidence(evidence_type)")
+    .single();
+
+  logSupabaseWriteError("issue status", error);
+
+  return error || !data ? null : mapIssue(data as SupabaseIssueRow);
+}
+
+export async function moveIssueStatusRecord(issue: Issue, targetStatus: IssueStatus): Promise<MoveIssueStatusResult> {
+  if (!canMoveIssue(issue, targetStatus, "project_manager")) {
+    return {
+      ok: false,
+      error: `Nem engedélyezett státuszváltás: ${issue.status} → ${targetStatus}`
+    };
+  }
+
+  const supabaseIssue = await updateSupabaseIssueStatus(issue, targetStatus);
+
+  if (supabaseIssue) {
+    return {
+      ok: true,
+      issue: supabaseIssue,
+      mode: "supabase"
+    };
+  }
+
+  return moveIssueStatus(issue, targetStatus);
 }

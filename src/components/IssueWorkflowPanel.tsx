@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Issue, IssueStatus } from "@/types";
 import { getNextStatuses, getWorkflowHint, issueStatusLabels } from "@/lib/workflow";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export function IssueWorkflowPanel({ issue }: { issue: Issue }) {
+  const router = useRouter();
   const [currentStatus, setCurrentStatus] = useState<IssueStatus>(issue.status);
   const [message, setMessage] = useState<string>("");
   const optimisticIssue = useMemo(() => ({ ...issue, status: currentStatus }), [currentStatus, issue]);
@@ -13,13 +15,25 @@ export function IssueWorkflowPanel({ issue }: { issue: Issue }) {
 
   async function changeStatus(target: IssueStatus) {
     setCurrentStatus(target);
-    setMessage(`Mock státuszváltás: ${issue.id} → ${issueStatusLabels[target]}. Ez még nem ment adatbázisba.`);
+    setMessage("Státuszváltás mentése...");
 
-    await fetch(`/api/issues/${issue.id}/status`, {
+    const response = await fetch(`/api/issues/${issue.id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: target })
     }).catch(() => undefined);
+
+    if (!response?.ok) {
+      setCurrentStatus(issue.status);
+      setMessage("A státuszváltás nem sikerült. Próbáld újra.");
+      return;
+    }
+
+    const result = await response.json().catch(() => null);
+    const savedMode = result?.mode === "supabase" ? "Supabase" : "Mock fallback";
+
+    setMessage(`${savedMode} státuszváltás mentve: ${issue.id} → ${issueStatusLabels[target]}.`);
+    router.refresh();
   }
 
   return (
