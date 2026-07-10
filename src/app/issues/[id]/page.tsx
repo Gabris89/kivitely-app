@@ -18,13 +18,19 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
   if (!issue) notFound();
 
   const [photos, events] = await Promise.all([getIssueEvidence(issue.id), getIssueEvents(issue.id)]);
-  const tigReadiness = getIssueTigReadiness(issue);
+  const tigReadiness = getIssueTigReadiness(issue, photos);
+  const beforeCount = photos.filter((photo) => photo.type === "before_photo").length;
+  const afterCount = photos.filter((photo) => photo.type === "after_photo").length;
 
   return (
     <>
       <PageHeader title={`${issue.id} · ${issue.title}`} subtitle="Hiba részletező · fotók · felelős · státusztörténet">
         <Link className="button ghost" href="/issues">Vissza</Link>
-        <Link className="button primary" href="/tig">TIG-be jelölés</Link>
+        {tigReadiness.ready ? (
+          <Link className="button primary" href="/tig">TIG csomag előnézet</Link>
+        ) : (
+          <span className="button ghost disabled-control">TIG feltételek hiányoznak</span>
+        )}
       </PageHeader>
 
       <section className="detail-grid">
@@ -33,7 +39,10 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
             <h2>Hiba adatai</h2>
             <StatusBadge status={issue.status} />
           </div>
-          <p className="description-text">{issue.description}</p>
+          <div className="technical-description">
+            <span>Műszaki leírás</span>
+            <p>{issue.description || "Nincs megadva."}</p>
+          </div>
 
           <div className="meta-grid">
             <div><span>Helyszín</span><strong>{issue.location}</strong></div>
@@ -49,9 +58,16 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
 
+          {!tigReadiness.ready ? (
+            <div className="readiness-note">
+              <strong>TIG-be jelöléshez még hiányzik</strong>
+              <span>{tigReadiness.missing.join(", ")}</span>
+            </div>
+          ) : null}
+
           <h2 className="block-heading">Fotós bizonyítás</h2>
           <p className="description-text">
-            Előtte: {issue.photosBefore} db · utána: {issue.photosAfter} db. A valós feltöltés később Supabase Storage-ra kerül.
+            Előtte: {beforeCount} db · utána: {afterCount} db. A valós feltöltés később Supabase Storage-ra kerül.
           </p>
           <EvidenceMetadataControls issueId={issue.id} />
           <div className="photo-grid">

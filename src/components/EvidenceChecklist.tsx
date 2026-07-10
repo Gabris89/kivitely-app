@@ -14,11 +14,11 @@ function CheckItem({ done, label, detail }: { done: boolean; label: string; deta
 }
 
 export function EvidenceChecklist({ issue, photos }: { issue: Issue; photos: EvidencePhoto[] }) {
-  const beforeCount = photos.filter((photo) => photo.type === "before_photo").length || issue.photosBefore;
-  const afterCount = photos.filter((photo) => photo.type === "after_photo").length || issue.photosAfter;
-  const proofScore = getIssueProofScore(issue);
-  const checklist = getEvidenceChecklistStatus(issue);
-  const tigReadiness = getIssueTigReadiness(issue);
+  const beforeCount = photos.filter((photo) => photo.type === "before_photo").length;
+  const afterCount = photos.filter((photo) => photo.type === "after_photo").length;
+  const proofScore = getIssueProofScore(issue, photos);
+  const checklist = getEvidenceChecklistStatus(issue, photos);
+  const tigReadiness = getIssueTigReadiness(issue, photos);
 
   return (
     <article className="card panel evidence-panel">
@@ -30,8 +30,12 @@ export function EvidenceChecklist({ issue, photos }: { issue: Issue; photos: Evi
       <div className="check-list">
         <CheckItem done={checklist.beforePhoto} label="Előtte fotó" detail={`${beforeCount} db rögzítve`} />
         <CheckItem done={checklist.afterPhoto} label="Utána fotó" detail={`${afterCount} db rögzítve`} />
-        <CheckItem done={checklist.description} label="Műszaki leírás" detail="Van rövid, javítható leírás" />
-        <CheckItem done={checklist.accepted} label="Elfogadott státusz" detail="Projektvezetői elfogadás szükséges TIG előtt" />
+        <CheckItem
+          done={checklist.description}
+          label="Műszaki leírás"
+          detail={checklist.description ? "Van rövid, javítható leírás" : "A hiba leírása túl rövid vagy hiányzik"}
+        />
+        <CheckItem done={checklist.accepted} label="Elfogadott státusz" detail="Accepted vagy TIG-ready állapot szükséges" />
         <CheckItem
           done={tigReadiness.ready}
           label="TIG-ready"
