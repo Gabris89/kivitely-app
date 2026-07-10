@@ -339,3 +339,52 @@ insert into project_members (
   can_manage_project = excluded.can_manage_project,
   notes = excluded.notes,
   updated_at = excluded.updated_at;
+
+insert into work_logs (
+  id,
+  project_id,
+  profile_id,
+  trade,
+  work_date,
+  description,
+  quantity,
+  unit,
+  status,
+  created_at,
+  updated_at
+) values
+(
+  'dededede-dede-4ede-8ede-dededededede',
+  '11111111-1111-4111-8111-111111111111',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  'Burkolas',
+  '2026-07-06',
+  'Foldszinti lepcsohaz burkolasi elokeszites es feluletellenorzes.',
+  18.50,
+  'm2',
+  'submitted',
+  '2026-07-06 15:30:00+00',
+  '2026-07-06 15:30:00+00'
+),
+(
+  'efefefef-efef-4fef-8fef-efefefefefef',
+  '11111111-1111-4111-8111-111111111111',
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  'Burkolas',
+  '2026-07-07',
+  'Javitasi munka folytatasa, fuga hianyok ellenorzese es dokumentalasa.',
+  7.00,
+  'ora',
+  'accepted',
+  '2026-07-07 14:45:00+00',
+  '2026-07-07 16:00:00+00'
+) on conflict (id) do update set
+  project_id = excluded.project_id,
+  profile_id = excluded.profile_id,
+  trade = excluded.trade,
+  work_date = excluded.work_date,
+  description = excluded.description,
+  quantity = excluded.quantity,
+  unit = excluded.unit,
+  status = excluded.status,
+  updated_at = excluded.updated_at;
