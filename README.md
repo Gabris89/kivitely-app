@@ -18,6 +18,7 @@ This is the first real development baseline for Kivitely. It is still an MVP wit
 - Optional Supabase read-only data source for issue, project, subcontractor and TIG package reads
 - Optional Supabase write path for creating new issues, controlled issue status updates, status audit events and evidence metadata
 - Supabase migration baseline is present under `supabase/migrations`
+- Profiles and project membership schema baseline is prepared for later visibility/RLS work
 - No authentication yet
 - No real photo upload or Supabase Storage yet
 - TIG and Storage writes are still mock-only for local workflow modeling
@@ -71,7 +72,7 @@ supabase/migrations/20260706210901_initial_kivitely_schema.sql
 Planned services:
 
 - Supabase PostgreSQL for issues, projects, evidence and TIG packages
-- Supabase Auth for users and roles
+- Supabase Auth for users and roles, later connected to `profiles` and `project_members`
 - Supabase Storage for photos and generated documents
 
 Environment placeholders are documented in `.env.example`. Do not add service role keys, database passwords or real secrets to the repository.
