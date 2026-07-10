@@ -186,3 +186,156 @@ insert into issue_events (
   title = excluded.title,
   description = excluded.description,
   created_at = excluded.created_at;
+
+insert into profiles (
+  id,
+  display_name,
+  role,
+  company_name,
+  trade,
+  phone,
+  email,
+  is_active,
+  created_at,
+  updated_at
+) values
+(
+  '99999999-9999-4999-8999-999999999999',
+  'Kivitely Admin',
+  'admin',
+  'Duna Invest Zrt.',
+  null,
+  '+36 20 111 0001',
+  'admin@example.invalid',
+  true,
+  '2026-07-06 10:00:00+00',
+  '2026-07-06 10:00:00+00'
+),
+(
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'Projektvezeto Teszt Elek',
+  'project_manager',
+  'Duna Invest Zrt.',
+  null,
+  '+36 20 111 0002',
+  'projektvezeto@example.invalid',
+  true,
+  '2026-07-06 10:05:00+00',
+  '2026-07-06 10:05:00+00'
+),
+(
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  'Munkavallalo Teszt Anna',
+  'worker',
+  'Duna Invest Zrt.',
+  'Burkolas',
+  '+36 20 111 0003',
+  'munkavallalo@example.invalid',
+  true,
+  '2026-07-06 10:10:00+00',
+  '2026-07-06 10:10:00+00'
+),
+(
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  'Supabase Burkolo Kft.',
+  'subcontractor',
+  'Supabase Burkolo Kft.',
+  'Burkolas',
+  '+36 20 444 7788',
+  'burkolo@example.invalid',
+  true,
+  '2026-07-06 10:15:00+00',
+  '2026-07-06 10:15:00+00'
+),
+(
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'Viewer Teszt Nora',
+  'viewer',
+  'Duna Invest Zrt.',
+  null,
+  '+36 20 111 0005',
+  'viewer@example.invalid',
+  true,
+  '2026-07-06 10:20:00+00',
+  '2026-07-06 10:20:00+00'
+) on conflict (id) do update set
+  display_name = excluded.display_name,
+  role = excluded.role,
+  company_name = excluded.company_name,
+  trade = excluded.trade,
+  phone = excluded.phone,
+  email = excluded.email,
+  is_active = excluded.is_active,
+  updated_at = excluded.updated_at;
+
+insert into project_members (
+  id,
+  project_id,
+  profile_id,
+  role,
+  can_view_project,
+  can_manage_project,
+  notes,
+  created_at,
+  updated_at
+) values
+(
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  '11111111-1111-4111-8111-111111111111',
+  '99999999-9999-4999-8999-999999999999',
+  'admin',
+  true,
+  true,
+  'Seed admin / munkaltato teljes projekt hozzaferessel.',
+  '2026-07-06 10:30:00+00',
+  '2026-07-06 10:30:00+00'
+),
+(
+  'ffffffff-ffff-4fff-8fff-ffffffffffff',
+  '11111111-1111-4111-8111-111111111111',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'project_manager',
+  true,
+  true,
+  'Seed projektvezeto / muvezeto projekt kezeloi hozzaferessel.',
+  '2026-07-06 10:35:00+00',
+  '2026-07-06 10:35:00+00'
+),
+(
+  'abababab-abab-4bab-8bab-abababababab',
+  '11111111-1111-4111-8111-111111111111',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  'worker',
+  true,
+  false,
+  'Seed munkavallalo sajat projekt lathatosaghoz.',
+  '2026-07-06 10:40:00+00',
+  '2026-07-06 10:40:00+00'
+),
+(
+  'bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc',
+  '11111111-1111-4111-8111-111111111111',
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  'subcontractor',
+  true,
+  false,
+  'Seed alvallalkozo sajat szakagi lathatosaghoz.',
+  '2026-07-06 10:45:00+00',
+  '2026-07-06 10:45:00+00'
+),
+(
+  'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd',
+  '11111111-1111-4111-8111-111111111111',
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'viewer',
+  true,
+  false,
+  'Seed viewer csak olvasasi hozzaferessel.',
+  '2026-07-06 10:50:00+00',
+  '2026-07-06 10:50:00+00'
+) on conflict (project_id, profile_id) do update set
+  role = excluded.role,
+  can_view_project = excluded.can_view_project,
+  can_manage_project = excluded.can_manage_project,
+  notes = excluded.notes,
+  updated_at = excluded.updated_at;

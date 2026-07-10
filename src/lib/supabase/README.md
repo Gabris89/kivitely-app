@@ -11,6 +11,7 @@ Current scope:
 - successful Supabase status changes can insert `status_changed` rows into `issue_events`
 - evidence metadata can insert `before_photo` and `after_photo` rows into `issue_evidence`
 - `profiles` and `project_members` are prepared as a schema baseline for later Auth/RLS visibility work
+- `supabase/seed.sql` includes minimal role and project membership sample data for manual visibility planning
 - Supabase Storage, real file uploads and TIG write paths still stay mock-only
 - no service role keys, database passwords, or direct connection strings are required
 
