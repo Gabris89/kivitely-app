@@ -26,7 +26,8 @@ Run the migrations in order before testing reads from a hosted Supabase project:
 6. `supabase/migrations/20260707092854_issue_evidence_insert_policy.sql`
 7. `supabase/migrations/20260710213835_profiles_project_members_baseline.sql`
 8. `supabase/migrations/20260710221035_work_logs_baseline.sql`
-9. `supabase/seed.sql`
+9. `supabase/migrations/20260710222552_work_logs_read_grant.sql`
+10. `supabase/seed.sql`
 
 Local development values can live in `.env.local`, which is ignored by git:
 

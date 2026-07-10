@@ -5,9 +5,10 @@ import {
   project as mockProject,
   subcontractors as mockSubcontractors,
   tigItems as mockTigItems,
-  tigPackages as mockTigPackages
+  tigPackages as mockTigPackages,
+  workLogs as mockWorkLogs
 } from "@/data/mock";
-import type { EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, Subcontractor, TigItem, TigPackage } from "@/types";
+import type { EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
@@ -118,6 +119,22 @@ type SupabaseTigPackageRow = {
   tig_package_issues?: { issue_id: string }[] | null;
 };
 
+type SupabaseWorkLogRow = {
+  id: string;
+  project_id: string;
+  profile_id: string | null;
+  trade: string | null;
+  work_date: string;
+  description: string;
+  quantity: number | string | null;
+  unit: string | null;
+  status: WorkLogStatus;
+  created_at: string;
+  updated_at: string;
+  projects?: { name: string | null } | null;
+  profiles?: { display_name: string | null } | null;
+};
+
 function dateOnly(value?: string | null) {
   return value?.slice(0, 10) || "";
 }
@@ -222,6 +239,24 @@ function mapTigPackage(row: SupabaseTigPackageRow): TigPackage {
     issueIds: row.tig_package_issues?.map((item) => item.issue_id) || [],
     grossValueHuf: numberValue(row.gross_value_huf),
     proofCount: 0,
+    createdAt: dateOnly(row.created_at),
+    updatedAt: dateOnly(row.updated_at)
+  };
+}
+
+function mapWorkLog(row: SupabaseWorkLogRow): WorkLog {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    projectName: row.projects?.name || "Nincs megadva",
+    profileId: row.profile_id || "",
+    profileName: row.profiles?.display_name || "Nincs megadva",
+    trade: row.trade || "Nincs megadva",
+    workDate: dateOnly(row.work_date),
+    description: row.description,
+    quantity: row.quantity === null ? undefined : numberValue(row.quantity),
+    unit: row.unit || undefined,
+    status: row.status,
     createdAt: dateOnly(row.created_at),
     updatedAt: dateOnly(row.updated_at)
   };
@@ -421,6 +456,23 @@ export async function listTigPackages() {
   const rows = data as SupabaseTigPackageRow[] | null;
   if (error) return mockTigPackages;
   return rows?.length ? rows.map(mapTigPackage) : mockTigPackages;
+}
+
+export async function listWorkLogs() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return mockWorkLogs;
+
+  const { data, error } = await supabase
+    .from("work_logs")
+    .select("*,projects(name),profiles(display_name)")
+    .order("work_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  logSupabaseReadError("work_logs", error);
+
+  const rows = data as SupabaseWorkLogRow[] | null;
+  if (error) return mockWorkLogs;
+  return rows?.length ? rows.map(mapWorkLog) : mockWorkLogs;
 }
 
 async function createSupabaseIssue(input: CreateIssueInput) {

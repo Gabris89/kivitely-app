@@ -574,6 +574,54 @@ dd { margin: 5px 0 0; font-weight: 850; }
 .package-card span, .package-card small { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
 .package-card b { display: block; text-align: right; }
 
+.work-log-list {
+  display: grid;
+  gap: 14px;
+}
+.work-log-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+.work-log-head {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+}
+.work-log-head span:first-child {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+.work-log-head h2 {
+  margin: 5px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+.work-log-card p {
+  max-width: 840px;
+  margin: 0;
+  color: var(--soft);
+  line-height: 1.6;
+}
+.work-log-meta {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.work-log-status.status-submitted,
+.work-log-status.status-reviewed {
+  color: #ffe08d;
+  background: rgba(255, 209, 102, 0.14);
+}
+.work-log-status.status-accepted {
+  color: #8af0bd;
+  background: rgba(72, 213, 151, 0.14);
+}
+.work-log-status.status-rejected {
+  color: #ffaaa8;
+  background: rgba(255, 107, 107, 0.15);
+}
+
 @media (max-width: 1120px) {
   .workflow-board { grid-template-columns: repeat(3, minmax(250px, 1fr)); }
 }
@@ -581,4 +629,6 @@ dd { margin: 5px 0 0; font-weight: 850; }
 @media (max-width: 720px) {
   .filter-toolbar, .package-card { display: grid; }
   .workflow-board { grid-template-columns: repeat(6, 260px); }
+  .work-log-head { display: grid; }
+  .work-log-meta { grid-template-columns: 1fr; }
 }

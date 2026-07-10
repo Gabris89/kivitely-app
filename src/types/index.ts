@@ -104,6 +104,24 @@ export type TigPackage = {
   updatedAt: string;
 };
 
+export type WorkLogStatus = "draft" | "submitted" | "reviewed" | "accepted" | "rejected";
+
+export type WorkLog = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  profileId: string;
+  profileName: string;
+  trade: string;
+  workDate: string;
+  description: string;
+  quantity?: number;
+  unit?: string;
+  status: WorkLogStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DashboardMetrics = {
   openIssues: number;
   overdueIssues: number;

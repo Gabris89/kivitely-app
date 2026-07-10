@@ -1,4 +1,4 @@
-import type { Activity, EvidencePhoto, Issue, IssueEvent, Project, Subcontractor, TigItem, TigPackage } from "@/types";
+import type { Activity, EvidencePhoto, Issue, IssueEvent, Project, Subcontractor, TigItem, TigPackage, WorkLog } from "@/types";
 
 export const project: Project = {
   id: "project-bp13-001",
@@ -189,6 +189,39 @@ export const tigPackages: TigPackage[] = [
     proofCount: 3,
     createdAt: "2026-07-06",
     updatedAt: "2026-07-06"
+  }
+];
+
+export const workLogs: WorkLog[] = [
+  {
+    id: "mock-work-log-1",
+    projectId: project.id,
+    projectName: project.name,
+    profileId: "worker-mock-1",
+    profileName: "Munkavallalo Teszt Anna",
+    trade: "Burkolas",
+    workDate: "2026-07-06",
+    description: "Foldszinti lepcsohaz burkolasi elokeszites es feluletellenorzes.",
+    quantity: 18.5,
+    unit: "m2",
+    status: "submitted",
+    createdAt: "2026-07-06",
+    updatedAt: "2026-07-06"
+  },
+  {
+    id: "mock-work-log-2",
+    projectId: project.id,
+    projectName: project.name,
+    profileId: "subcontractor-mock-1",
+    profileName: "Supabase Burkolo Kft.",
+    trade: "Burkolas",
+    workDate: "2026-07-07",
+    description: "Javitasi munka folytatasa, fuga hianyok ellenorzese es dokumentalasa.",
+    quantity: 7,
+    unit: "ora",
+    status: "accepted",
+    createdAt: "2026-07-07",
+    updatedAt: "2026-07-07"
   }
 ];
 

@@ -9,6 +9,7 @@ const nav = [
   { href: "/issues", label: "Hibalista", icon: "🧱" },
   { href: "/workflow", label: "Workflow tábla", icon: "🧭" },
   { href: "/issues/new", label: "Új hiba", icon: "➕" },
+  { href: "/work-logs", label: "Teljesítménynapló", icon: "📝" },
   { href: "/subcontractors", label: "Alvállalkozók", icon: "👷" },
   { href: "/tig", label: "TIG csomag", icon: "🧾" },
   { href: "/mobile", label: "Mobil/PWA nézet", icon: "📱" }
@@ -17,9 +18,9 @@ const nav = [
 const bottomNav = [
   { href: "/", label: "Dashboard", icon: "📊" },
   { href: "/issues", label: "Hibalista", icon: "🧱" },
+  { href: "/work-logs", label: "Napló", icon: "📝" },
   { href: "/issues/new", label: "Új hiba", icon: "➕" },
-  { href: "/tig", label: "TIG", icon: "🧾" },
-  { href: "/workflow", label: "Workflow", icon: "🧭" }
+  { href: "/tig", label: "TIG", icon: "🧾" }
 ];
 
 function isActive(pathname: string, href: string) {
