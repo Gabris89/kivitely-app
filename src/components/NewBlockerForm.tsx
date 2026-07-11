@@ -22,6 +22,11 @@ export function NewBlockerForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
+
+    if (window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+
     setSaveState({ status: "saving", message: "Akadály mentése folyamatban..." });
 
     const formData = new FormData(form);
@@ -56,7 +61,7 @@ export function NewBlockerForm() {
   }
 
   return (
-    <form className="card form-card" onSubmit={handleSubmit}>
+    <form className="card form-card" method="post" onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
         <label>
           Cím
