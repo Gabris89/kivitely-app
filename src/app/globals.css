@@ -303,6 +303,60 @@ button, input, select, textarea { font: inherit; }
   color: var(--muted);
 }
 
+.blocker-page-list {
+  display: grid;
+  gap: 14px;
+}
+.blocker-page-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+.blocker-page-head {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+}
+.blocker-page-head span:first-child {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+.blocker-page-head h2 {
+  margin: 5px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+.blocker-page-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.blocker-page-card p {
+  max-width: 860px;
+  margin: 0;
+  color: var(--soft);
+  line-height: 1.6;
+}
+.blocker-page-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.blocker-status.status-waiting_external,
+.blocker-status.status-in_progress {
+  color: #ffe08d;
+  background: rgba(255, 209, 102, 0.14);
+}
+.blocker-severity.priority-critical {
+  color: #ffaaa8;
+  background: rgba(255, 107, 107, 0.15);
+}
+.empty-list {
+  padding: 18px;
+  color: var(--muted);
+}
+
 .detail-grid, .tig-grid, .mobile-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
 .description-text { color: var(--soft); line-height: 1.65; }
 .technical-description {
@@ -446,7 +500,7 @@ dd { margin: 5px 0 0; font-weight: 850; }
     left: 10px;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 4px;
     padding: 6px;
     background: rgba(8, 14, 26, 0.94);
@@ -680,6 +734,9 @@ dd { margin: 5px 0 0; font-weight: 850; }
 @media (max-width: 720px) {
   .filter-toolbar, .package-card { display: grid; }
   .workflow-board { grid-template-columns: repeat(6, 260px); }
+  .blocker-page-head { display: grid; }
+  .blocker-page-badges { justify-content: flex-start; }
+  .blocker-page-meta { grid-template-columns: 1fr; }
   .work-log-head { display: grid; }
   .work-log-meta { grid-template-columns: 1fr; }
 }

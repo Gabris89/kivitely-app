@@ -5,22 +5,24 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const nav = [
-  { href: "/", label: "Dashboard", icon: "📊" },
-  { href: "/issues", label: "Hibalista", icon: "🧱" },
-  { href: "/workflow", label: "Workflow tábla", icon: "🧭" },
-  { href: "/issues/new", label: "Új hiba", icon: "➕" },
-  { href: "/work-logs", label: "Teljesítménynapló", icon: "📝" },
-  { href: "/subcontractors", label: "Alvállalkozók", icon: "👷" },
-  { href: "/tig", label: "TIG csomag", icon: "🧾" },
-  { href: "/mobile", label: "Mobil/PWA nézet", icon: "📱" }
+  { href: "/", label: "Dashboard", icon: "D" },
+  { href: "/issues", label: "Hibalista", icon: "H" },
+  { href: "/blockers", label: "Akadálylista", icon: "!" },
+  { href: "/workflow", label: "Workflow tábla", icon: "W" },
+  { href: "/issues/new", label: "Új hiba", icon: "+" },
+  { href: "/work-logs", label: "Teljesítménynapló", icon: "N" },
+  { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
+  { href: "/tig", label: "TIG csomag", icon: "T" },
+  { href: "/mobile", label: "Mobil/PWA nézet", icon: "M" }
 ];
 
 const bottomNav = [
-  { href: "/", label: "Dashboard", icon: "📊" },
-  { href: "/issues", label: "Hibalista", icon: "🧱" },
-  { href: "/work-logs", label: "Napló", icon: "📝" },
-  { href: "/issues/new", label: "Új hiba", icon: "➕" },
-  { href: "/tig", label: "TIG", icon: "🧾" }
+  { href: "/", label: "Dashboard", icon: "D" },
+  { href: "/issues", label: "Hibalista", icon: "H" },
+  { href: "/blockers", label: "Akadály", icon: "!" },
+  { href: "/work-logs", label: "Napló", icon: "N" },
+  { href: "/issues/new", label: "Új hiba", icon: "+" },
+  { href: "/tig", label: "TIG", icon: "T" }
 ];
 
 function isActive(pathname: string, href: string) {
