@@ -32,6 +32,20 @@ export type CreateIssueResult = {
   mode: "supabase" | "mock";
 };
 
+export type CreateBlockerInput = {
+  title: string;
+  description: string;
+  trade?: string;
+  area?: string;
+  severity?: BlockerSeverity;
+  responsibleName?: string;
+};
+
+export type CreateBlockerResult = {
+  blocker: BlockerItem;
+  mode: "supabase" | "mock";
+};
+
 export type CreateIssueEvidenceInput = {
   type: "before_photo" | "after_photo";
   label?: string;
@@ -526,12 +540,7 @@ export async function listActiveBlockers() {
 
   const { data, error } = await supabase
     .from("blocker_list")
-    .select(`
-      *,
-      projects(name),
-      created_by:profiles!blocker_list_created_by_profile_id_fkey(display_name),
-      responsible:profiles!blocker_list_responsible_profile_id_fkey(display_name)
-    `)
+    .select("*")
     .in("status", activeStatuses)
     .order("created_at", { ascending: false });
 
@@ -539,7 +548,131 @@ export async function listActiveBlockers() {
 
   const rows = data as SupabaseBlockerRow[] | null;
   if (error) return fallback;
-  return rows?.length ? rows.map(mapBlocker) : fallback;
+  if (!rows?.length) return fallback;
+
+  const [{ data: projects, error: projectError }, { data: profiles, error: profileError }] = await Promise.all([
+    supabase.from("projects").select("id,name"),
+    supabase.from("profiles").select("id,display_name")
+  ]);
+
+  logSupabaseReadError("projects for blocker_list", projectError);
+  logSupabaseReadError("profiles for blocker_list", profileError);
+
+  const projectNames = new Map((projects || []).map((project) => [project.id, project.name]));
+  const profileNames = new Map((profiles || []).map((profile) => [profile.id, profile.display_name]));
+
+  return rows.map((row) => mapBlocker({
+    ...row,
+    projects: { name: projectNames.get(row.project_id) || null },
+    created_by: { display_name: row.created_by_profile_id ? profileNames.get(row.created_by_profile_id) || null : null },
+    responsible: { display_name: row.responsible_profile_id ? profileNames.get(row.responsible_profile_id) || null : null }
+  }));
+}
+
+function normalizeBlockerSeverity(severity?: BlockerSeverity) {
+  const allowed: BlockerSeverity[] = ["low", "normal", "high", "critical"];
+  return severity && allowed.includes(severity) ? severity : "normal";
+}
+
+function createMockBlocker(input: CreateBlockerInput): BlockerItem {
+  const today = new Date().toISOString().slice(0, 10);
+
+  return {
+    id: `mock-blocker-${Date.now()}`,
+    projectId: mockProject.id,
+    projectName: mockProject.name,
+    createdByProfileId: "mock-user",
+    createdByName: "Mock fallback",
+    responsibleName: input.responsibleName || "Nincs megadva",
+    title: input.title,
+    description: input.description,
+    trade: input.trade || undefined,
+    area: input.area || undefined,
+    status: "open",
+    severity: normalizeBlockerSeverity(input.severity),
+    createdAt: today,
+    updatedAt: today
+  };
+}
+
+async function createSupabaseBlocker(input: CreateBlockerInput): Promise<BlockerItem | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: projects, error: projectError } = await supabase
+    .from("projects")
+    .select("id,name")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  logSupabaseReadError("projects for blocker insert", projectError);
+
+  if (projectError || !projects?.length) return null;
+
+  const project = projects[0];
+  const responsibleResult = input.responsibleName
+    ? await supabase
+        .from("profiles")
+        .select("id,display_name")
+        .eq("display_name", input.responsibleName)
+        .maybeSingle()
+    : null;
+
+  logSupabaseReadError("profiles for blocker insert", responsibleResult?.error || null);
+
+  const responsible = responsibleResult?.error ? null : responsibleResult?.data || null;
+
+  const { data, error } = await supabase
+    .from("blocker_list")
+    .insert({
+      project_id: project.id,
+      responsible_profile_id: responsible?.id || null,
+      title: input.title,
+      description: input.description,
+      trade: input.trade || null,
+      area: input.area || null,
+      status: "open",
+      severity: normalizeBlockerSeverity(input.severity)
+    });
+
+  logSupabaseWriteError("blocker_list", error);
+
+  if (error) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    id: `supabase-blocker-${Date.now()}`,
+    projectId: project.id,
+    projectName: project.name,
+    createdByProfileId: "",
+    createdByName: "Supabase",
+    responsibleProfileId: responsible?.id || undefined,
+    responsibleName: responsible?.display_name || input.responsibleName || "Nincs megadva",
+    title: input.title,
+    description: input.description,
+    trade: input.trade || undefined,
+    area: input.area || undefined,
+    status: "open",
+    severity: normalizeBlockerSeverity(input.severity),
+    createdAt: today,
+    updatedAt: today
+  };
+}
+
+export async function createBlockerRecord(input: CreateBlockerInput): Promise<CreateBlockerResult> {
+  const supabaseBlocker = await createSupabaseBlocker(input);
+
+  if (supabaseBlocker) {
+    return {
+      blocker: supabaseBlocker,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    blocker: createMockBlocker(input),
+    mode: "mock"
+  };
 }
 
 async function createSupabaseIssue(input: CreateIssueInput) {

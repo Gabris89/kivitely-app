@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/PageHeader";
+import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { formatDate } from "@/lib/format";
 import { listActiveBlockers } from "@/lib/repository";
 import type { BlockerSeverity, BlockerStatus } from "@/types";
@@ -29,7 +29,9 @@ export default async function BlockersPage() {
       <PageHeader
         title="Akadálylista"
         subtitle="Read-only áttekintés az aktív, munkát lassító akadályokról."
-      />
+      >
+        <HeaderLink href="/blockers/new" variant="primary">+ Új akadály</HeaderLink>
+      </PageHeader>
 
       <section className="blocker-page-list" aria-label="Aktív akadályok">
         {blockers.map((blocker) => (

@@ -1,0 +1,106 @@
+"use client";
+
+import type { FormEvent } from "react";
+import { useState } from "react";
+
+type SaveState = {
+  status: "idle" | "saving" | "saved" | "error";
+  message: string;
+};
+
+const responsibleOptions = [
+  "",
+  "Projektvezeto Teszt Elek",
+  "Kivitely Admin",
+  "Munkavallalo Teszt Anna",
+  "Supabase Burkolo Kft."
+];
+
+export function NewBlockerForm() {
+  const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setSaveState({ status: "saving", message: "Akadály mentése folyamatban..." });
+
+    const formData = new FormData(form);
+    const payload = {
+      title: String(formData.get("title") || ""),
+      description: String(formData.get("description") || ""),
+      trade: String(formData.get("trade") || ""),
+      area: String(formData.get("area") || ""),
+      severity: String(formData.get("severity") || "normal"),
+      responsibleName: String(formData.get("responsibleName") || "")
+    };
+
+    const response = await fetch("/api/blockers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).catch(() => null);
+
+    if (!response?.ok) {
+      setSaveState({ status: "error", message: "Mentési hiba: ellenőrizd a kötelező mezőket." });
+      return;
+    }
+
+    const result = await response.json();
+    if (result.mode !== "supabase") {
+      setSaveState({ status: "error", message: "Supabase mentés nem sikerült, ezért nem kerül be az Akadálylistába." });
+      return;
+    }
+
+    setSaveState({ status: "saved", message: `Akadály rögzítve (Supabase): ${result.data.title}` });
+    form.reset();
+  }
+
+  return (
+    <form className="card form-card" onSubmit={handleSubmit}>
+      <div className="form-grid">
+        <label>
+          Cím
+          <input name="title" required placeholder="Pl. Hiányzó tervrészlet" />
+        </label>
+        <label>
+          Súlyosság
+          <select name="severity" defaultValue="normal">
+            <option value="low">Alacsony</option>
+            <option value="normal">Normál</option>
+            <option value="high">Magas</option>
+            <option value="critical">Kritikus</option>
+          </select>
+        </label>
+        <label>
+          Szakma
+          <input name="trade" placeholder="Pl. Burkolás" />
+        </label>
+        <label>
+          Terület
+          <input name="area" placeholder="Pl. Lépcsőház" />
+        </label>
+        <label className="full">
+          Felelős
+          <select name="responsibleName" defaultValue="">
+            {responsibleOptions.map((name) => (
+              <option key={name || "none"} value={name}>
+                {name || "Nincs kijelölve"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="full">
+          Leírás
+          <textarea name="description" required placeholder="Írd le röviden, mi akadályozza a munkát és mire van szükség a folytatáshoz." />
+        </label>
+      </div>
+
+      <div className="form-footer">
+        {saveState.message ? <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span> : <span />}
+        <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+          {saveState.status === "saving" ? "Mentés..." : "Akadály rögzítése"}
+        </button>
+      </div>
+    </form>
+  );
+}
