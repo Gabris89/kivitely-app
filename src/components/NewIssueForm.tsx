@@ -14,9 +14,15 @@ export function NewIssueForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaveState({ status: "saving", message: "Demo mentés folyamatban..." });
+    const form = event.currentTarget;
 
-    const formData = new FormData(event.currentTarget);
+    if (window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+
+    setSaveState({ status: "saving", message: "Hiba mentése folyamatban..." });
+
+    const formData = new FormData(form);
     const payload = {
       title: String(formData.get("title") || ""),
       project: String(formData.get("project") || ""),
@@ -36,33 +42,33 @@ export function NewIssueForm() {
     }).catch(() => null);
 
     if (!response?.ok) {
-      setSaveState({ status: "error", message: "Demo API hiba: ellenőrizd a kötelező mezőket." });
+      setSaveState({ status: "error", message: "Mentési hiba: ellenőrizd a kötelező mezőket." });
       return;
     }
 
     const result = await response.json();
     const modeLabel = result.mode === "supabase" ? "Supabase" : "mock fallback";
-    setSaveState({ status: "saved", message: `Mentés kész (${modeLabel}): ${result.data.id} létrejött.` });
+    setSaveState({ status: "saved", message: `Hiba rögzítve (${modeLabel}): ${result.data.id}` });
   }
 
   return (
-    <form className="card form-card" onSubmit={handleSubmit}>
+    <form className="card form-card" method="post" onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
         <label>
           Hiba címe
-          <input name="title" required placeholder="Pl. Sérült burkolat a lépcsőháznál" />
+          <input name="title" required placeholder="Pl. Sérült burkolat a lépcsőháznál" suppressHydrationWarning />
         </label>
         <label>
           Projekt
-          <input name="project" defaultValue={project.name} required />
+          <input name="project" defaultValue={project.name} required suppressHydrationWarning />
         </label>
         <label>
           Helyszín
-          <input name="location" required placeholder="A épület · 1. emelet · folyosó" />
+          <input name="location" required placeholder="A épület · 1. emelet · folyosó" suppressHydrationWarning />
         </label>
         <label>
           Szakág
-          <select name="trade" defaultValue="Burkolás">
+          <select name="trade" defaultValue="Burkolás" suppressHydrationWarning>
             <option value="Burkolás">Burkolás</option>
             <option value="Villanyszerelés">Villanyszerelés</option>
             <option value="Gépészet">Gépészet</option>
@@ -73,7 +79,7 @@ export function NewIssueForm() {
         </label>
         <label>
           Prioritás
-          <select name="priority" defaultValue="normal">
+          <select name="priority" defaultValue="normal" suppressHydrationWarning>
             <option value="low">Alacsony</option>
             <option value="normal">Normál</option>
             <option value="high">Magas</option>
@@ -82,7 +88,7 @@ export function NewIssueForm() {
         </label>
         <label>
           Alvállalkozó
-          <select name="subcontractor" defaultValue={subcontractors[0].name}>
+          <select name="subcontractor" defaultValue={subcontractors[0].name} suppressHydrationWarning>
             {subcontractors.map((sub) => (
               <option key={sub.id} value={sub.name}>
                 {sub.name} · {sub.trade}
@@ -92,18 +98,18 @@ export function NewIssueForm() {
         </label>
         <label>
           Határidő
-          <input name="dueDate" type="date" defaultValue="2026-07-10" required />
+          <input name="dueDate" type="date" defaultValue="2026-07-10" required suppressHydrationWarning />
         </label>
         <label>
           Becslés / TIG érték
-          <input name="valueHuf" type="number" defaultValue="250000" min="0" step="10000" />
+          <input name="valueHuf" type="number" defaultValue="250000" min="0" step="10000" suppressHydrationWarning />
         </label>
         <label className="full">
           Leírás
-          <textarea name="description" placeholder="Írd le röviden, mit kell javítani, mit vársz bizonyítékként, és mi alapján fogadod el." />
+          <textarea name="description" placeholder="Írd le röviden, mit kell javítani, mit vársz bizonyítékként, és mi alapján fogadod el." suppressHydrationWarning />
         </label>
         <div className="upload-box full">
-          <strong>📷 Fotók feltöltése</strong>
+          <strong>Fotók feltöltése</strong>
           <span>Mock állapot: itt később kamera, galéria és Supabase Storage feltöltés lesz.</span>
         </div>
       </div>
