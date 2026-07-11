@@ -1,4 +1,5 @@
 import {
+  blockerItems as mockBlockerItems,
   evidencePhotos as mockEvidencePhotos,
   issueEvents as mockIssueEvents,
   issues as mockIssues,
@@ -8,7 +9,7 @@ import {
   tigPackages as mockTigPackages,
   workLogs as mockWorkLogs
 } from "@/data/mock";
-import type { EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
+import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
@@ -135,6 +136,26 @@ type SupabaseWorkLogRow = {
   profiles?: { display_name: string | null } | null;
 };
 
+type SupabaseBlockerRow = {
+  id: string;
+  project_id: string;
+  created_by_profile_id: string | null;
+  responsible_profile_id: string | null;
+  title: string;
+  description: string;
+  trade: string | null;
+  area: string | null;
+  status: BlockerStatus;
+  severity: BlockerSeverity;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  projects?: { name: string | null } | null;
+  created_by?: { display_name: string | null } | null;
+  responsible?: { display_name: string | null } | null;
+};
+
 function dateOnly(value?: string | null) {
   return value?.slice(0, 10) || "";
 }
@@ -257,6 +278,28 @@ function mapWorkLog(row: SupabaseWorkLogRow): WorkLog {
     quantity: row.quantity === null ? undefined : numberValue(row.quantity),
     unit: row.unit || undefined,
     status: row.status,
+    createdAt: dateOnly(row.created_at),
+    updatedAt: dateOnly(row.updated_at)
+  };
+}
+
+function mapBlocker(row: SupabaseBlockerRow): BlockerItem {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    projectName: row.projects?.name || "Nincs megadva",
+    createdByProfileId: row.created_by_profile_id || "",
+    createdByName: row.created_by?.display_name || "Nincs megadva",
+    responsibleProfileId: row.responsible_profile_id || undefined,
+    responsibleName: row.responsible?.display_name || "Nincs megadva",
+    title: row.title,
+    description: row.description,
+    trade: row.trade || undefined,
+    area: row.area || undefined,
+    status: row.status,
+    severity: row.severity,
+    resolutionNote: row.resolution_note || undefined,
+    resolvedAt: dateOnly(row.resolved_at),
     createdAt: dateOnly(row.created_at),
     updatedAt: dateOnly(row.updated_at)
   };
@@ -473,6 +516,30 @@ export async function listWorkLogs() {
   const rows = data as SupabaseWorkLogRow[] | null;
   if (error) return mockWorkLogs;
   return rows?.length ? rows.map(mapWorkLog) : mockWorkLogs;
+}
+
+export async function listActiveBlockers() {
+  const activeStatuses: BlockerStatus[] = ["open", "in_progress", "waiting_external"];
+  const fallback = mockBlockerItems.filter((blocker) => activeStatuses.includes(blocker.status));
+  const supabase = getSupabaseClient();
+  if (!supabase) return fallback;
+
+  const { data, error } = await supabase
+    .from("blocker_list")
+    .select(`
+      *,
+      projects(name),
+      created_by:profiles!blocker_list_created_by_profile_id_fkey(display_name),
+      responsible:profiles!blocker_list_responsible_profile_id_fkey(display_name)
+    `)
+    .in("status", activeStatuses)
+    .order("created_at", { ascending: false });
+
+  logSupabaseReadError("blocker_list", error);
+
+  const rows = data as SupabaseBlockerRow[] | null;
+  if (error) return fallback;
+  return rows?.length ? rows.map(mapBlocker) : fallback;
 }
 
 async function createSupabaseIssue(input: CreateIssueInput) {

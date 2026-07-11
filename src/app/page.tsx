@@ -1,15 +1,31 @@
 import { activities } from "@/data/mock";
 import { formatHuf } from "@/lib/format";
 import { calculateDashboardMetrics } from "@/lib/issueMetrics";
-import { getProject, listIssues, listSubcontractors, listTigItems } from "@/lib/repository";
+import { getProject, listActiveBlockers, listIssues, listSubcontractors, listTigItems } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { IssueTable } from "@/components/IssueTable";
 import { KpiCard } from "@/components/KpiCard";
 
 export const dynamic = "force-dynamic";
 
+const blockerStatusLabels = {
+  open: "Nyitott",
+  in_progress: "Folyamatban",
+  waiting_external: "Külsőre vár",
+  resolved: "Megoldva",
+  closed: "Lezárva",
+  cancelled: "Tárgytalan"
+};
+
+const blockerSeverityLabels = {
+  low: "Alacsony",
+  normal: "Normál",
+  high: "Magas",
+  critical: "Kritikus"
+};
+
 export default async function DashboardPage() {
-  const [project, issues, subcontractors] = await Promise.all([getProject(), listIssues(), listSubcontractors()]);
+  const [project, issues, subcontractors, blockers] = await Promise.all([getProject(), listIssues(), listSubcontractors(), listActiveBlockers()]);
   const tigItems = listTigItems();
   const metrics = calculateDashboardMetrics(issues, tigItems);
 
@@ -52,6 +68,30 @@ export default async function DashboardPage() {
         </article>
 
         <aside className="side-stack">
+          <article className="card panel">
+            <div className="section-title">
+              <h2>Aktív akadályok</h2>
+              <span className="pill">nyitott · folyamatban · vár</span>
+            </div>
+            <div className="blocker-list">
+              {blockers.slice(0, 4).map((blocker) => (
+                <div key={blocker.id} className={`blocker-item blocker-${blocker.severity}`}>
+                  <div className="blocker-head">
+                    <strong>{blocker.title}</strong>
+                    <span>{blockerSeverityLabels[blocker.severity]}</span>
+                  </div>
+                  <small>{blocker.projectName}</small>
+                  <div className="blocker-meta">
+                    <span>{[blocker.trade, blocker.area].filter(Boolean).join(" · ") || "Nincs terület"}</span>
+                    <span>{blockerStatusLabels[blocker.status]}</span>
+                    <span>{blocker.responsibleName}</span>
+                  </div>
+                </div>
+              ))}
+              {!blockers.length ? <p className="empty-note">Nincs aktív akadály.</p> : null}
+            </div>
+          </article>
+
           <article className="card panel">
             <div className="section-title">
               <h2>Alvállalkozói terhelés</h2>

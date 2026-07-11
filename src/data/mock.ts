@@ -1,4 +1,4 @@
-import type { Activity, EvidencePhoto, Issue, IssueEvent, Project, Subcontractor, TigItem, TigPackage, WorkLog } from "@/types";
+import type { Activity, BlockerItem, EvidencePhoto, Issue, IssueEvent, Project, Subcontractor, TigItem, TigPackage, WorkLog } from "@/types";
 
 export const project: Project = {
   id: "project-bp13-001",
@@ -222,6 +222,45 @@ export const workLogs: WorkLog[] = [
     status: "accepted",
     createdAt: "2026-07-07",
     updatedAt: "2026-07-07"
+  }
+];
+
+export const blockerItems: BlockerItem[] = [
+  {
+    id: "mock-blocker-1",
+    projectId: project.id,
+    projectName: project.name,
+    createdByProfileId: "worker-mock-1",
+    createdByName: "Munkavallalo Teszt Anna",
+    responsibleProfileId: "project-manager-mock-1",
+    responsibleName: "Projektvezeto Teszt Elek",
+    title: "Hianyzo burkolasi tervreszlet",
+    description: "A foldszinti lepcsohaz javitasanal nincs egyertelmu tervreszlet a szegelykiosztashoz.",
+    trade: "Burkolas",
+    area: "Lepcsohaz",
+    status: "waiting_external",
+    severity: "high",
+    createdAt: "2026-07-07",
+    updatedAt: "2026-07-07"
+  },
+  {
+    id: "mock-blocker-2",
+    projectId: project.id,
+    projectName: project.name,
+    createdByProfileId: "subcontractor-mock-1",
+    createdByName: "Supabase Burkolo Kft.",
+    responsibleProfileId: "project-manager-mock-1",
+    responsibleName: "Projektvezeto Teszt Elek",
+    title: "Anyagkeses a fuga javitasnal",
+    description: "A javitasi munkahoz szukseges fugazoanyag kesve erkezett.",
+    trade: "Burkolas",
+    area: "Furdoszoba",
+    status: "resolved",
+    severity: "normal",
+    resolutionNote: "Az anyag beerkezett, a javitas folytathato.",
+    resolvedAt: "2026-07-08",
+    createdAt: "2026-07-07",
+    updatedAt: "2026-07-08"
   }
 ];
 

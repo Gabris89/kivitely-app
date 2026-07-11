@@ -122,6 +122,29 @@ export type WorkLog = {
   updatedAt: string;
 };
 
+export type BlockerStatus = "open" | "in_progress" | "waiting_external" | "resolved" | "closed" | "cancelled";
+export type BlockerSeverity = "low" | "normal" | "high" | "critical";
+
+export type BlockerItem = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  createdByProfileId: string;
+  createdByName: string;
+  responsibleProfileId?: string;
+  responsibleName: string;
+  title: string;
+  description: string;
+  trade?: string;
+  area?: string;
+  status: BlockerStatus;
+  severity: BlockerSeverity;
+  resolutionNote?: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DashboardMetrics = {
   openIssues: number;
   overdueIssues: number;
