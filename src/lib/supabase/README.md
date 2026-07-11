@@ -13,7 +13,7 @@ Current scope:
 - `profiles` and `project_members` are prepared as a schema baseline for later Auth/RLS visibility work
 - `work_logs` is prepared as a schema baseline for later teljesitmenynaplo support
 - `blocker_list` is prepared as a schema baseline for later akadalylista support
-- `supabase/seed.sql` includes minimal role, project membership and work log sample data for manual visibility planning
+- `supabase/seed.sql` includes minimal role, project membership, work log and blocker sample data for manual visibility planning
 - Supabase Storage, real file uploads and TIG write paths still stay mock-only
 - no service role keys, database passwords, or direct connection strings are required
 
