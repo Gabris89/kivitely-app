@@ -720,8 +720,9 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   position: relative;
   inset: auto;
   width: 100%;
-  height: min(64vh, 620px);
-  max-height: min(64vh, 620px);
+  height: auto;
+  min-height: 0;
+  max-height: calc(100vh - 168px);
   overflow: hidden;
   touch-action: pan-y;
   border: 1px solid var(--line);
@@ -729,10 +730,11 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   background: rgba(0,0,0,.35);
 }
 .photo-preview-fullscreen .photo-preview-stage > img {
+  display: block;
   width: auto;
   height: auto;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: calc(100vw - 76px);
+  max-height: calc(100vh - 168px);
   object-fit: contain;
   pointer-events: none;
 }
@@ -998,10 +1000,17 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   }
   .photo-preview-stage {
     position: absolute;
-    inset: 0;
+    top: max(66px, calc(env(safe-area-inset-top) + 58px));
+    right: 0;
+    bottom: max(70px, calc(env(safe-area-inset-bottom) + 66px));
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: auto;
+    max-height: none;
+    padding: 0;
     border: 0;
     border-radius: 0;
     touch-action: none;
@@ -1009,10 +1018,17 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   }
   .photo-preview-fullscreen .photo-preview-stage {
     position: absolute;
-    inset: 0;
+    top: max(66px, calc(env(safe-area-inset-top) + 58px));
+    right: 0;
+    bottom: max(70px, calc(env(safe-area-inset-bottom) + 66px));
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: auto;
+    max-height: none;
+    padding: 0;
     border: 0;
     border-radius: 0;
     touch-action: none;
@@ -1023,7 +1039,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     width: auto;
     height: auto;
     max-width: 100vw;
-    max-height: 100dvh;
+    max-height: 100%;
     object-fit: contain;
     pointer-events: none;
   }
