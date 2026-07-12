@@ -51,6 +51,7 @@ export type EvidencePhoto = {
   uploadedBy: string;
   uploadedAt: string;
   url?: string;
+  storagePath?: string;
 };
 
 export type IssueEvent = {

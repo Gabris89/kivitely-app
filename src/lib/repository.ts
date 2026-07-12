@@ -49,10 +49,16 @@ export type CreateBlockerResult = {
 export type CreateIssueEvidenceInput = {
   type: "before_photo" | "after_photo";
   label?: string;
+  file?: File;
 };
 
 export type CreateIssueEvidenceResult = {
   evidence: EvidencePhoto;
+  mode: "supabase" | "mock";
+};
+
+export type DeleteIssueEvidenceResult = {
+  ok: boolean;
   mode: "supabase" | "mock";
 };
 
@@ -107,6 +113,7 @@ type SupabaseEvidenceRow = {
   id: string;
   issue_id: string;
   evidence_type: "before_photo" | "after_photo";
+  storage_path: string | null;
   label: string | null;
   uploaded_by: string | null;
   uploaded_at: string;
@@ -178,6 +185,8 @@ function numberValue(value: number | string | null | undefined) {
   return Number(value || 0);
 }
 
+const issueEvidenceBucket = "issue-evidence";
+
 function mapIssue(row: SupabaseIssueRow): Issue {
   const evidence = row.issue_evidence || [];
 
@@ -229,6 +238,13 @@ function mapSubcontractor(row: SupabaseSubcontractorRow, issues: Issue[]): Subco
   };
 }
 
+function getIssueEvidencePublicUrl(storagePath?: string | null) {
+  const supabase = getSupabaseClient();
+  if (!supabase || !storagePath?.startsWith("issues/")) return undefined;
+
+  return supabase.storage.from(issueEvidenceBucket).getPublicUrl(storagePath).data.publicUrl;
+}
+
 function mapEvidence(row: SupabaseEvidenceRow, issueId: string): EvidencePhoto {
   return {
     id: row.id,
@@ -236,7 +252,9 @@ function mapEvidence(row: SupabaseEvidenceRow, issueId: string): EvidencePhoto {
     type: row.evidence_type,
     label: row.label || "Bizonyíték",
     uploadedBy: row.uploaded_by || "Supabase",
-    uploadedAt: row.uploaded_at
+    uploadedAt: row.uploaded_at,
+    url: getIssueEvidencePublicUrl(row.storage_path),
+    storagePath: row.storage_path || undefined
   };
 }
 
@@ -251,6 +269,24 @@ function createMockEvidence(issueId: string, input: CreateIssueEvidenceInput): E
     uploadedBy: "Mock fallback",
     uploadedAt: now
   };
+}
+
+function safeStorageFileName(fileName: string, fallbackExtension = "jpg") {
+  const normalized = fileName
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (normalized.includes(".")) return normalized;
+  return `${normalized || "evidence"}.${fallbackExtension}`;
+}
+
+function extensionFromMime(type?: string) {
+  if (type === "image/png") return "png";
+  if (type === "image/webp") return "webp";
+  if (type === "image/heic") return "heic";
+  if (type === "image/heif") return "heif";
+  return "jpg";
 }
 
 function mapIssueEvent(row: SupabaseIssueEventRow, issueId: string): IssueEvent {
@@ -428,7 +464,29 @@ async function createSupabaseIssueEvidence(issueId: string, input: CreateIssueEv
 
   const uploadedAt = new Date().toISOString();
   const evidenceLabel = input.label || (input.type === "before_photo" ? "Előtte fotó metadata" : "Utána fotó metadata");
-  const storagePath = `metadata-only/${issueId}/${input.type}/${Date.now()}`;
+  let storagePath = `metadata-only/${issueId}/${input.type}/${Date.now()}`;
+
+  if (input.file) {
+    const fileExtension = extensionFromMime(input.file.type);
+    const fileName = safeStorageFileName(input.file.name, fileExtension);
+    storagePath = `issues/${issueId}/${input.type}/${Date.now()}-${fileName}`;
+
+    const fileBody = new Blob([await input.file.arrayBuffer()], {
+      type: input.file.type || "application/octet-stream"
+    });
+
+    const { error: uploadError } = await supabase.storage
+      .from(issueEvidenceBucket)
+      .upload(storagePath, fileBody, {
+        contentType: input.file.type || "application/octet-stream",
+        upsert: false
+      });
+
+    logSupabaseWriteError("issue evidence storage", uploadError);
+
+    if (uploadError) return null;
+  }
+
   const { data, error } = await supabase
     .from("issue_evidence")
     .insert({
@@ -458,6 +516,68 @@ export async function createIssueEvidenceRecord(issueId: string, input: CreateIs
 
   return {
     evidence: createMockEvidence(issueId, input),
+    mode: "mock"
+  };
+}
+
+async function deleteSupabaseIssueEvidence(issueId: string, evidenceId: string) {
+  const issueDbId = await getSupabaseIssueDbId(issueId);
+  const supabase = getSupabaseClient();
+
+  if (!issueDbId || !supabase) return null;
+
+  const { data: evidence, error: lookupError } = await supabase
+    .from("issue_evidence")
+    .select("id,storage_path")
+    .eq("id", evidenceId)
+    .eq("issue_id", issueDbId)
+    .maybeSingle();
+
+  logSupabaseReadError("issue evidence delete lookup", lookupError);
+
+  if (lookupError || !evidence) return null;
+
+  const { error: deleteError } = await supabase
+    .from("issue_evidence")
+    .delete()
+    .eq("id", evidenceId)
+    .eq("issue_id", issueDbId);
+
+  logSupabaseWriteError("issue evidence delete", deleteError);
+
+  if (deleteError) return null;
+
+  const storagePath = typeof evidence.storage_path === "string" ? evidence.storage_path : "";
+  if (storagePath.startsWith("issues/")) {
+    const { error: storageDeleteError } = await supabase.storage
+      .from(issueEvidenceBucket)
+      .remove([storagePath]);
+
+    logSupabaseWriteError("issue evidence storage delete", storageDeleteError);
+  }
+
+  return true;
+}
+
+export async function deleteIssueEvidenceRecord(issueId: string, evidenceId: string): Promise<DeleteIssueEvidenceResult> {
+  const supabaseDeleted = await deleteSupabaseIssueEvidence(issueId, evidenceId);
+
+  if (supabaseDeleted) {
+    return {
+      ok: true,
+      mode: "supabase"
+    };
+  }
+
+  if (getSupabaseClient()) {
+    return {
+      ok: false,
+      mode: "mock"
+    };
+  }
+
+  return {
+    ok: true,
     mode: "mock"
   };
 }

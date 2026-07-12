@@ -6,6 +6,7 @@ import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { PageHeader } from "@/components/PageHeader";
 import { EvidenceChecklist } from "@/components/EvidenceChecklist";
 import { EvidenceMetadataControls } from "@/components/EvidenceMetadataControls";
+import { EvidencePhotoGallery } from "@/components/EvidencePhotoGallery";
 import { IssueWorkflowPanel } from "@/components/IssueWorkflowPanel";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
@@ -67,21 +68,10 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
 
           <h2 className="block-heading">Fotós bizonyítás</h2>
           <p className="description-text">
-            Előtte: {beforeCount} db · utána: {afterCount} db. A valós feltöltés később Supabase Storage-ra kerül.
+            Előtte: {beforeCount} db · utána: {afterCount} db. A képek Supabase Storage-ban tárolódnak.
           </p>
           <EvidenceMetadataControls issueId={issue.id} />
-          <div className="photo-grid">
-            {photos.length > 0 ? photos.map((photo) => (
-              <div className="photo-card" key={photo.id}>
-                <span>{photo.type === "before_photo" ? "előtte" : "utána"}</span>
-                <small>{photo.label}</small>
-              </div>
-            )) : Array.from({ length: Math.max(3, issue.photosBefore + issue.photosAfter) }).map((_, index) => (
-              <div className="photo-card" key={index}>
-                <span>{index < issue.photosBefore ? "előtte" : "utána"}</span>
-              </div>
-            ))}
-          </div>
+          <EvidencePhotoGallery issue={issue} photos={photos} />
         </article>
 
         <aside className="side-stack">

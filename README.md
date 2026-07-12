@@ -16,12 +16,12 @@ Kivitely is a mobile-first construction workflow MVP for field teams, site manag
 This is the first real development baseline for Kivitely. It is still an MVP with mock fallback:
 
 - Optional Supabase read-only data source for issue, project, subcontractor and TIG package reads
-- Optional Supabase write path for creating new issues, controlled issue status updates, status audit events and evidence metadata
+- Optional Supabase write path for creating new issues, controlled issue status updates, status audit events and issue evidence images
 - Supabase migration baseline is present under `supabase/migrations`
 - Profiles and project membership schema baseline is prepared for later visibility/RLS work
 - No authentication yet
-- No real photo upload or Supabase Storage yet
-- TIG and Storage writes are still mock-only for local workflow modeling
+- Controlled Supabase Storage upload, in-app preview and deletion for issue before/after evidence images
+- TIG writes are still mock-only for local workflow modeling
 
 ## Repository Notes
 
@@ -61,7 +61,7 @@ http://localhost:3000
 
 ## Supabase Integration
 
-The project is prepared for Supabase and can read data from Supabase when public environment values are present. New issue creation, issue status updates, status audit events and evidence metadata can write to Supabase when the matching policies are applied. If Supabase is not configured or a read/write fails, the app falls back to the mock dataset so local development remains usable.
+The project is prepared for Supabase and can read data from Supabase when public environment values are present. New issue creation, issue status updates, status audit events and issue evidence image uploads can write to Supabase when the matching policies are applied. If Supabase is not configured or a read/write fails, the app falls back to the mock dataset so local development remains usable.
 
 The database baseline is versioned as a Supabase migration:
 
@@ -73,6 +73,6 @@ Planned services:
 
 - Supabase PostgreSQL for issues, projects, evidence and TIG packages
 - Supabase Auth for users and roles, later connected to `profiles` and `project_members`
-- Supabase Storage for photos and generated documents
+- Supabase Storage for issue evidence photos; generated documents remain later scope
 
 Environment placeholders are documented in `.env.example`. Do not add service role keys, database passwords or real secrets to the repository.

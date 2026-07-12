@@ -10,12 +10,13 @@ Current scope:
 - issue status changes can update `issues.status` and `issues.updated_at` when Supabase is configured
 - successful Supabase status changes can insert `status_changed` rows into `issue_events`
 - evidence metadata can insert `before_photo` and `after_photo` rows into `issue_evidence`
+- issue evidence images can upload to the public MVP `issue-evidence` Storage bucket, store their `storage_path`, preview in-app and be deleted through a controlled API path
 - `profiles` and `project_members` are prepared as a schema baseline for later Auth/RLS visibility work
 - `work_logs` is prepared as a schema baseline for later teljesitmenynaplo support
 - `blocker_list` supports active blocker reads and controlled blocker creation under narrow MVP RLS policies
 - `profiles` display names can be read for responsible-person labels in blocker views/forms
 - `supabase/seed.sql` includes minimal role, project membership, work log and blocker sample data for manual visibility planning
-- Supabase Storage, real file uploads and TIG write paths still stay mock-only
+- TIG write paths still stay mock-only
 - no service role keys, database passwords, or direct connection strings are required
 
 Run the migrations in order before testing reads from a hosted Supabase project:
@@ -33,7 +34,9 @@ Run the migrations in order before testing reads from a hosted Supabase project:
 11. `supabase/migrations/20260711074232_blocker_list_insert_grant.sql`
 12. `supabase/migrations/20260711075844_blocker_list_active_read_policy.sql`
 13. `supabase/migrations/20260711080917_profiles_public_name_read_policy.sql`
-14. `supabase/seed.sql`
+14. `supabase/migrations/20260712093000_issue_evidence_storage_policy.sql`
+15. `supabase/migrations/20260712100000_issue_evidence_delete_policy.sql`
+16. `supabase/seed.sql`
 
 Local development values can live in `.env.local`, which is ignored by git:
 
