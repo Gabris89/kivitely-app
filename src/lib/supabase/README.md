@@ -16,7 +16,7 @@ Current scope:
 - `blocker_list` supports active blocker reads and controlled blocker creation under narrow MVP RLS policies
 - `project_documents` is prepared as a schema baseline for later project-level documents and architectural plans
 - `profiles` display names can be read for responsible-person labels in blocker views/forms
-- `supabase/seed.sql` includes minimal role, project membership, work log and blocker sample data for manual visibility planning
+- `supabase/seed.sql` includes minimal role, project membership, work log, blocker and project document metadata sample data for manual visibility planning
 - TIG write paths still stay mock-only
 - no service role keys, database passwords, or direct connection strings are required
 
