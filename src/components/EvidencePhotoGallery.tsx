@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type PointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { EvidencePhoto, Issue } from "@/types";
 
@@ -12,6 +12,22 @@ type Props = {
 type SwipeStart = {
   x: number;
   y: number;
+};
+
+type ViewerProps = {
+  photo: EvidencePhoto;
+  photos: EvidencePhoto[];
+  selectedIndex: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  deletingId: string | null;
+  onClose: () => void;
+  onChangePhoto: (direction: -1 | 1) => void;
+  onDelete: (photo: EvidencePhoto) => void;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+  onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
+  onPointerCancel: () => void;
+  onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
 };
 
 function formatPhotoTimestamp(uploadedAt: string) {
@@ -52,6 +68,171 @@ function TrashIcon() {
       <path d="M6 7l1 14h10l1-14" />
       <path d="M9 7V4h6v3" />
     </svg>
+  );
+}
+
+function EvidenceViewerMeta({ photo, selectedIndex, total }: { photo: EvidencePhoto; selectedIndex: number; total: number }) {
+  return (
+    <div className="evidence-viewer-meta">
+      <span>{getPhotoKindLabel(photo)}</span>
+      <strong>{selectedIndex + 1} / {total}</strong>
+      {photo.uploadedAt ? <time dateTime={photo.uploadedAt}>{formatPhotoTimestamp(photo.uploadedAt)}</time> : null}
+    </div>
+  );
+}
+
+function EvidenceViewerArrow({
+  className,
+  direction,
+  disabled,
+  onClick,
+  label
+}: {
+  className: string;
+  direction: "left" | "right";
+  disabled: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      className={`evidence-viewer-arrow ${className}`}
+      type="button"
+      disabled={disabled}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={onClick}
+      aria-label={label}
+    >
+      <ChevronIcon direction={direction} />
+    </button>
+  );
+}
+
+function EvidenceViewerStage({
+  photo,
+  hasPrevious,
+  hasNext,
+  onChangePhoto,
+  onPointerDown,
+  onPointerUp,
+  onPointerCancel,
+  onPointerMove,
+  variant
+}: Pick<ViewerProps, "photo" | "hasPrevious" | "hasNext" | "onChangePhoto" | "onPointerDown" | "onPointerUp" | "onPointerCancel" | "onPointerMove"> & {
+  variant: "desktop" | "mobile";
+}) {
+  return (
+    <div
+      className={`evidence-viewer-stage evidence-viewer-stage-${variant}`}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onPointerMove={onPointerMove}
+    >
+      <EvidenceViewerArrow
+        className="evidence-viewer-prev"
+        direction="left"
+        disabled={!hasPrevious}
+        onClick={() => onChangePhoto(-1)}
+        label="Előző kép"
+      />
+      {photo.url ? <img src={photo.url} alt={getPhotoKindLabel(photo)} /> : null}
+      <EvidenceViewerArrow
+        className="evidence-viewer-next"
+        direction="right"
+        disabled={!hasNext}
+        onClick={() => onChangePhoto(1)}
+        label="Következő kép"
+      />
+    </div>
+  );
+}
+
+function DesktopEvidenceViewer(props: ViewerProps) {
+  return (
+    <div
+      className="evidence-viewer evidence-viewer-desktop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={getPhotoKindLabel(props.photo)}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="evidence-viewer-head">
+        <EvidenceViewerMeta photo={props.photo} selectedIndex={props.selectedIndex} total={props.photos.length} />
+        <button className="evidence-viewer-close" type="button" onClick={props.onClose} aria-label="Bezárás">
+          <CloseIcon />
+        </button>
+      </div>
+
+      <EvidenceViewerStage
+        photo={props.photo}
+        hasPrevious={props.hasPrevious}
+        hasNext={props.hasNext}
+        onChangePhoto={props.onChangePhoto}
+        onPointerDown={props.onPointerDown}
+        onPointerUp={props.onPointerUp}
+        onPointerCancel={props.onPointerCancel}
+        onPointerMove={props.onPointerMove}
+        variant="desktop"
+      />
+
+      <div className="evidence-viewer-actions">
+        <button
+          className="evidence-viewer-delete"
+          type="button"
+          disabled={props.deletingId === props.photo.id}
+          onClick={() => props.onDelete(props.photo)}
+          aria-label="Kép törlése"
+          title="Kép törlése"
+        >
+          {props.deletingId === props.photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MobileEvidenceViewer(props: ViewerProps) {
+  return (
+    <div
+      className="evidence-viewer-mobile"
+      role="dialog"
+      aria-modal="true"
+      aria-label={getPhotoKindLabel(props.photo)}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="evidence-mobile-head">
+        <EvidenceViewerMeta photo={props.photo} selectedIndex={props.selectedIndex} total={props.photos.length} />
+        <button className="evidence-viewer-close" type="button" onClick={props.onClose} aria-label="Bezárás">
+          <CloseIcon />
+        </button>
+      </div>
+
+      <EvidenceViewerStage
+        photo={props.photo}
+        hasPrevious={props.hasPrevious}
+        hasNext={props.hasNext}
+        onChangePhoto={props.onChangePhoto}
+        onPointerDown={props.onPointerDown}
+        onPointerUp={props.onPointerUp}
+        onPointerCancel={props.onPointerCancel}
+        onPointerMove={props.onPointerMove}
+        variant="mobile"
+      />
+
+      <div className="evidence-mobile-actions">
+        <button
+          className="evidence-viewer-delete"
+          type="button"
+          disabled={props.deletingId === props.photo.id}
+          onClick={() => props.onDelete(props.photo)}
+          aria-label="Kép törlése"
+          title="Kép törlése"
+        >
+          {props.deletingId === props.photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -141,6 +322,18 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
     router.refresh();
   }
 
+  function handlePreviewPointerDown(event: PointerEvent<HTMLDivElement>) {
+    const target = event.target as Element | null;
+    if (target?.closest("button")) return;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSwipeStart({ x: event.clientX, y: event.clientY });
+  }
+
+  function handlePreviewPointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (swipeStart) event.preventDefault();
+  }
+
   useEffect(() => {
     if (selectedIndex === null) return;
 
@@ -208,7 +401,7 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
               <button className="photo-card-delete" type="button" disabled={deletingId === photo.id} onClick={(event) => {
                 event.stopPropagation();
                 deletePhoto(photo);
-              }} aria-label="KĂ©p tĂ¶rlĂ©se" title="KĂ©p tĂ¶rlĂ©se">
+              }} aria-label="Kép törlése" title="Kép törlése">
                 {deletingId === photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
               </button>
             ) : null}
@@ -223,49 +416,37 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
       {message ? <div className="inline-note photo-gallery-note">{message}</div> : null}
 
       {selectedPhoto && selectedIndex !== null ? (
-        <div className="photo-preview-backdrop" role="presentation" onClick={closePreview}>
-          <div className="photo-preview photo-preview-fullscreen" role="dialog" aria-modal="true" aria-label={getPhotoKindLabel(selectedPhoto)} onClick={(event) => event.stopPropagation()}>
-            <div className="photo-preview-head">
-              <div>
-                <span>{getPhotoKindLabel(selectedPhoto)}</span>
-                <strong>{selectedIndex + 1} / {galleryPhotos.length}</strong>
-                {selectedPhoto.uploadedAt ? <time dateTime={selectedPhoto.uploadedAt}>{formatPhotoTimestamp(selectedPhoto.uploadedAt)}</time> : null}
-              </div>
-              <button className="photo-preview-close" type="button" onClick={closePreview} aria-label="Bezárás">
-                <CloseIcon />
-              </button>
-            </div>
-
-            <div
-              className="photo-preview-stage"
-              onPointerDown={(event) => {
-                const target = event.target as Element | null;
-                if (target?.closest("button")) return;
-
-                event.currentTarget.setPointerCapture(event.pointerId);
-                setSwipeStart({ x: event.clientX, y: event.clientY });
-              }}
-              onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
-              onPointerCancel={() => setSwipeStart(null)}
-              onPointerMove={(event) => {
-                if (swipeStart) event.preventDefault();
-              }}
-            >
-              <button className="photo-stage-arrow photo-stage-prev" type="button" disabled={!hasPrevious} onClick={() => changePhoto(-1)} aria-label="Előző kép">
-                <ChevronIcon direction="left" />
-              </button>
-              {selectedPhoto.url ? <img src={selectedPhoto.url} alt={getPhotoKindLabel(selectedPhoto)} /> : null}
-              <button className="photo-stage-arrow photo-stage-next" type="button" disabled={!hasNext} onClick={() => changePhoto(1)} aria-label="Következő kép">
-                <ChevronIcon direction="right" />
-              </button>
-            </div>
-
-            <div className="photo-preview-actions">
-              <button className="photo-delete-button" type="button" disabled={deletingId === selectedPhoto.id} onClick={() => deletePhoto(selectedPhoto)} aria-label="Kép törlése" title="Kép törlése">
-                {deletingId === selectedPhoto.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
-              </button>
-            </div>
-          </div>
+        <div className="evidence-viewer-backdrop" role="presentation" onClick={closePreview}>
+          <DesktopEvidenceViewer
+            photo={selectedPhoto}
+            photos={galleryPhotos}
+            selectedIndex={selectedIndex}
+            hasPrevious={hasPrevious}
+            hasNext={hasNext}
+            deletingId={deletingId}
+            onClose={closePreview}
+            onChangePhoto={changePhoto}
+            onDelete={deletePhoto}
+            onPointerDown={handlePreviewPointerDown}
+            onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
+            onPointerCancel={() => setSwipeStart(null)}
+            onPointerMove={handlePreviewPointerMove}
+          />
+          <MobileEvidenceViewer
+            photo={selectedPhoto}
+            photos={galleryPhotos}
+            selectedIndex={selectedIndex}
+            hasPrevious={hasPrevious}
+            hasNext={hasNext}
+            deletingId={deletingId}
+            onClose={closePreview}
+            onChangePhoto={changePhoto}
+            onDelete={deletePhoto}
+            onPointerDown={handlePreviewPointerDown}
+            onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
+            onPointerCancel={() => setSwipeStart(null)}
+            onPointerMove={handlePreviewPointerMove}
+          />
         </div>
       ) : null}
     </>
