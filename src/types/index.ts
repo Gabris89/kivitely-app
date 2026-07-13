@@ -146,6 +146,32 @@ export type BlockerItem = {
   updatedAt: string;
 };
 
+export type ProjectDocumentType = "architectural_plan" | "technical_plan" | "material_spec" | "photo_document" | "contract_document" | "other";
+export type ProjectDocumentVisibility = "internal" | "project_team" | "workers" | "subcontractors" | "viewer_shared";
+
+export type ProjectDocument = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  uploadedByProfileId?: string;
+  uploadedByName?: string;
+  documentType: ProjectDocumentType;
+  title: string;
+  description?: string;
+  trade?: string;
+  area?: string;
+  storagePath?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSizeBytes?: number;
+  revision?: string;
+  visibility: ProjectDocumentVisibility;
+  isCurrent: boolean;
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DashboardMetrics = {
   openIssues: number;
   overdueIssues: number;

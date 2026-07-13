@@ -8,6 +8,7 @@ const nav = [
   { href: "/", label: "Dashboard", icon: "D" },
   { href: "/issues", label: "Hibalista", icon: "H" },
   { href: "/blockers", label: "Akadálylista", icon: "!" },
+  { href: "/documents", label: "Dokumentumok", icon: "D" },
   { href: "/workflow", label: "Workflow tábla", icon: "W" },
   { href: "/issues/new", label: "Új hiba", icon: "+" },
   { href: "/work-logs", label: "Teljesítménynapló", icon: "N" },
@@ -20,6 +21,7 @@ const bottomNav = [
   { href: "/", label: "Dashboard", icon: "D" },
   { href: "/issues", label: "Hibalista", icon: "H" },
   { href: "/blockers", label: "Akadály", icon: "!" },
+  { href: "/documents", label: "Doksi", icon: "D" },
   { href: "/work-logs", label: "Napló", icon: "N" },
   { href: "/issues/new", label: "Új hiba", icon: "+" },
   { href: "/tig", label: "TIG", icon: "T" }

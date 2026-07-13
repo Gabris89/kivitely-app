@@ -14,7 +14,7 @@ Current scope:
 - `profiles` and `project_members` are prepared as a schema baseline for later Auth/RLS visibility work
 - `work_logs` is prepared as a schema baseline for later teljesitmenynaplo support
 - `blocker_list` supports active blocker reads and controlled blocker creation under narrow MVP RLS policies
-- `project_documents` is prepared as a schema baseline for later project-level documents and architectural plans
+- `project_documents` supports read-only project-level document and architectural plan metadata
 - `profiles` display names can be read for responsible-person labels in blocker views/forms
 - `supabase/seed.sql` includes minimal role, project membership, work log, blocker and project document metadata sample data for manual visibility planning
 - TIG write paths still stay mock-only
@@ -38,7 +38,8 @@ Run the migrations in order before testing reads from a hosted Supabase project:
 14. `supabase/migrations/20260712093000_issue_evidence_storage_policy.sql`
 15. `supabase/migrations/20260712100000_issue_evidence_delete_policy.sql`
 16. `supabase/migrations/20260713111922_project_documents_baseline.sql`
-17. `supabase/seed.sql`
+17. `supabase/migrations/20260713124124_project_documents_read_grant.sql`
+18. `supabase/seed.sql`
 
 Local development values can live in `.env.local`, which is ignored by git:
 
