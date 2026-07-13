@@ -1,9 +1,5 @@
 export function formatHuf(value: number) {
-  return new Intl.NumberFormat("hu-HU", {
-    style: "currency",
-    currency: "HUF",
-    maximumFractionDigits: 0
-  }).format(value);
+  return `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} Ft`;
 }
 
 export function formatDate(date: string) {
