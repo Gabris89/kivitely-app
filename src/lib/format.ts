@@ -7,9 +7,15 @@ export function formatHuf(value: number) {
 }
 
 export function formatDate(date: string) {
-  return new Intl.DateTimeFormat("hu-HU", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date(date));
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return date;
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+  const day = String(parsedDate.getDate()).padStart(2, "0");
+
+  return `${year}. ${month}. ${day}.`;
 }

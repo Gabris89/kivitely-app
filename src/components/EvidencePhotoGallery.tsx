@@ -31,13 +31,19 @@ type ViewerProps = {
 };
 
 function formatPhotoTimestamp(uploadedAt: string) {
-  return new Intl.DateTimeFormat("hu-HU", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(uploadedAt));
+  const parsedDate = new Date(uploadedAt);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return uploadedAt;
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+  const day = String(parsedDate.getDate()).padStart(2, "0");
+  const hour = String(parsedDate.getHours()).padStart(2, "0");
+  const minute = String(parsedDate.getMinutes()).padStart(2, "0");
+
+  return `${year}. ${month}. ${day}. ${hour}:${minute}`;
 }
 
 function getPhotoKindLabel(photo: EvidencePhoto) {
