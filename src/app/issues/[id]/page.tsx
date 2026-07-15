@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getIssue, getIssueEvents, getIssueEvidence } from "@/lib/repository";
-import { formatDate, formatHuf } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { PageHeader } from "@/components/PageHeader";
 import { EvidenceChecklist } from "@/components/EvidenceChecklist";
@@ -20,12 +20,10 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
 
   const [photos, events] = await Promise.all([getIssueEvidence(issue.id), getIssueEvents(issue.id)]);
   const tigReadiness = getIssueTigReadiness(issue, photos);
-  const beforeCount = photos.filter((photo) => photo.type === "before_photo").length;
-  const afterCount = photos.filter((photo) => photo.type === "after_photo").length;
 
   return (
     <>
-      <PageHeader title={`${issue.id} · ${issue.title}`} subtitle="Hiba részletező · fotók · felelős · státusztörténet">
+      <PageHeader title={`${issue.id} · ${issue.title}`}>
         <Link className="button ghost" href="/issues">Vissza</Link>
         {tigReadiness.ready ? (
           <Link className="button primary" href="/tig">TIG csomag előnézet</Link>
@@ -45,17 +43,23 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
             <p>{issue.description || "Nincs megadva."}</p>
           </div>
 
-          <div className="meta-grid">
-            <div><span>Helyszín</span><strong>{issue.location}</strong></div>
-            <div><span>Szakág</span><strong>{issue.trade}</strong></div>
-            <div><span>Felelős</span><strong>{issue.subcontractor}</strong></div>
-            <div><span>Kapcsolattartó</span><strong>{issue.assignee}</strong></div>
-            <div><span>Határidő</span><strong>{formatDate(issue.dueDate)}</strong></div>
-            <div><span>Prioritás</span><strong><PriorityBadge priority={issue.priority} /></strong></div>
-            <div><span>TIG érték</span><strong>{formatHuf(issue.valueHuf)}</strong></div>
-            <div>
-              <span>TIG készenlét</span>
-              <strong className={tigReadiness.ready ? "ready-text" : "warn-text"}>{tigReadiness.label}</strong>
+          <div className="issue-detail-summary" aria-label="Hiba gyors áttekintés">
+            <div className="issue-summary-card issue-summary-primary">
+              <span>Felelős</span>
+              <strong>{issue.subcontractor}</strong>
+            </div>
+            <div className="issue-summary-card">
+              <span>Határidő</span>
+              <strong>{formatDate(issue.dueDate)}</strong>
+              <small><PriorityBadge priority={issue.priority} /></small>
+            </div>
+            <div className="issue-summary-card">
+              <span>Helyszín</span>
+              <strong>{issue.location}</strong>
+            </div>
+            <div className="issue-summary-card">
+              <span>Szakág</span>
+              <strong>{issue.trade}</strong>
             </div>
           </div>
 
@@ -66,10 +70,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
             </div>
           ) : null}
 
-          <h2 className="block-heading">Fotós bizonyítás</h2>
-          <p className="description-text">
-            Előtte: {beforeCount} db · utána: {afterCount} db. A képek Supabase Storage-ban tárolódnak.
-          </p>
+          <h2 className="block-heading">Képek</h2>
           <EvidenceMetadataControls issueId={issue.id} />
           <EvidencePhotoGallery issue={issue} photos={photos} />
         </article>

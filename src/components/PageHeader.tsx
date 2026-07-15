@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 type Props = {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children?: ReactNode;
 };
 
@@ -12,7 +12,7 @@ export function PageHeader({ title, subtitle, children }: Props) {
     <header className="page-header">
       <div>
         <h1>{title}</h1>
-        <p>{subtitle}</p>
+        {subtitle ? <p>{subtitle}</p> : null}
       </div>
       {children ? <div className="header-actions">{children}</div> : null}
     </header>

@@ -6,6 +6,16 @@ import type { Issue, IssueStatus } from "@/types";
 import { getNextStatuses, getWorkflowHint, issueStatusLabels } from "@/lib/workflow";
 import { StatusBadge } from "@/components/StatusBadge";
 
+const issueStatusActionLabels: Partial<Record<IssueStatus, string>> = {
+  assigned: "Kiosztás",
+  in_progress: "Folyamatban",
+  ready_for_review: "Ellenőrzésre küldés",
+  accepted: "Elfogadás",
+  rejected: "Visszadobás",
+  tig_ready: "TIG-ready jelölés",
+  closed: "Lezárás"
+};
+
 export function IssueWorkflowPanel({ issue }: { issue: Issue }) {
   const router = useRouter();
   const [currentStatus, setCurrentStatus] = useState<IssueStatus>(issue.status);
@@ -48,7 +58,7 @@ export function IssueWorkflowPanel({ issue }: { issue: Issue }) {
         {nextStatuses.length > 0 ? (
           nextStatuses.map((status) => (
             <button key={status} className="button ghost" type="button" onClick={() => changeStatus(status)}>
-              {issueStatusLabels[status]}
+              {issueStatusActionLabels[status] ?? issueStatusLabels[status]}
             </button>
           ))
         ) : (

@@ -1,7 +1,8 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useState } from "react";
+import Link from "next/link";
 import { project, subcontractors } from "@/data/mock";
 
 type SaveState = {
@@ -9,8 +10,43 @@ type SaveState = {
   message: string;
 };
 
+type RequiredIssueField = "title" | "project" | "location" | "trade" | "priority" | "subcontractor" | "dueDate";
+
+const requiredFields: Array<{ name: RequiredIssueField; label: string }> = [
+  { name: "title", label: "hiba címe" },
+  { name: "project", label: "projekt" },
+  { name: "location", label: "helyszín" },
+  { name: "trade", label: "szakág" },
+  { name: "priority", label: "prioritás" },
+  { name: "subcontractor", label: "alvállalkozó" },
+  { name: "dueDate", label: "határidő" }
+];
+
 export function NewIssueForm() {
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+
+  function isInvalid(field: RequiredIssueField) {
+    return invalidFields.has(field);
+  }
+
+  function handleFormChange(event: ChangeEvent<HTMLFormElement>) {
+    const target = event.target;
+
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) {
+      return;
+    }
+
+    if (!target.name || !invalidFields.has(target.name) || !target.value.trim()) {
+      return;
+    }
+
+    setInvalidFields((current) => {
+      const next = new Set(current);
+      next.delete(target.name);
+      return next;
+    });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +71,19 @@ export function NewIssueForm() {
       description: String(formData.get("description") || "")
     };
 
+    const missingFields = requiredFields.filter((field) => !String(formData.get(field.name) || "").trim());
+
+    if (missingFields.length > 0) {
+      setInvalidFields(new Set(missingFields.map((field) => field.name)));
+      setSaveState({
+        status: "error",
+        message: `Kötelező mezők hiányoznak: ${missingFields.map((field) => field.label).join(", ")}.`
+      });
+      return;
+    }
+
+    setInvalidFields(new Set());
+
     const response = await fetch("/api/issues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,27 +97,28 @@ export function NewIssueForm() {
 
     const result = await response.json();
     const modeLabel = result.mode === "supabase" ? "Supabase" : "mock fallback";
-    setSaveState({ status: "saved", message: `Hiba rögzítve (${modeLabel}): ${result.data.id}` });
+    setSaveState({ status: "saved", message: `Hiba rögzítve (${modeLabel}): ${result.data.id}. Képet a hiba részletezőn tudsz feltölteni.` });
   }
 
   return (
-    <form className="card form-card" method="post" onSubmit={handleSubmit} suppressHydrationWarning>
+    <form className="card form-card" method="post" noValidate onChange={handleFormChange} onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
-        <label>
+        <label className={isInvalid("title") ? "field-error" : undefined}>
           Hiba címe
-          <input name="title" required placeholder="Pl. Sérült burkolat a lépcsőháznál" suppressHydrationWarning />
+          <input name="title" aria-invalid={isInvalid("title")} placeholder="Pl. Sérült burkolat a lépcsőháznál" suppressHydrationWarning />
         </label>
-        <label>
+        <label className={isInvalid("project") ? "field-error" : undefined}>
           Projekt
-          <input name="project" defaultValue={project.name} required suppressHydrationWarning />
+          <input name="project" defaultValue={project.name} readOnly aria-invalid={isInvalid("project")} suppressHydrationWarning />
         </label>
-        <label>
+        <label className={isInvalid("location") ? "field-error" : undefined}>
           Helyszín
-          <input name="location" required placeholder="A épület · 1. emelet · folyosó" suppressHydrationWarning />
+          <input name="location" aria-invalid={isInvalid("location")} placeholder="A épület · 1. emelet · folyosó" suppressHydrationWarning />
         </label>
-        <label>
+        <label className={isInvalid("trade") ? "field-error" : undefined}>
           Szakág
-          <select name="trade" defaultValue="Burkolás" suppressHydrationWarning>
+          <select name="trade" defaultValue="" aria-invalid={isInvalid("trade")} suppressHydrationWarning>
+            <option value="" disabled>Válassz szakágat</option>
             <option value="Burkolás">Burkolás</option>
             <option value="Villanyszerelés">Villanyszerelés</option>
             <option value="Gépészet">Gépészet</option>
@@ -77,18 +127,20 @@ export function NewIssueForm() {
             <option value="Egyéb">Egyéb</option>
           </select>
         </label>
-        <label>
+        <label className={isInvalid("priority") ? "field-error" : undefined}>
           Prioritás
-          <select name="priority" defaultValue="normal" suppressHydrationWarning>
+          <select name="priority" defaultValue="" aria-invalid={isInvalid("priority")} suppressHydrationWarning>
+            <option value="" disabled>Válassz prioritást</option>
             <option value="low">Alacsony</option>
             <option value="normal">Normál</option>
             <option value="high">Magas</option>
             <option value="critical">Kritikus</option>
           </select>
         </label>
-        <label>
+        <label className={isInvalid("subcontractor") ? "field-error" : undefined}>
           Alvállalkozó
-          <select name="subcontractor" defaultValue={subcontractors[0].name} suppressHydrationWarning>
+          <select name="subcontractor" defaultValue="" aria-invalid={isInvalid("subcontractor")} suppressHydrationWarning>
+            <option value="" disabled>Válassz alvállalkozót</option>
             {subcontractors.map((sub) => (
               <option key={sub.id} value={sub.name}>
                 {sub.name} · {sub.trade}
@@ -96,29 +148,29 @@ export function NewIssueForm() {
             ))}
           </select>
         </label>
-        <label>
+        <label className={isInvalid("dueDate") ? "field-error" : undefined}>
           Határidő
-          <input name="dueDate" type="date" defaultValue="2026-07-10" required suppressHydrationWarning />
+          <input name="dueDate" type="date" aria-invalid={isInvalid("dueDate")} suppressHydrationWarning />
         </label>
         <label>
           Becslés / TIG érték
-          <input name="valueHuf" type="number" defaultValue="250000" min="0" step="10000" suppressHydrationWarning />
+          <input name="valueHuf" type="number" placeholder="Pl. 250000" min="0" step="10000" suppressHydrationWarning />
         </label>
         <label className="full">
           Leírás
           <textarea name="description" placeholder="Írd le röviden, mit kell javítani, mit vársz bizonyítékként, és mi alapján fogadod el." suppressHydrationWarning />
         </label>
-        <div className="upload-box full">
-          <strong>Fotók feltöltése</strong>
-          <span>Mock állapot: itt később kamera, galéria és Supabase Storage feltöltés lesz.</span>
-        </div>
+        <p className="form-help full">Képet a hiba létrehozása után, a részletező oldalon tudsz feltölteni.</p>
       </div>
 
       <div className="form-footer">
-        {saveState.message ? <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span> : <span />}
-        <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
-          {saveState.status === "saving" ? "Mentés..." : "Hiba rögzítése"}
-        </button>
+        <div className="form-actions">
+          <Link className="button ghost" href="/issues">Mégse</Link>
+          <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+            {saveState.status === "saving" ? "Mentés..." : "Hiba rögzítése"}
+          </button>
+        </div>
+        {saveState.message ? <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span> : null}
       </div>
     </form>
   );

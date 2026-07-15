@@ -404,6 +404,34 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   color: var(--soft);
   line-height: 1.65;
 }
+.issue-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 14px;
+}
+.issue-summary-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+.issue-summary-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+.issue-summary-card strong {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.issue-summary-card small {
+  min-width: 0;
+  color: var(--soft);
+}
 .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 22px; }
 .meta-grid div { min-height: 82px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 255, 255, 0.045); }
 .meta-grid span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
@@ -423,20 +451,23 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 }
 .evidence-upload-control {
   display: grid;
-  flex: 1 1 220px;
-  gap: 8px;
+  flex: 1 1 150px;
+  gap: 6px;
   min-width: 0;
-  padding: 12px;
+  padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.045);
 }
 .evidence-upload-control strong {
-  font-size: 13px;
+  font-size: 12px;
 }
 .evidence-upload-control .button {
   position: relative;
   overflow: hidden;
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 12px;
 }
 .evidence-upload-control input[type="file"] {
   position: absolute;
@@ -963,18 +994,53 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .form-grid label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 850; }
 .form-grid input, .form-grid select, .form-grid textarea {
   width: 100%;
+  min-width: 0;
   min-height: 48px;
   padding: 12px;
+  text-align: left;
   color: var(--text);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
   border-radius: 14px;
 }
+.form-grid input[type="date"] {
+  appearance: none;
+  min-width: 0;
+}
+.form-grid label.field-error {
+  color: #ffaaa8;
+}
+.form-grid label.field-error input,
+.form-grid label.field-error select,
+.form-grid label.field-error textarea {
+  border-color: rgba(255, 107, 107, 0.78);
+  background: rgba(255, 107, 107, 0.08);
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.18);
+}
+.form-grid input[readonly] {
+  color: var(--soft);
+  background: rgba(255, 255, 255, 0.035);
+}
 .form-grid textarea { min-height: 110px; resize: vertical; }
 .full { grid-column: 1 / -1; }
 .upload-box { display: grid; min-height: 150px; place-items: center; padding: 20px; color: var(--soft); text-align: center; border: 1.5px dashed rgba(104, 225, 253, 0.44); border-radius: 20px; background: rgba(104, 225, 253, 0.06); }
 .upload-box span { display: block; margin-top: 8px; color: var(--muted); }
+.form-help {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
 .form-footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-top: 18px; }
+.form-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.form-actions .button {
+  min-height: 42px;
+  padding: 10px 14px;
+}
 .success-message { color: #9af7d5; font-weight: 800; }
 
 .sub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -1035,8 +1101,8 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     margin-bottom: 16px;
   }
   .page-header h1 {
-    font-size: clamp(26px, 9vw, 34px);
-    line-height: 1.02;
+    font-size: clamp(20px, 6.2vw, 25px);
+    line-height: 1.12;
   }
   .page-header p {
     margin-top: 8px;
@@ -1063,12 +1129,87 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     flex-wrap: wrap;
   }
   .kpi-grid, .form-grid, .sub-grid, .meta-grid, .photo-grid { grid-template-columns: 1fr; }
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea {
+    font-size: 16px;
+  }
   .meta-grid {
     gap: 8px;
     margin: 12px 0 18px;
   }
   .meta-grid div {
     min-height: 72px;
+  }
+  .technical-description {
+    margin: 10px 0 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(141, 164, 196, 0.16);
+  }
+  .issue-detail-summary {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+    margin: 12px 0 18px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .issue-summary-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 3px 10px;
+    align-items: baseline;
+    min-height: 0;
+    padding: 10px 0;
+    border: 0;
+    border-top: 1px solid rgba(141, 164, 196, 0.12);
+    border-radius: 0;
+    background: transparent;
+  }
+  .issue-summary-primary {
+    grid-column: auto;
+    border-top: 0;
+  }
+  .issue-summary-card strong {
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  .issue-summary-card small {
+    grid-column: 2;
+  }
+  .evidence-upload-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .evidence-upload-control {
+    padding: 8px;
+  }
+  .evidence-upload-control .button {
+    width: 100%;
+    min-height: 38px;
+  }
+  .evidence-upload-actions .inline-note {
+    grid-column: 1 / -1;
+  }
+  .form-footer {
+    display: grid;
+    gap: 10px;
+  }
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: 12px;
+    padding-inline: 4px;
+  }
+  .form-actions .button {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    border-radius: 12px;
   }
   .photo-card {
     aspect-ratio: auto;
@@ -1339,10 +1480,13 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   }
   .form-footer {
     display: grid;
-    gap: 12px;
+    gap: 10px;
   }
-  .form-footer .button {
+  .form-actions .button {
     width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    border-radius: 12px;
   }
   .load-row { grid-template-columns: 92px 1fr 34px; }
   .phone-frame { width: 100%; min-height: 680px; }

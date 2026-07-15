@@ -1,5 +1,5 @@
 import type { EvidencePhoto, Issue } from "@/types";
-import { getEvidenceChecklistStatus, getIssueProofScore, getIssueTigReadiness } from "@/lib/issueMetrics";
+import { getEvidenceChecklistStatus, getIssueTigReadiness } from "@/lib/issueMetrics";
 
 function CheckItem({ done, label, detail }: { done: boolean; label: string; detail: string }) {
   return (
@@ -16,15 +16,21 @@ function CheckItem({ done, label, detail }: { done: boolean; label: string; deta
 export function EvidenceChecklist({ issue, photos }: { issue: Issue; photos: EvidencePhoto[] }) {
   const beforeCount = photos.filter((photo) => photo.type === "before_photo").length;
   const afterCount = photos.filter((photo) => photo.type === "after_photo").length;
-  const proofScore = getIssueProofScore(issue, photos);
   const checklist = getEvidenceChecklistStatus(issue, photos);
   const tigReadiness = getIssueTigReadiness(issue, photos);
+  const completedChecks = [
+    checklist.beforePhoto,
+    checklist.afterPhoto,
+    checklist.description,
+    checklist.accepted
+  ].filter(Boolean).length;
+  const checklistScore = Math.round((completedChecks / 4) * 100);
 
   return (
     <article className="card panel evidence-panel">
       <div className="section-title">
-        <h2>Bizonyíték checklist</h2>
-        <span className="pill">{proofScore}%</span>
+        <h2>TIG ellenőrzés</h2>
+        <span className="pill">{checklistScore}%</span>
       </div>
 
       <div className="check-list">

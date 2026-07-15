@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 type EvidenceMetadataType = "before_photo" | "after_photo";
 
 const labels: Record<EvidenceMetadataType, string> = {
-  before_photo: "Előtte bizonyíték",
-  after_photo: "Utána bizonyíték"
+  before_photo: "Előtte kép",
+  after_photo: "Utána kép"
 };
 
 async function resizeImageForUpload(file: File) {
@@ -109,11 +109,10 @@ export function EvidenceMetadataControls({ issueId }: { issueId: string }) {
         <div className="evidence-upload-control" key={type}>
           <strong>{labels[type]}</strong>
           <label className="button ghost">
-            {savingType === type ? "Feltöltés..." : "Kép kiválasztása"}
+            {savingType === type ? "Feltöltés..." : "Tallózás"}
             <input
               type="file"
               accept="image/*"
-              capture="environment"
               disabled={Boolean(savingType)}
               onChange={(event) => {
                 handleFileChange(type, event.currentTarget.files?.[0]);
