@@ -30,7 +30,12 @@ export function IssueFilters({ issues }: { issues: Issue[] }) {
       <div className="filter-toolbar">
         <label className="search-box">
           <span>Keresés</span>
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ID, hiba, helyszín, alvállalkozó..." />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ID, hiba, helyszín, alvállalkozó..."
+            suppressHydrationWarning
+          />
         </label>
         <span className="pill">{filteredIssues.length} találat</span>
       </div>
