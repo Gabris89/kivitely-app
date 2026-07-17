@@ -2444,3 +2444,45 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     min-height: 70px;
   }
 }
+
+.login-shell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+}
+.login-page {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+.login-card {
+  display: grid;
+  gap: 16px;
+  width: min(360px, 100%);
+  padding: 28px;
+}
+.login-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.login-head strong { display: block; font-size: 19px; letter-spacing: -0.04em; }
+.login-head small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.login-card label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 850; }
+.login-card input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.sidebar-logout {
+  margin-top: 12px;
+}
+.sidebar-logout .button {
+  width: 100%;
+}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { signOut } from "@/app/login/actions";
 
 type NavItem = {
   href: string;
@@ -128,6 +129,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.push(href);
   }
 
+  if (pathname === "/login") {
+    return <main className="content login-shell">{children}</main>;
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -159,6 +164,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <strong>Demo narratíva</strong>
           <p>Hiba rögzítés → státuszváltás → fotós bizonyítás → TIG csomag.</p>
         </div>
+
+        <form action={signOut} className="sidebar-logout">
+          <button type="submit" className="button ghost">
+            Kijelentkezés
+          </button>
+        </form>
       </aside>
 
       <main className="content">{children}</main>
@@ -193,6 +204,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
             ))}
+
+            <form action={signOut} className="mobile-menu-section">
+              <button type="submit" className="button ghost">
+                Kijelentkezés
+              </button>
+            </form>
           </nav>
         </div>
       ) : null}

@@ -20,6 +20,10 @@ Current scope:
 - `supabase/seed.sql` includes minimal role, project membership, work log, blocker and project document metadata sample data for manual visibility planning
 - TIG write paths still stay mock-only
 - no service role keys, database passwords, or direct connection strings are required
+- `src/proxy.ts` (Next.js 16's replacement for `middleware.ts`) gates every route behind a Supabase Auth session, using `@supabase/ssr`; unauthenticated requests redirect to `/login` (API routes get a 401 JSON response instead)
+- `src/lib/supabase/server.ts` provides the cookie-aware server client used by `/login` and the proxy; this is separate from `client.ts`'s anon read/write client, which still powers all the existing data flows unchanged
+- the login gate does not change table RLS - it only requires a valid session to reach the app; per-role data visibility is still the later step described in `docs/visibility-rls-plan.md`
+- Auth users are not created by any migration or seed - create them manually in the Supabase Dashboard (Authentication → Users → Add user, email + password, no email confirmation needed for this use case)
 
 Run the migrations in order before testing reads from a hosted Supabase project:
 
