@@ -49,7 +49,7 @@ export function IssueWorkflowPanel({ issue }: { issue: Issue }) {
   return (
     <article className="card panel workflow-panel">
       <div className="section-title">
-        <h2>Workflow vezérlés</h2>
+        <h2>Állapot</h2>
         <StatusBadge status={currentStatus} />
       </div>
       <p>{getWorkflowHint(optimisticIssue)}</p>

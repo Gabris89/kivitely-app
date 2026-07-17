@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { ProjectDocumentUploadForm } from "@/components/ProjectDocumentUploadForm";
+import { ProjectDocumentViewer } from "@/components/ProjectDocumentViewer";
 import { formatDate } from "@/lib/format";
 import { listProjectDocuments } from "@/lib/repository";
 import type { ProjectDocumentType, ProjectDocumentVisibility } from "@/types";
@@ -104,9 +105,7 @@ export default async function DocumentsPage() {
                 <div className="document-open-action">
                   <span>Megnyitás</span>
                   {document.url ? (
-                    <a className="button ghost" href={document.url} target="_blank" rel="noreferrer">
-                      Fájl megnyitása
-                    </a>
+                    <ProjectDocumentViewer doc={document} />
                   ) : document.storagePath ? (
                     <strong>Nincs Storage URL</strong>
                   ) : (

@@ -27,9 +27,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
         <Link className="button ghost" href="/issues">Vissza</Link>
         {tigReadiness.ready ? (
           <Link className="button primary" href="/tig">TIG csomag előnézet</Link>
-        ) : (
-          <span className="button ghost disabled-control">TIG feltételek hiányoznak</span>
-        )}
+        ) : null}
       </PageHeader>
 
       <section className="detail-grid">
@@ -70,7 +68,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
             </div>
           ) : null}
 
-          <h2 className="block-heading">Képek</h2>
+          <h2 className="block-heading">Fotók</h2>
           <EvidenceMetadataControls issueId={issue.id} />
           <EvidencePhotoGallery issue={issue} photos={photos} />
         </article>
@@ -79,11 +77,11 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
           <IssueWorkflowPanel issue={issue} />
           <EvidenceChecklist issue={issue} photos={photos} />
 
-          <article className="card panel timeline-panel">
-            <div className="section-title">
+          <details className="card panel timeline-panel timeline-disclosure">
+            <summary className="section-title">
               <h2>Státusztörténet</h2>
               <span className="pill">audit trail</span>
-            </div>
+            </summary>
             <div className="timeline">
               {events.length > 0 ? events.map((event) => (
                 <div key={event.id}>
@@ -99,7 +97,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
                 </>
               )}
             </div>
-          </article>
+          </details>
         </aside>
       </section>
     </>

@@ -4,7 +4,7 @@ import { getEvidenceChecklistStatus, getIssueTigReadiness } from "@/lib/issueMet
 function CheckItem({ done, label, detail }: { done: boolean; label: string; detail: string }) {
   return (
     <div className={done ? "check-item done" : "check-item missing"}>
-      <span>{done ? "✓" : "!"}</span>
+      <span aria-hidden="true">{done ? "✓" : "!"}</span>
       <div>
         <strong>{label}</strong>
         <small>{detail}</small>
@@ -29,7 +29,7 @@ export function EvidenceChecklist({ issue, photos }: { issue: Issue; photos: Evi
   return (
     <article className="card panel evidence-panel">
       <div className="section-title">
-        <h2>TIG ellenőrzés</h2>
+        <h2>TIG feltételek</h2>
         <span className="pill">{checklistScore}%</span>
       </div>
 

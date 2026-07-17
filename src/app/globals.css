@@ -425,7 +425,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   font-weight: 850;
 }
 .issue-summary-card strong {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   line-height: 1.25;
 }
 .issue-summary-card small {
@@ -435,7 +435,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 22px; }
 .meta-grid div { min-height: 82px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 255, 255, 0.045); }
 .meta-grid span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
-.block-heading { margin-top: 20px; font-size: 18px; }
+.block-heading { margin: 18px 0 8px; font-size: 17px; letter-spacing: -0.02em; }
 .photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .photo-grid > * { min-width: 0; }
 .evidence-actions {
@@ -461,6 +461,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 }
 .evidence-upload-control strong {
   font-size: 12px;
+  color: var(--soft);
 }
 .evidence-upload-control .button {
   position: relative;
@@ -971,6 +972,40 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .timeline div { padding: 12px 12px 12px 16px; border-left: 2px solid rgba(104, 225, 253, 0.5); border-radius: 0 14px 14px 0; background: rgba(255, 255, 255, 0.04); }
 .timeline strong, .timeline span { display: block; }
 .timeline span { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.timeline-disclosure {
+  display: grid;
+  gap: 0;
+}
+.timeline-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0;
+}
+.timeline-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.timeline-disclosure > summary::after {
+  flex: 0 0 auto;
+  content: "⌄";
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  color: var(--soft);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1;
+}
+.timeline-disclosure[open] > summary {
+  margin-bottom: 14px;
+}
+.timeline-disclosure[open] > summary::after {
+  content: "⌃";
+}
 .ready-text { color: #8af0bd; }
 .warn-text { color: #ffd166; }
 .disabled-control {
@@ -1127,6 +1162,10 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .section-title {
     align-items: flex-start;
     flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .section-title h2 {
+    font-size: 16px;
   }
   .kpi-grid, .form-grid, .sub-grid, .meta-grid, .photo-grid { grid-template-columns: 1fr; }
   .form-grid input,
@@ -1156,7 +1195,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     background: transparent;
   }
   .issue-summary-card {
-    grid-template-columns: 82px minmax(0, 1fr);
+    grid-template-columns: 92px minmax(0, 1fr);
     gap: 3px 10px;
     align-items: baseline;
     min-height: 0;
@@ -1171,9 +1210,9 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     border-top: 0;
   }
   .issue-summary-card strong {
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.35;
-    overflow-wrap: normal;
+    overflow-wrap: break-word;
     word-break: normal;
   }
   .issue-summary-card small {
@@ -1185,11 +1224,12 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     gap: 8px;
   }
   .evidence-upload-control {
-    padding: 8px;
+    padding: 7px;
   }
   .evidence-upload-control .button {
     width: 100%;
-    min-height: 38px;
+    min-height: 36px;
+    padding: 7px 8px;
   }
   .evidence-upload-actions .inline-note {
     grid-column: 1 / -1;
@@ -1213,7 +1253,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   }
   .photo-card {
     aspect-ratio: auto;
-    height: 128px;
+    height: 118px;
     min-height: 0;
     max-height: none;
   }
@@ -1227,7 +1267,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .photo-open-link,
   .photo-card img {
     height: 100%;
-    max-height: 128px;
+    max-height: 118px;
   }
   .photo-preview-backdrop {
     place-items: stretch;
@@ -1477,6 +1517,9 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .evidence-actions .button,
   .workflow-actions .button {
     width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    border-radius: 12px;
   }
   .form-footer {
     display: grid;
@@ -1704,8 +1747,21 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .workflow-card-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .workflow-card-meta > span:last-child { color: var(--soft); font-size: 12px; }
 
-.workflow-panel p, .evidence-panel small { color: var(--soft); line-height: 1.55; }
-.workflow-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 14px; }
+.workflow-panel p,
+.evidence-panel small {
+  color: var(--soft);
+  line-height: 1.5;
+}
+.workflow-panel p {
+  margin: 0;
+  font-size: 13px;
+}
+.workflow-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
 .inline-note {
   padding: 12px;
   margin-top: 12px;
@@ -1715,29 +1771,30 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   border-radius: 14px;
   font-size: 13px;
 }
-.check-list { display: grid; gap: 10px; }
+.check-list { display: grid; gap: 7px; }
 .check-item {
   display: grid;
-  grid-template-columns: 34px 1fr;
-  gap: 10px;
+  grid-template-columns: 26px 1fr;
+  gap: 9px;
   align-items: center;
-  padding: 11px;
+  padding: 9px;
   border: 1px solid var(--line);
-  border-radius: 15px;
-  background: rgba(255,255,255,.045);
+  border-radius: 13px;
+  background: rgba(255,255,255,.03);
 }
 .check-item > span {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 9px;
+  font-size: 12px;
   font-weight: 950;
 }
 .check-item.done > span { color: #081121; background: #8af0bd; }
 .check-item.missing > span { color: #081121; background: #ffd166; }
-.check-item strong { display: block; font-size: 13px; }
-.check-item small { display: block; margin-top: 3px; color: var(--muted); }
+.check-item strong { display: block; font-size: 12px; }
+.check-item small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
 .photo-card > small {
   position: absolute;
   z-index: 2;
@@ -1823,6 +1880,63 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .document-list {
   display: grid;
   gap: 14px;
+  margin-top: 14px;
+}
+.document-upload-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.document-upload-head h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.document-upload-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+.document-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.document-upload-grid label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+.document-upload-grid input,
+.document-upload-grid select,
+.document-upload-grid textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+.document-upload-grid textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.document-file-picker input[type="file"] {
+  appearance: auto;
+  -webkit-appearance: auto;
+  padding: 9px;
+}
+.document-upload-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
 }
 .document-card {
   display: grid;
@@ -1905,7 +2019,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 }
 .document-file {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 160px;
+  grid-template-columns: minmax(0, 1fr) 150px 180px;
   gap: 10px;
 }
 .document-file > div {
@@ -1928,12 +2042,305 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+.document-open-action .button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
 .document-empty {
   display: grid;
   gap: 6px;
 }
 .document-empty strong {
   color: var(--text);
+}
+
+.document-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  /* Without explicit tracks, a grid's implicit column can size itself to
+     its content (e.g. a wide PDF canvas), pushing .document-viewer - and
+     everything inside it - wider than the viewport. minmax(0, 1fr) caps
+     the track at the available space instead, the same fix already used
+     for .document-viewer's own row sizing below. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 8, 16, 0.82);
+  backdrop-filter: blur(14px);
+}
+.document-viewer {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(980px, calc(100vw - 36px));
+  height: min(860px, calc(100vh - 36px));
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(12, 20, 36, 0.98);
+  box-shadow: var(--shadow);
+}
+.document-viewer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.document-viewer-meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.document-viewer-meta strong {
+  overflow-wrap: anywhere;
+}
+.document-viewer-meta span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.document-viewer-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.document-viewer-zoom,
+.document-viewer-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(3, 8, 16, 0.68);
+  cursor: pointer;
+}
+.document-viewer-zoom:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.document-viewer-zoom svg,
+.document-viewer-close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.document-viewer-zoom-level {
+  min-width: 42px;
+  text-align: center;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 850;
+}
+.document-viewer-external {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(3, 8, 16, 0.68);
+}
+.document-viewer-stage {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.document-viewer-image-scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+.document-viewer-image-inner {
+  min-width: 100%;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+}
+.document-viewer-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.pdf-viewer-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: rgba(3, 8, 16, 0.55);
+}
+.pdf-viewer-toolbar-label {
+  flex: 0 0 auto;
+  min-width: 40px;
+  text-align: center;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.pdf-viewer-toolbar-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 22px;
+  margin: 0 2px;
+  background: var(--line);
+}
+.pdf-viewer-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(3, 8, 16, 0.68);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.pdf-viewer-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pdf-viewer-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pdf-viewer-scroll {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #4a4f57;
+  -webkit-overflow-scrolling: touch;
+}
+.pdf-viewer-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 10px;
+  min-width: 100%;
+  min-height: 100%;
+  width: fit-content;
+}
+.pdf-viewer-page {
+  flex: none;
+}
+.pdf-viewer-canvas {
+  display: block;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.pdf-viewer-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--soft);
+  font-size: 13px;
+  text-align: center;
+}
+.pdf-viewer-error {
+  color: #ffaaa8;
+}
+
+@media (max-width: 720px) {
+  .document-viewer-backdrop {
+    padding: 0;
+  }
+  .document-viewer {
+    /* 100% of the fixed, inset:0 backdrop instead of 100vw/100vh: mobile
+       Safari's vw/vh units can measure wider/taller than the actual visual
+       viewport, which was pushing the close button off the right edge. */
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    padding: 10px;
+    border-radius: 0;
+  }
+  .document-viewer-head {
+    /* Always two stacked rows on mobile - title, then a right-aligned
+       button row below it - instead of one row where two independent
+       positioning systems (flex + absolute) could collide. */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .document-viewer-meta {
+    font-size: 13px;
+  }
+  .document-viewer-head-actions {
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .document-viewer-external {
+    height: 34px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .document-viewer-zoom,
+  .document-viewer-close {
+    width: 34px;
+    height: 34px;
+  }
+  .pdf-viewer-toolbar {
+    height: 40px;
+    gap: 4px;
+  }
+  .pdf-viewer-toolbar-label {
+    min-width: 34px;
+    font-size: 11px;
+  }
 }
 
 @media (max-width: 1120px) {
@@ -1971,6 +2378,52 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .document-card {
     gap: 12px;
     padding: 16px;
+  }
+  .document-upload-card {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+  .document-upload-head h2 {
+    font-size: 18px;
+  }
+  .document-upload-head p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .document-upload-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .document-upload-grid label {
+    gap: 6px;
+    font-size: 12px;
+  }
+  .document-upload-grid input,
+  .document-upload-grid select,
+  .document-upload-grid textarea {
+    font-size: 16px;
+    min-height: 42px;
+    padding: 9px 11px;
+    border-radius: 11px;
+  }
+  .document-upload-grid textarea {
+    min-height: 76px;
+  }
+  .document-file-picker input[type="file"] {
+    min-height: 40px;
+    padding: 7px;
+    font-size: 13px;
+  }
+  .document-upload-footer {
+    display: grid;
+    gap: 10px;
+  }
+  .document-upload-footer .button {
+    width: fit-content;
+    min-height: 42px;
+    padding: 10px 14px;
+    justify-self: end;
   }
   .blocker-page-head h2,
   .work-log-head h2,
