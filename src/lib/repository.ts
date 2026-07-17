@@ -63,6 +63,24 @@ export type DeleteIssueEvidenceResult = {
   mode: "supabase" | "mock";
 };
 
+export type CreateProjectDocumentInput = {
+  projectId?: string;
+  documentType: Extract<ProjectDocumentType, "architectural_plan" | "technical_plan" | "material_spec" | "photo_document" | "other">;
+  title: string;
+  description?: string;
+  trade?: string;
+  area?: string;
+  revision?: string;
+  visibility?: ProjectDocumentVisibility;
+  file: File;
+  mimeType?: string;
+};
+
+export type CreateProjectDocumentResult = {
+  document: ProjectDocument;
+  mode: "supabase" | "mock";
+};
+
 export type MoveIssueStatusResult =
   | {
       ok: true;
@@ -210,6 +228,7 @@ function numberValue(value: number | string | null | undefined) {
 }
 
 const issueEvidenceBucket = "issue-evidence";
+const projectDocumentsBucket = "project-documents";
 
 function mapIssue(row: SupabaseIssueRow): Issue {
   const evidence = row.issue_evidence || [];
@@ -269,6 +288,13 @@ function getIssueEvidencePublicUrl(storagePath?: string | null) {
   return supabase.storage.from(issueEvidenceBucket).getPublicUrl(storagePath).data.publicUrl;
 }
 
+function getProjectDocumentPublicUrl(storagePath?: string | null) {
+  const supabase = getSupabaseClient();
+  if (!supabase || !storagePath?.startsWith("projects/")) return undefined;
+
+  return supabase.storage.from(projectDocumentsBucket).getPublicUrl(storagePath).data.publicUrl;
+}
+
 function mapEvidence(row: SupabaseEvidenceRow, issueId: string): EvidencePhoto {
   return {
     id: row.id,
@@ -306,10 +332,16 @@ function safeStorageFileName(fileName: string, fallbackExtension = "jpg") {
 }
 
 function extensionFromMime(type?: string) {
+  if (type === "application/pdf") return "pdf";
   if (type === "image/png") return "png";
   if (type === "image/webp") return "webp";
   if (type === "image/heic") return "heic";
   if (type === "image/heif") return "heif";
+  if (type === "text/plain") return "txt";
+  if (type === "application/msword") return "doc";
+  if (type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "docx";
+  if (type === "application/vnd.ms-excel") return "xls";
+  if (type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return "xlsx";
   return "jpg";
 }
 
@@ -392,6 +424,7 @@ function mapProjectDocument(row: SupabaseProjectDocumentRow): ProjectDocument {
     trade: row.trade || undefined,
     area: row.area || undefined,
     storagePath: row.storage_path || undefined,
+    url: getProjectDocumentPublicUrl(row.storage_path),
     fileName: row.file_name || undefined,
     mimeType: row.mime_type || undefined,
     fileSizeBytes: row.file_size_bytes === null ? undefined : numberValue(row.file_size_bytes),
@@ -716,6 +749,125 @@ export async function listProjectDocuments() {
   const rows = data as SupabaseProjectDocumentRow[] | null;
   if (error) return mockProjectDocuments;
   return rows?.length ? rows.map(mapProjectDocument) : mockProjectDocuments;
+}
+
+function createMockProjectDocument(input: CreateProjectDocumentInput, projectData: Project): ProjectDocument {
+  const now = new Date().toISOString();
+  const mimeType = input.mimeType || input.file.type || "application/octet-stream";
+  const fileExtension = extensionFromMime(mimeType);
+  const fileName = safeStorageFileName(input.file.name, fileExtension);
+
+  return {
+    id: `mock-project-document-${Date.now()}`,
+    projectId: projectData.id,
+    projectName: projectData.name,
+    documentType: input.documentType,
+    title: input.title,
+    description: input.description || undefined,
+    trade: input.trade || undefined,
+    area: input.area || undefined,
+    storagePath: `mock/project-documents/${fileName}`,
+    fileName,
+    mimeType,
+    fileSizeBytes: input.file.size,
+    revision: input.revision || undefined,
+    visibility: input.visibility || "project_team",
+    isCurrent: true,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+async function createSupabaseProjectDocument(input: CreateProjectDocumentInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const projectData = input.projectId
+    ? { id: input.projectId, name: mockProject.name }
+    : await getProject();
+  const mimeType = input.mimeType || input.file.type || "application/octet-stream";
+  const fileExtension = extensionFromMime(mimeType);
+  const fileName = safeStorageFileName(input.file.name, fileExtension);
+  const storagePath = `projects/${projectData.id}/${input.documentType}/${Date.now()}-${fileName}`;
+  const fileBody = new Blob([await input.file.arrayBuffer()], {
+    type: mimeType
+  });
+
+  const { error: uploadError } = await supabase.storage
+    .from(projectDocumentsBucket)
+    .upload(storagePath, fileBody, {
+      contentType: mimeType,
+      upsert: false
+    });
+
+  logSupabaseWriteError("project documents storage", uploadError);
+
+  if (uploadError) return null;
+
+  const { error } = await supabase
+    .from("project_documents")
+    .insert({
+      project_id: projectData.id,
+      document_type: input.documentType,
+      title: input.title,
+      description: input.description || null,
+      trade: input.trade || null,
+      area: input.area || null,
+      storage_path: storagePath,
+      file_name: fileName,
+      mime_type: mimeType,
+      file_size_bytes: input.file.size,
+      revision: input.revision || null,
+      visibility: input.visibility || "project_team",
+      is_current: true
+    });
+
+  logSupabaseWriteError("project_documents", error);
+
+  if (error) {
+    await supabase.storage.from(projectDocumentsBucket).remove([storagePath]);
+    return null;
+  }
+
+  const now = new Date().toISOString();
+
+  return {
+    id: `supabase-project-document-${Date.now()}`,
+    projectId: projectData.id,
+    projectName: projectData.name,
+    documentType: input.documentType,
+    title: input.title,
+    description: input.description || undefined,
+    trade: input.trade || undefined,
+    area: input.area || undefined,
+    storagePath,
+    fileName,
+    mimeType,
+    fileSizeBytes: input.file.size,
+    revision: input.revision || undefined,
+    visibility: input.visibility || "project_team",
+    isCurrent: true,
+    createdAt: now,
+    updatedAt: now,
+    url: getProjectDocumentPublicUrl(storagePath)
+  };
+}
+
+export async function createProjectDocumentRecord(input: CreateProjectDocumentInput): Promise<CreateProjectDocumentResult> {
+  const projectData = await getProject();
+  const supabaseDocument = await createSupabaseProjectDocument(input);
+
+  if (supabaseDocument) {
+    return {
+      document: supabaseDocument,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    document: createMockProjectDocument(input, projectData),
+    mode: "mock"
+  };
 }
 
 export async function listActiveBlockers() {

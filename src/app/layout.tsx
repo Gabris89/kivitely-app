@@ -4,7 +4,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Kivitely MVP",
-  description: "Kivitelezésmenedzsment MVP hibalistával, fotós bizonyítással és TIG workflow-val."
+  description: "Kivitelezésmenedzsment MVP hibalistával, fotós bizonyítással és TIG workflow-val.",
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+    url: false
+  }
 };
 
 export const viewport: Viewport = {

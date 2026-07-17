@@ -161,6 +161,7 @@ export type ProjectDocument = {
   trade?: string;
   area?: string;
   storagePath?: string;
+  url?: string;
   fileName?: string;
   mimeType?: string;
   fileSizeBytes?: number;

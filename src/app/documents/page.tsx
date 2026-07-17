@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { ProjectDocumentUploadForm } from "@/components/ProjectDocumentUploadForm";
 import { formatDate } from "@/lib/format";
 import { listProjectDocuments } from "@/lib/repository";
 import type { ProjectDocumentType, ProjectDocumentVisibility } from "@/types";
@@ -43,8 +44,10 @@ export default async function DocumentsPage() {
     <>
       <PageHeader
         title="Dokumentumok"
-        subtitle="Read-only áttekintés projekt szintű tervekről és dokumentum metadata rekordokról."
+        subtitle="Projekt szintű tervek és dokumentumok feltöltése, megnyitása és áttekintése."
       />
+
+      <ProjectDocumentUploadForm />
 
       <section className="document-list" aria-label="Projekt dokumentumok és tervek">
         {documents.map((document) => {
@@ -97,6 +100,18 @@ export default async function DocumentsPage() {
                 <div>
                   <span>Fájlméret</span>
                   <strong>{formatFileSize(document.fileSizeBytes)}</strong>
+                </div>
+                <div className="document-open-action">
+                  <span>Megnyitás</span>
+                  {document.url ? (
+                    <a className="button ghost" href={document.url} target="_blank" rel="noreferrer">
+                      Fájl megnyitása
+                    </a>
+                  ) : document.storagePath ? (
+                    <strong>Nincs Storage URL</strong>
+                  ) : (
+                    <strong>Nincs feltöltött fájl</strong>
+                  )}
                 </div>
               </div>
             </article>
