@@ -38,8 +38,7 @@ const navSections: NavSection[] = [
     title: "Admin",
     items: [
       { href: "/workflow", label: "Workflow tábla", icon: "W" },
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
-      { href: "/mobile", label: "Mobil/PWA nézet", icon: "M" }
+      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
     ]
   }
 ];
@@ -69,8 +68,7 @@ const mobileMenuSections: NavSection[] = [
   {
     title: "Admin",
     items: [
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
-      { href: "/mobile", label: "Mobil/PWA nézet", icon: "M" }
+      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
     ]
   }
 ];
@@ -165,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p>Hiba rögzítés → státuszváltás → fotós bizonyítás → TIG csomag.</p>
         </div>
 
-        <form action={signOut} className="sidebar-logout">
+        <form action={signOut} className="sidebar-logout" suppressHydrationWarning>
           <button type="submit" className="button ghost">
             Kijelentkezés
           </button>
@@ -205,7 +203,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ))}
 
-            <form action={signOut} className="mobile-menu-section">
+            <form action={signOut} className="mobile-menu-section" suppressHydrationWarning>
               <button type="submit" className="button ghost">
                 Kijelentkezés
               </button>

@@ -22,13 +22,11 @@ function IssueFieldCard({ issue }: { issue: Issue }) {
       </div>
       <div className="issue-card-flags">
         <PriorityBadge priority={issue.priority} />
-        <span className={photoCount > 0 ? "readiness ok" : "readiness warn"}>{photoCount} fotó</span>
-        <span className={evidence.afterPhoto ? "readiness ok" : "readiness warn"}>
-          {evidence.afterPhoto ? "utána kész" : "utána hiányzik"}
-        </span>
         <span className={tig.ready ? "readiness ok" : "readiness warn"}>{tig.label}</span>
       </div>
-      <small>Határidő: {formatDate(issue.dueDate)} · {formatHuf(issue.valueHuf)}</small>
+      <small>
+        {photoCount} fotó · <span className={evidence.afterPhoto ? "flag-ok" : "flag-warn"}>{evidence.afterPhoto ? "utána kész" : "utána hiányzik"}</span> · Határidő: {formatDate(issue.dueDate)} · {formatHuf(issue.valueHuf)}
+      </small>
     </Link>
   );
 }
