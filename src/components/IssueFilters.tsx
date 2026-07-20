@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Issue, IssueStatus } from "@/types";
 import { issueStatusLabels, issueStatusOrder } from "@/lib/workflow";
 import { IssueTable } from "@/components/IssueTable";
+import { SearchBox } from "@/components/SearchBox";
 
 type Filter = "all" | IssueStatus;
 
@@ -27,18 +28,12 @@ export function IssueFilters({ issues }: { issues: Issue[] }) {
 
   return (
     <div className="issue-filter-stack">
-      <div className="filter-toolbar">
-        <label className="search-box">
-          <span>Keresés</span>
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="ID, hiba, helyszín, alvállalkozó..."
-            suppressHydrationWarning
-          />
-        </label>
-        <span className="pill">{filteredIssues.length} találat</span>
-      </div>
+      <SearchBox
+        value={search}
+        onChange={setSearch}
+        placeholder="ID, hiba, helyszín, alvállalkozó..."
+        resultCount={filteredIssues.length}
+      />
 
       <div className="status-filter-row" aria-label="Státusz szűrők">
         <button className={statusFilter === "all" ? "active" : ""} type="button" onClick={() => setStatusFilter("all")}>

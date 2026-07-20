@@ -49,6 +49,11 @@ function getFileExtension(fileName: string) {
   return extension.replace(/[^a-z0-9]/g, "");
 }
 
+function deriveTitleFromFileName(fileName: string) {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex > 0 ? fileName.slice(0, lastDotIndex) : fileName;
+}
+
 function getEffectiveMimeType(file: File) {
   if (allowedMimeTypes.includes(file.type)) return file.type;
   const inferredType = mimeTypeByExtension[getFileExtension(file.name)];
@@ -70,15 +75,12 @@ export async function POST(request: NextRequest) {
   const fileValue = formData.get("file");
   const file = fileValue instanceof File && fileValue.size > 0 ? fileValue : undefined;
   const documentType = formData.get("documentType");
-  const title = String(formData.get("title") || "").trim();
 
   if (!file) {
     return NextResponse.json({ error: "Hianyzo fajl" }, { status: 400 });
   }
 
-  if (!title) {
-    return NextResponse.json({ error: "Hianyzo dokumentum cim" }, { status: 400 });
-  }
+  const title = String(formData.get("title") || "").trim() || deriveTitleFromFileName(file.name);
 
   if (!isAllowedDocumentType(documentType)) {
     return NextResponse.json({ error: "Érvénytelen dokumentum típus" }, { status: 400 });

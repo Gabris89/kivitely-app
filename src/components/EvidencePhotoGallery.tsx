@@ -320,11 +320,8 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
       return;
     }
 
-    const result = await response.json().catch(() => null);
-    const mode = result?.mode === "supabase" ? "Supabase" : "Mock fallback";
-
     closePreview();
-    setMessage(`${mode} kép törölve.`);
+    setMessage("Kép törölve.");
     router.refresh();
   }
 

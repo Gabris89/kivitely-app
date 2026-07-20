@@ -52,11 +52,11 @@ export function NewBlockerForm() {
 
     const result = await response.json();
     if (result.mode !== "supabase") {
-      setSaveState({ status: "error", message: "Supabase mentés nem sikerült, ezért nem kerül be az Akadálylistába." });
+      setSaveState({ status: "error", message: "A mentés nem sikerült, ezért nem kerül be az Akadálylistába." });
       return;
     }
 
-    setSaveState({ status: "saved", message: `Akadály rögzítve (Supabase): ${result.data.title}` });
+    setSaveState({ status: "saved", message: `Akadály rögzítve: ${result.data.title}` });
     form.reset();
   }
 

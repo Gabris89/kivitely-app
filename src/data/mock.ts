@@ -264,71 +264,7 @@ export const blockerItems: BlockerItem[] = [
   }
 ];
 
-export const projectDocuments: ProjectDocument[] = [
-  {
-    id: "mock-project-document-1",
-    projectId: project.id,
-    projectName: project.name,
-    uploadedByProfileId: "project-manager-mock-1",
-    uploadedByName: "Szabo Elek",
-    documentType: "architectural_plan",
-    title: "Foldszinti alaprajz - burkolasi zona",
-    description: "Metadata-only mock rekord epitesz tervhez. Valodi Storage feltoltes meg nincs.",
-    trade: "Burkolas",
-    area: "Foldszint",
-    storagePath: "seed/project-documents/foldszinti-alaprajz-v1.pdf",
-    fileName: "foldszinti-alaprajz-v1.pdf",
-    mimeType: "application/pdf",
-    fileSizeBytes: 2457600,
-    revision: "v1",
-    visibility: "project_team",
-    isCurrent: true,
-    createdAt: "2026-07-08",
-    updatedAt: "2026-07-08"
-  },
-  {
-    id: "mock-project-document-2",
-    projectId: project.id,
-    projectName: project.name,
-    uploadedByProfileId: "project-manager-mock-1",
-    uploadedByName: "Szabo Elek",
-    documentType: "technical_plan",
-    title: "Lepcsohaz szegelykiosztasi reszlet",
-    description: "Metadata-only mock rekord muszaki tervreszlethez.",
-    trade: "Burkolas",
-    area: "Lepcsohaz",
-    storagePath: "seed/project-documents/lepcsohaz-szegelykiosztas-v2.pdf",
-    fileName: "lepcsohaz-szegelykiosztas-v2.pdf",
-    mimeType: "application/pdf",
-    fileSizeBytes: 982000,
-    revision: "v2",
-    visibility: "workers",
-    isCurrent: true,
-    createdAt: "2026-07-08",
-    updatedAt: "2026-07-08"
-  },
-  {
-    id: "mock-project-document-3",
-    projectId: project.id,
-    projectName: project.name,
-    uploadedByProfileId: "project-manager-mock-1",
-    uploadedByName: "Szabo Elek",
-    documentType: "photo_document",
-    title: "Helyszini referenciafoto - furdoszoba",
-    description: "Projekt szintu fotodokumentum, issue evidence-tol elkulonitve.",
-    trade: "Burkolas",
-    area: "Furdoszoba",
-    storagePath: "seed/project-documents/furdoszoba-referencia.jpg",
-    fileName: "furdoszoba-referencia.jpg",
-    mimeType: "image/jpeg",
-    fileSizeBytes: 734000,
-    revision: "2026-07-08",
-    visibility: "project_team",
-    isCurrent: true,
-    createdAt: "2026-07-08",
-    updatedAt: "2026-07-08"
-  }
-];
+export const projectDocuments: ProjectDocument[] = [];
 
 export function findIssue(id: string) {
   return issues.find((issue) => issue.id === id);

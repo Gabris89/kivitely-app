@@ -81,6 +81,11 @@ export type CreateProjectDocumentResult = {
   mode: "supabase" | "mock";
 };
 
+export type DeleteProjectDocumentResult = {
+  ok: boolean;
+  mode: "supabase" | "mock";
+};
+
 export type MoveIssueStatusResult =
   | {
       ok: true;
@@ -866,6 +871,58 @@ export async function createProjectDocumentRecord(input: CreateProjectDocumentIn
 
   return {
     document: createMockProjectDocument(input, projectData),
+    mode: "mock"
+  };
+}
+
+async function deleteSupabaseProjectDocument(documentId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: document, error: lookupError } = await supabase
+    .from("project_documents")
+    .select("id,storage_path")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  logSupabaseReadError("project document delete lookup", lookupError);
+
+  if (lookupError || !document) return null;
+
+  const { error: deleteError } = await supabase.from("project_documents").delete().eq("id", documentId);
+
+  logSupabaseWriteError("project document delete", deleteError);
+
+  if (deleteError) return null;
+
+  const storagePath = typeof document.storage_path === "string" ? document.storage_path : "";
+  if (storagePath.startsWith("projects/")) {
+    const { error: storageDeleteError } = await supabase.storage.from(projectDocumentsBucket).remove([storagePath]);
+    logSupabaseWriteError("project document storage delete", storageDeleteError);
+  }
+
+  return true;
+}
+
+export async function deleteProjectDocumentRecord(documentId: string): Promise<DeleteProjectDocumentResult> {
+  const supabaseDeleted = await deleteSupabaseProjectDocument(documentId);
+
+  if (supabaseDeleted) {
+    return {
+      ok: true,
+      mode: "supabase"
+    };
+  }
+
+  if (getSupabaseClient()) {
+    return {
+      ok: false,
+      mode: "mock"
+    };
+  }
+
+  return {
+    ok: true,
     mode: "mock"
   };
 }

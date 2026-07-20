@@ -39,10 +39,7 @@ export function IssueWorkflowPanel({ issue }: { issue: Issue }) {
       return;
     }
 
-    const result = await response.json().catch(() => null);
-    const savedMode = result?.mode === "supabase" ? "Supabase" : "Mock fallback";
-
-    setMessage(`${savedMode} státuszváltás mentve: ${issue.id} → ${issueStatusLabels[target]}.`);
+    setMessage(`Státuszváltás mentve: ${issue.id} → ${issueStatusLabels[target]}.`);
     router.refresh();
   }
 

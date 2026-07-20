@@ -24,11 +24,6 @@ export function ProjectDocumentUploadForm() {
       return;
     }
 
-    if (!String(formData.get("title") || "").trim()) {
-      setSaveState({ status: "error", message: "A dokumentum címe kötelező." });
-      return;
-    }
-
     setSaveState({ status: "saving", message: "Dokumentum feltöltése..." });
 
     const response = await fetch("/api/documents", {
@@ -43,9 +38,7 @@ export function ProjectDocumentUploadForm() {
       return;
     }
 
-    const modeLabel = result?.mode === "supabase" ? "Supabase" : "csak mock visszajelzés";
-
-    setSaveState({ status: "saved", message: `Dokumentum rögzítve (${modeLabel}).` });
+    setSaveState({ status: "saved", message: "Dokumentum rögzítve." });
     form.reset();
     router.refresh();
   }
@@ -66,8 +59,8 @@ export function ProjectDocumentUploadForm() {
 
       <div className="document-upload-grid">
         <label>
-          Cím
-          <input name="title" placeholder="Pl. földszinti alaprajz v3" suppressHydrationWarning />
+          Cím (opcionális)
+          <input name="title" placeholder="Ha üresen hagyod, a fájl neve lesz a cím" suppressHydrationWarning />
         </label>
         <label>
           Típus
@@ -90,16 +83,6 @@ export function ProjectDocumentUploadForm() {
         <label>
           Revision
           <input name="revision" placeholder="Pl. v1 vagy 2026.07.17." suppressHydrationWarning />
-        </label>
-        <label>
-          Láthatóság
-          <select name="visibility" defaultValue="project_team" suppressHydrationWarning>
-            <option value="project_team">Projektcsapat</option>
-            <option value="workers">Munkavállalók</option>
-            <option value="subcontractors">Alvállalkozók</option>
-            <option value="viewer_shared">Megosztott néző</option>
-            <option value="internal">Belső</option>
-          </select>
         </label>
         <label className="full">
           Leírás

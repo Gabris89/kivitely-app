@@ -91,10 +91,9 @@ export function EvidenceMetadataControls({ issueId }: { issueId: string }) {
     }
 
     const result = await response.json().catch(() => null);
-    const savedMode = result?.mode === "supabase" ? "Supabase" : "Mock fallback";
     const savedKind = result?.data?.url ? "kép" : "metadata";
 
-    setMessage(`${savedMode} bizonyíték ${savedKind} mentve.`);
+    setMessage(`Bizonyíték ${savedKind} mentve.`);
     router.refresh();
   }
 

@@ -158,11 +158,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="sidebar-card">
-          <strong>Demo narratíva</strong>
-          <p>Hiba rögzítés → státuszváltás → fotós bizonyítás → TIG csomag.</p>
-        </div>
-
         <form action={signOut} className="sidebar-logout" suppressHydrationWarning>
           <button type="submit" className="button ghost">
             Kijelentkezés

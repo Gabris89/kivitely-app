@@ -96,8 +96,7 @@ export function NewIssueForm() {
     }
 
     const result = await response.json();
-    const modeLabel = result.mode === "supabase" ? "Supabase" : "mock fallback";
-    setSaveState({ status: "saved", message: `Hiba rögzítve (${modeLabel}): ${result.data.id}. Képet a hiba részletezőn tudsz feltölteni.` });
+    setSaveState({ status: "saved", message: `Hiba rögzítve: ${result.data.id}. Képet a hiba részletezőn tudsz feltölteni.` });
   }
 
   return (
