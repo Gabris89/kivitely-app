@@ -30,6 +30,11 @@ body {
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+/* The dropdown popup an <option> renders in is a separate native surface in
+   most browsers - it doesn't pick up the select's own (semi-transparent)
+   background, only the inherited (light) text color, so without this it's
+   light text on the browser's default white popup background. */
+select option { color: var(--text); background: var(--bg); }
 
 .app-shell {
   display: grid;
@@ -89,7 +94,8 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 }
 .nav-list a,
 .mobile-menu-section a,
-.mobile-menu-section button {
+.mobile-menu-section button,
+.mobile-menu-group button {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -103,7 +109,8 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .nav-list a.active,
 .mobile-menu-section a:hover,
 .mobile-menu-section a.active,
-.mobile-menu-section button:hover {
+.mobile-menu-section button:hover,
+.mobile-menu-group button:hover {
   color: #fff;
   background: rgba(104, 225, 253, 0.12);
 }
@@ -115,6 +122,17 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.07);
 }
+.nav-icon svg,
+.bottom-nav svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-icon svg { width: 16px; height: 16px; }
+.bottom-nav svg { width: 20px; height: 20px; }
+.nav-icon-dots circle { fill: currentColor; stroke: none; }
 
 .content { padding: 28px; min-width: 0; }
 .bottom-nav { display: none; }
@@ -216,6 +234,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   font-size: 12px;
 }
 .pill.live { color: #9af7d5; }
+.project-chip { width: fit-content; padding: 4px 9px; font-size: 11px; font-weight: 700; color: var(--brand); }
 
 .table-wrap { overflow-x: auto; }
 .issue-card-list { display: none; }
@@ -1486,7 +1505,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     color: #071221;
     background: linear-gradient(135deg, var(--brand), #9af7d5);
   }
-  .bottom-nav span { font-size: 17px; line-height: 1; }
+  .bottom-nav svg { width: 19px; height: 19px; }
   .mobile-menu-backdrop {
     position: fixed;
     inset: 0;
@@ -1554,8 +1573,18 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     display: grid;
     gap: 7px;
   }
+  .mobile-menu-group {
+    display: grid;
+    gap: 7px;
+  }
+  .mobile-menu-divider {
+    height: 1px;
+    background: var(--line);
+    margin: 2px 4px 8px;
+  }
   .mobile-menu-section a,
-  .mobile-menu-section button {
+  .mobile-menu-section button,
+  .mobile-menu-group button {
     min-height: 48px;
     background: rgba(255,255,255,.045);
     border: 1px solid var(--line);
@@ -2495,7 +2524,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     min-height: 42px;
     white-space: nowrap;
   }
-  .workflow-board { grid-template-columns: repeat(6, 260px); }
+  .workflow-board { grid-template-columns: 1fr; overflow-x: visible; }
   .blocker-page-head { display: grid; }
   .blocker-page-badges { justify-content: flex-start; }
   .blocker-page-card,

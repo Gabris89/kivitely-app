@@ -17,7 +17,7 @@ function IssueFieldCard({ issue, showProject }: { issue: Issue; showProject: boo
       </div>
       <strong>{issue.title}</strong>
       <div className="issue-card-meta">
-        {showProject ? <span>{issue.projectName}</span> : null}
+        {showProject ? <span className="pill project-chip">{issue.projectId} · {issue.projectName}</span> : null}
         <span>{issue.location}</span>
         <span>{issue.subcontractor}</span>
       </div>
@@ -63,7 +63,14 @@ export function IssueTable({ issues, compact = false, showProject = false }: { i
                     {issue.id}
                   </Link>
                 </td>
-                {showProject ? <td>{issue.projectName}</td> : null}
+                {showProject ? (
+                  <td>
+                    <div className="issue-title-cell">
+                      <Link href={`/projects/${issue.projectId}`} className="id-link">{issue.projectId}</Link>
+                      <span>{issue.projectName}</span>
+                    </div>
+                  </td>
+                ) : null}
                 <td>
                   <div className="issue-title-cell">
                     <strong>{issue.title}</strong>

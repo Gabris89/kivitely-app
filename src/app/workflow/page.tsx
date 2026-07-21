@@ -31,8 +31,9 @@ export default async function AllProjectsWorkflowPage() {
                 {columnIssues.map((issue) => (
                   <Link className="workflow-card" href={`/projects/${issue.projectId}/issues/${issue.id}`} key={issue.id}>
                     <span className="id-link">{issue.id}</span>
+                    <span className="pill project-chip">{issue.projectId} · {issue.projectName}</span>
                     <strong>{issue.title}</strong>
-                    <small>{issue.projectName} · {issue.location}</small>
+                    <small>{issue.location}</small>
                     <div className="workflow-card-meta">
                       <PriorityBadge priority={issue.priority} />
                       <span>{issue.subcontractor}</span>

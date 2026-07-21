@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
+import { NavIcon, type NavIconName } from "@/components/NavIcons";
 
 type NavItem = {
   href: string;
   label: string;
-  icon: string;
+  icon: NavIconName;
 };
 
 type NavSection = {
@@ -23,28 +24,33 @@ function getProjectId(pathname: string) {
 function projectNavSections(projectId: string): NavSection[] {
   return [
     {
+      title: "Projektek",
+      items: [{ href: "/projects", label: "Projektek", icon: "projects" }]
+    },
+    {
       title: "Munka",
       items: [
-        { href: `/projects/${projectId}`, label: "Dashboard", icon: "D" },
-        { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "H" },
-        { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "+" },
-        { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "!" }
+        { href: `/projects/${projectId}`, label: "Dashboard", icon: "dashboard" },
+        { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "issues" },
+        { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "add" },
+        { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "blockers" },
+        { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "workflow" }
       ]
     },
     {
       title: "Dokumentáció",
       items: [
-        { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "D" },
-        { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "N" },
-        { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "T" }
+        { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "documents" },
+        { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "worklog" },
+        { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "tig" }
       ]
     },
     {
       title: "Admin",
       items: [
-        { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "W" },
-        { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
-        { href: "/projects", label: "Projektek", icon: "P" }
+        { href: "/issues", label: "Összes hiba", icon: "issues" },
+        { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
+        { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
       ]
     }
   ];
@@ -54,67 +60,55 @@ const globalNavSections: NavSection[] = [
   {
     title: "Projektek",
     items: [
-      { href: "/projects", label: "Projektek", icon: "P" },
-      { href: "/projects/new", label: "Új projekt", icon: "+" }
+      { href: "/projects", label: "Projektek", icon: "projects" },
+      { href: "/projects/new", label: "Új projekt", icon: "add" }
     ]
   },
   {
     title: "Admin",
     items: [
-      { href: "/issues", label: "Összes hiba", icon: "H" },
-      { href: "/workflow", label: "Workflow tábla", icon: "W" },
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
+      { href: "/issues", label: "Összes hiba", icon: "issues" },
+      { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
+      { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
     ]
   }
 ];
 
-function projectBottomNav(projectId: string) {
+function projectBottomNav(projectId: string): NavItem[] {
   return [
-    { href: `/projects/${projectId}`, label: "Dashboard", icon: "D" },
-    { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "H" },
-    { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "+" }
+    { href: `/projects/${projectId}`, label: "Dashboard", icon: "dashboard" },
+    { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "issues" },
+    { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "add" }
   ];
 }
 
-const globalBottomNav = [{ href: "/projects", label: "Projektek", icon: "P" }];
+const globalBottomNav: NavItem[] = [{ href: "/projects", label: "Projektek", icon: "projects" }];
 
-function projectMobileMenuSections(projectId: string): NavSection[] {
+function projectMobileMenuGroups(projectId: string): NavItem[][] {
   return [
-    {
-      title: "Munka",
-      items: [
-        { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "!" },
-        { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "W" }
-      ]
-    },
-    {
-      title: "Dokumentáció",
-      items: [
-        { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "D" },
-        { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "N" },
-        { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "T" }
-      ]
-    },
-    {
-      title: "Admin",
-      items: [
-        { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
-        { href: "/projects", label: "Projektek", icon: "P" }
-      ]
-    }
-  ];
-}
-
-const globalMobileMenuSections: NavSection[] = [
-  {
-    title: "Admin",
-    items: [
-      { href: "/projects/new", label: "Új projekt", icon: "+" },
-      { href: "/issues", label: "Összes hiba", icon: "H" },
-      { href: "/workflow", label: "Workflow tábla", icon: "W" },
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
+    [
+      { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "blockers" },
+      { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "workflow" },
+      { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "documents" },
+      { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "worklog" },
+      { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "tig" }
+    ],
+    [
+      { href: "/issues", label: "Összes hiba", icon: "issues" },
+      { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
+      { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" },
+      { href: "/projects", label: "Projektek", icon: "projects" }
     ]
-  }
+  ];
+}
+
+const globalMobileMenuGroups: NavItem[][] = [
+  [
+    { href: "/projects/new", label: "Új projekt", icon: "add" },
+    { href: "/issues", label: "Összes hiba", icon: "issues" },
+    { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
+    { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
+  ]
 ];
 
 function isActive(pathname: string, href: string) {
@@ -138,7 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const projectId = getProjectId(activePathname);
   const navSections = projectId ? projectNavSections(projectId) : globalNavSections;
   const bottomNav = projectId ? projectBottomNav(projectId) : globalBottomNav;
-  const mobileMenuSections = projectId ? projectMobileMenuSections(projectId) : globalMobileMenuSections;
+  const mobileMenuGroups = projectId ? projectMobileMenuGroups(projectId) : globalMobileMenuGroups;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -198,7 +192,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="nav-section-links">
                 {section.items.map((item) => (
                   <Link key={item.href} href={item.href} className={isActive(activePathname, item.href) ? "active" : ""}>
-                    <span className="nav-icon">{item.icon}</span>
+                    <span className="nav-icon"><NavIcon name={item.icon} /></span>
                     {item.label}
                   </Link>
                 ))}
@@ -221,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav id="mobile-menu" className="mobile-menu-sheet" aria-label="Mobil menü" onClick={(event) => event.stopPropagation()}>
             <div className="mobile-menu-head">
               <div>
-                <strong>Menü</strong>
+                <strong>Több</strong>
                 <span>Kivitely modulok</span>
               </div>
               <button type="button" aria-label="Menü bezárása" onClick={closeMenuToDashboard}>
@@ -229,21 +223,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
 
-            {mobileMenuSections.map((section) => (
-              <div className="mobile-menu-section" key={section.title}>
-                <span>{section.title}</span>
-                <div>
-                  {section.items.map((item) => (
-                    <button
-                      key={item.href}
-                      type="button"
-                      onClick={() => navigateFromMenu(item.href)}
-                    >
-                      <span className="nav-icon">{item.icon}</span>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+            {mobileMenuGroups.map((group, groupIndex) => (
+              <div className="mobile-menu-group" key={group[0]?.href || groupIndex}>
+                {groupIndex > 0 ? <div className="mobile-menu-divider" /> : null}
+                {group.map((item) => (
+                  <button key={item.href} type="button" onClick={() => navigateFromMenu(item.href)}>
+                    <span className="nav-icon"><NavIcon name={item.icon} /></span>
+                    {item.label}
+                  </button>
+                ))}
               </div>
             ))}
 
@@ -264,7 +252,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className={isBottomNavActive(activePathname, item.href, isMenuOpen) ? "active" : ""}
             onClick={() => setIsMenuOpen(false)}
           >
-            <span>{item.icon}</span>
+            <NavIcon name={item.icon} />
             {item.label}
           </Link>
         ))}
@@ -282,8 +270,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             setIsMenuOpen(true);
           }}
         >
-          <span>☰</span>
-          Menü
+          <NavIcon name="more" />
+          Több
         </button>
       </nav>
     </div>
