@@ -14,9 +14,21 @@ import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, Eviden
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
+export type CreateProjectInput = {
+  name: string;
+  address?: string;
+  client?: string;
+  phase?: string;
+};
+
+export type CreateProjectResult = {
+  project: Project;
+  mode: "supabase" | "mock";
+};
+
 export type CreateIssueInput = {
   title: string;
-  project?: string;
+  projectId: string;
   description?: string;
   location: string;
   area?: string;
@@ -34,6 +46,7 @@ export type CreateIssueResult = {
 };
 
 export type CreateBlockerInput = {
+  projectId: string;
   title: string;
   description: string;
   trade?: string;
@@ -64,7 +77,7 @@ export type DeleteIssueEvidenceResult = {
 };
 
 export type CreateProjectDocumentInput = {
-  projectId?: string;
+  projectId: string;
   documentType: Extract<ProjectDocumentType, "architectural_plan" | "technical_plan" | "material_spec" | "photo_document" | "other">;
   title: string;
   description?: string;
@@ -151,6 +164,7 @@ type SupabaseIssueRow = {
 
 type SupabaseProjectRow = {
   id: string;
+  public_id: string;
   name: string;
   address: string | null;
   client: string | null;
@@ -308,6 +322,7 @@ function mapIssue(row: SupabaseIssueRow): Issue {
 function mapProject(row: SupabaseProjectRow): Project {
   return {
     id: row.id,
+    publicId: row.public_id,
     name: row.name,
     address: row.address || "",
     client: row.client || "",
@@ -531,14 +546,22 @@ function nextPublicIssueId(publicIds: string[]) {
   return `KIV-${nextNumber}`;
 }
 
-async function listSupabaseIssues() {
+async function listSupabaseIssues(projectId?: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("issues")
     .select("*,subcontractors(name),issue_evidence(evidence_type)")
     .order("updated_at", { ascending: false });
+
+  if (projectId) {
+    const projectDbId = await getSupabaseProjectDbId(projectId);
+    if (!projectDbId) return [];
+    query = query.eq("project_id", projectDbId);
+  }
+
+  const { data, error } = await query;
 
   logSupabaseReadError("issues", error);
 
@@ -562,28 +585,129 @@ async function getSupabaseIssueDbId(publicId: string) {
   return error ? null : data?.id || null;
 }
 
-export async function getProject() {
+export async function listProjects() {
   const supabase = getSupabaseClient();
-  if (!supabase) return mockProject;
+  if (!supabase) return [mockProject];
 
   const { data, error } = await supabase
     .from("projects")
     .select("*")
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .order("created_at", { ascending: true });
+
+  logSupabaseReadError("projects list", error);
+
+  const rows = data as SupabaseProjectRow[] | null;
+  if (error || !rows?.length) return [mockProject];
+  return rows.map(mapProject);
+}
+
+export async function getProjectByPublicId(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return publicId === mockProject.publicId ? mockProject : null;
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("public_id", publicId)
     .maybeSingle();
 
-  logSupabaseReadError("projects", error);
+  logSupabaseReadError("project by public id", error);
 
-  return !error && data ? mapProject(data as SupabaseProjectRow) : mockProject;
+  return !error && data ? mapProject(data as SupabaseProjectRow) : null;
 }
 
-export async function listIssues() {
-  return (await listSupabaseIssues()) || mockIssues;
+async function getSupabaseProjectDbId(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("public_id", publicId)
+    .maybeSingle();
+
+  logSupabaseReadError("project id lookup", error);
+
+  return error ? null : data?.id || null;
 }
 
-export async function getIssue(id: string) {
-  const issues = await listIssues();
+function nextPublicProjectId(publicIds: string[]) {
+  const nextNumber = Math.max(
+    0,
+    ...publicIds
+      .map((id) => Number(id.replace("PRJ-", "")))
+      .filter((value) => Number.isFinite(value))
+  ) + 1;
+
+  return `PRJ-${String(nextNumber).padStart(3, "0")}`;
+}
+
+function createMockProjectRecord(input: CreateProjectInput): Project {
+  return {
+    id: `mock-project-${Date.now()}`,
+    publicId: `PRJ-M${String(Date.now()).slice(-3)}`,
+    name: input.name,
+    address: input.address || "",
+    client: input.client || "",
+    phase: input.phase || "Tervezés",
+    progress: 0
+  };
+}
+
+async function createSupabaseProject(input: CreateProjectInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: existingProjects, error: existingError } = await supabase
+    .from("projects")
+    .select("public_id");
+
+  logSupabaseReadError("project public ids for insert", existingError);
+
+  if (existingError) return null;
+
+  const publicId = nextPublicProjectId((existingProjects || []).map((row) => row.public_id));
+
+  const { data, error } = await supabase
+    .from("projects")
+    .insert({
+      public_id: publicId,
+      name: input.name,
+      address: input.address || null,
+      client: input.client || null,
+      phase: input.phase || null,
+      progress: 0
+    })
+    .select("*")
+    .single();
+
+  logSupabaseWriteError("projects", error);
+
+  return error || !data ? null : mapProject(data as SupabaseProjectRow);
+}
+
+export async function createProjectRecord(input: CreateProjectInput): Promise<CreateProjectResult> {
+  const supabaseProject = await createSupabaseProject(input);
+
+  if (supabaseProject) {
+    return {
+      project: supabaseProject,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    project: createMockProjectRecord(input),
+    mode: "mock"
+  };
+}
+
+export async function listIssues(projectId?: string) {
+  return (await listSupabaseIssues(projectId)) || mockIssues;
+}
+
+export async function getIssue(id: string, projectId?: string) {
+  const issues = await listIssues(projectId);
   return issues.find((issue) => issue.id === id);
 }
 
@@ -767,13 +891,17 @@ export function listTigItems(): TigItem[] {
   return mockTigItems;
 }
 
-export async function listTigPackages() {
+export async function listTigPackages(projectId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return mockTigPackages;
+
+  const projectDbId = await getSupabaseProjectDbId(projectId);
+  if (!projectDbId) return [];
 
   const { data, error } = await supabase
     .from("tig_packages")
     .select("*,subcontractors(name),tig_package_issues(issue_id)")
+    .eq("project_id", projectDbId)
     .order("updated_at", { ascending: false });
 
   logSupabaseReadError("tig_packages", error);
@@ -783,13 +911,17 @@ export async function listTigPackages() {
   return rows?.length ? rows.map(mapTigPackage) : mockTigPackages;
 }
 
-export async function listWorkLogs() {
+export async function listWorkLogs(projectId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return mockWorkLogs;
+
+  const projectDbId = await getSupabaseProjectDbId(projectId);
+  if (!projectDbId) return [];
 
   const { data, error } = await supabase
     .from("work_logs")
     .select("*,projects(name),profiles(display_name)")
+    .eq("project_id", projectDbId)
     .order("work_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -800,13 +932,17 @@ export async function listWorkLogs() {
   return rows?.length ? rows.map(mapWorkLog) : mockWorkLogs;
 }
 
-export async function listProjectDocuments() {
+export async function listProjectDocuments(projectId: string) {
   const supabase = getSupabaseClient();
   if (!supabase) return mockProjectDocuments;
+
+  const projectDbId = await getSupabaseProjectDbId(projectId);
+  if (!projectDbId) return [];
 
   const { data, error } = await supabase
     .from("project_documents")
     .select("*,projects(name),profiles(display_name)")
+    .eq("project_id", projectDbId)
     .order("is_current", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -848,9 +984,9 @@ async function createSupabaseProjectDocument(input: CreateProjectDocumentInput) 
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
-  const projectData = input.projectId
-    ? { id: input.projectId, name: mockProject.name }
-    : await getProject();
+  const projectData = await getProjectByPublicId(input.projectId);
+  if (!projectData) return null;
+
   const mimeType = input.mimeType || input.file.type || "application/octet-stream";
   const fileExtension = extensionFromMime(mimeType);
   const fileName = safeStorageFileName(input.file.name, fileExtension);
@@ -920,7 +1056,7 @@ async function createSupabaseProjectDocument(input: CreateProjectDocumentInput) 
 }
 
 export async function createProjectDocumentRecord(input: CreateProjectDocumentInput): Promise<CreateProjectDocumentResult> {
-  const projectData = await getProject();
+  const projectData = (await getProjectByPublicId(input.projectId)) || mockProject;
   const supabaseDocument = await createSupabaseProjectDocument(input);
 
   if (supabaseDocument) {
@@ -1091,15 +1227,19 @@ export async function savePlanCalibration(documentId: string, metersPerUnit: num
   return { ok: !error, mode: error ? "mock" : "supabase" };
 }
 
-export async function listActiveBlockers() {
+export async function listActiveBlockers(projectId: string) {
   const activeStatuses: BlockerStatus[] = ["open", "in_progress", "waiting_external"];
   const fallback = mockBlockerItems.filter((blocker) => activeStatuses.includes(blocker.status));
   const supabase = getSupabaseClient();
   if (!supabase) return fallback;
 
+  const projectDbId = await getSupabaseProjectDbId(projectId);
+  if (!projectDbId) return [];
+
   const { data, error } = await supabase
     .from("blocker_list")
     .select("*")
+    .eq("project_id", projectDbId)
     .in("status", activeStatuses)
     .order("created_at", { ascending: false });
 
@@ -1158,17 +1298,9 @@ async function createSupabaseBlocker(input: CreateBlockerInput): Promise<Blocker
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
-  const { data: projects, error: projectError } = await supabase
-    .from("projects")
-    .select("id,name")
-    .order("created_at", { ascending: true })
-    .limit(1);
+  const project = await getProjectByPublicId(input.projectId);
+  if (!project) return null;
 
-  logSupabaseReadError("projects for blocker insert", projectError);
-
-  if (projectError || !projects?.length) return null;
-
-  const project = projects[0];
   const responsibleResult = input.responsibleName
     ? await supabase
         .from("profiles")
@@ -1238,21 +1370,19 @@ async function createSupabaseIssue(input: CreateIssueInput) {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
-  const [{ data: projects, error: projectError }, { data: subcontractors, error: subcontractorError }, { data: existingIssues, error: issueIdError }] = await Promise.all([
-    supabase.from("projects").select("id,name").order("created_at", { ascending: true }),
+  const [projectDbId, { data: subcontractors, error: subcontractorError }, { data: existingIssues, error: issueIdError }] = await Promise.all([
+    getSupabaseProjectDbId(input.projectId),
     supabase.from("subcontractors").select("id,name").order("created_at", { ascending: true }),
     supabase.from("issues").select("public_id")
   ]);
 
-  logSupabaseReadError("projects for issue insert", projectError);
   logSupabaseReadError("subcontractors for issue insert", subcontractorError);
   logSupabaseReadError("issue public ids for issue insert", issueIdError);
 
-  if (projectError || subcontractorError || issueIdError || !projects?.length) {
+  if (!projectDbId || subcontractorError || issueIdError) {
     return null;
   }
 
-  const project = projects.find((item) => item.name === input.project) || projects[0];
   const subcontractor = subcontractors?.find((item) => item.name === input.subcontractor) || subcontractors?.[0] || null;
   const publicId = nextPublicIssueId((existingIssues || []).map((issue) => issue.public_id));
 
@@ -1260,7 +1390,7 @@ async function createSupabaseIssue(input: CreateIssueInput) {
     .from("issues")
     .insert({
       public_id: publicId,
-      project_id: project.id,
+      project_id: projectDbId,
       subcontractor_id: subcontractor?.id || null,
       title: input.title,
       description: input.description || "",

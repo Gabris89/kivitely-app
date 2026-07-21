@@ -6,11 +6,13 @@ export const dynamic = "force-dynamic";
 
 const allowedSeverities: BlockerSeverity[] = ["low", "normal", "high", "critical"];
 
-export async function GET() {
-  return NextResponse.json({ data: await listActiveBlockers() });
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  return NextResponse.json({ data: await listActiveBlockers(projectId) });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
   const body = await request.json().catch(() => null);
 
   if (!body?.title || !body?.description) {
@@ -22,6 +24,7 @@ export async function POST(request: NextRequest) {
 
   const severity = allowedSeverities.includes(body.severity) ? body.severity : "normal";
   const result = await createBlockerRecord({
+    projectId,
     title: String(body.title),
     description: String(body.description),
     trade: body.trade ? String(body.trade) : undefined,

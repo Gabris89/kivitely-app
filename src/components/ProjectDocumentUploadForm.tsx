@@ -9,7 +9,7 @@ type SaveState = {
   message: string;
 };
 
-export function ProjectDocumentUploadForm() {
+export function ProjectDocumentUploadForm({ projectId }: { projectId: string }) {
   const router = useRouter();
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
 
@@ -26,7 +26,7 @@ export function ProjectDocumentUploadForm() {
 
     setSaveState({ status: "saving", message: "Dokumentum feltöltése..." });
 
-    const response = await fetch("/api/documents", {
+    const response = await fetch(`/api/projects/${projectId}/documents`, {
       method: "POST",
       body: formData
     }).catch(() => null);

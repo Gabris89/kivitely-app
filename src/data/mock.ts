@@ -2,6 +2,7 @@ import type { Activity, BlockerItem, EvidencePhoto, Issue, IssueEvent, Project, 
 
 export const project: Project = {
   id: "project-bp13-001",
+  publicId: "PRJ-001",
   name: "Budapest XIII. társasház felújítás",
   address: "Budapest XIII., Váci út 112.",
   client: "Duna Invest Zrt.",

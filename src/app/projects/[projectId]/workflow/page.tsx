@@ -6,14 +6,15 @@ import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
-export default async function WorkflowPage() {
-  const issues = await listIssues();
+export default async function WorkflowPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const issues = await listIssues(projectId);
 
   return (
     <>
       <PageHeader title="Workflow tábla" subtitle="A hibalista Kanban nézete: innen látszik, hol akad el a kivitelezési folyamat.">
-        <Link href="/issues" className="button ghost">Lista nézet</Link>
-        <Link href="/issues/new" className="button primary">+ Új hiba</Link>
+        <Link href={`/projects/${projectId}/issues`} className="button ghost">Lista nézet</Link>
+        <Link href={`/projects/${projectId}/issues/new`} className="button primary">+ Új hiba</Link>
       </PageHeader>
 
       <section className="workflow-board">
@@ -30,7 +31,7 @@ export default async function WorkflowPage() {
 
               <div className="workflow-card-list">
                 {columnIssues.map((issue) => (
-                  <Link className="workflow-card" href={`/issues/${issue.id}`} key={issue.id}>
+                  <Link className="workflow-card" href={`/projects/${projectId}/issues/${issue.id}`} key={issue.id}>
                     <span className="id-link">{issue.id}</span>
                     <strong>{issue.title}</strong>
                     <small>{issue.location}</small>

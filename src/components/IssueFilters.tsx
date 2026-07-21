@@ -8,7 +8,7 @@ import { SearchBox } from "@/components/SearchBox";
 
 type Filter = "all" | IssueStatus;
 
-export function IssueFilters({ issues }: { issues: Issue[] }) {
+export function IssueFilters({ issues, projectId }: { issues: Issue[]; projectId: string }) {
   const [statusFilter, setStatusFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
 
@@ -51,7 +51,7 @@ export function IssueFilters({ issues }: { issues: Issue[] }) {
         })}
       </div>
 
-      <IssueTable issues={filteredIssues} />
+      <IssueTable issues={filteredIssues} projectId={projectId} />
     </div>
   );
 }

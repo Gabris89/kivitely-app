@@ -1,5 +1,5 @@
 import { formatHuf } from "@/lib/format";
-import { getProject, listTigItems, listTigPackages } from "@/lib/repository";
+import { getProjectByPublicId, listTigItems, listTigPackages } from "@/lib/repository";
 import { PageHeader } from "@/components/PageHeader";
 
 const packageStatusLabels = {
@@ -11,8 +11,12 @@ const packageStatusLabels = {
 
 export const dynamic = "force-dynamic";
 
-export default async function TigPage() {
-  const [project, tigPackages] = await Promise.all([getProject(), listTigPackages()]);
+export default async function TigPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const [project, tigPackages] = await Promise.all([getProjectByPublicId(projectId), listTigPackages(projectId)]);
+
+  if (!project) return null;
+
   const tigItems = listTigItems();
   const included = tigItems.filter((item) => item.included);
   const total = included.reduce((sum, item) => sum + item.valueHuf, 0);
@@ -43,7 +47,7 @@ export default async function TigPage() {
 
           <div className="section-title tig-package-title">
             <h2>TIG csomagok</h2>
-            <span className="pill">mock API: /api/tig</span>
+            <span className="pill">read-only</span>
           </div>
           <div className="package-list">
             {tigPackages.map((pkg) => (

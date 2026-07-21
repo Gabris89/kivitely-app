@@ -16,67 +16,105 @@ type NavSection = {
   items: NavItem[];
 };
 
-const navSections: NavSection[] = [
+function getProjectId(pathname: string) {
+  return pathname.match(/^\/projects\/([^/]+)/)?.[1] || null;
+}
+
+function projectNavSections(projectId: string): NavSection[] {
+  return [
+    {
+      title: "Munka",
+      items: [
+        { href: `/projects/${projectId}`, label: "Dashboard", icon: "D" },
+        { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "H" },
+        { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "+" },
+        { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "!" }
+      ]
+    },
+    {
+      title: "Dokumentáció",
+      items: [
+        { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "D" },
+        { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "N" },
+        { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "T" }
+      ]
+    },
+    {
+      title: "Admin",
+      items: [
+        { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "W" },
+        { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
+        { href: "/projects", label: "Projektek", icon: "P" }
+      ]
+    }
+  ];
+}
+
+const globalNavSections: NavSection[] = [
   {
-    title: "Munka",
+    title: "Projektek",
     items: [
-      { href: "/", label: "Dashboard", icon: "D" },
-      { href: "/issues", label: "Hibalista", icon: "H" },
-      { href: "/issues/new", label: "Új hiba", icon: "+" },
-      { href: "/blockers", label: "Akadálylista", icon: "!" }
-    ]
-  },
-  {
-    title: "Dokumentáció",
-    items: [
-      { href: "/documents", label: "Dokumentumok", icon: "D" },
-      { href: "/work-logs", label: "Teljesítménynapló", icon: "N" },
-      { href: "/tig", label: "TIG csomag", icon: "T" }
+      { href: "/projects", label: "Projektek", icon: "P" },
+      { href: "/projects/new", label: "Új projekt", icon: "+" }
     ]
   },
   {
     title: "Admin",
-    items: [
-      { href: "/workflow", label: "Workflow tábla", icon: "W" },
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
-    ]
+    items: [{ href: "/subcontractors", label: "Alvállalkozók", icon: "A" }]
   }
 ];
 
-const bottomNav = [
-  { href: "/", label: "Dashboard", icon: "D" },
-  { href: "/issues", label: "Hibalista", icon: "H" },
-  { href: "/issues/new", label: "Új hiba", icon: "+" }
-];
+function projectBottomNav(projectId: string) {
+  return [
+    { href: `/projects/${projectId}`, label: "Dashboard", icon: "D" },
+    { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "H" },
+    { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "+" }
+  ];
+}
 
-const mobileMenuSections: NavSection[] = [
-  {
-    title: "Munka",
-    items: [
-      { href: "/blockers", label: "Akadálylista", icon: "!" },
-      { href: "/workflow", label: "Workflow tábla", icon: "W" }
-    ]
-  },
-  {
-    title: "Dokumentáció",
-    items: [
-      { href: "/documents", label: "Dokumentumok", icon: "D" },
-      { href: "/work-logs", label: "Teljesítménynapló", icon: "N" },
-      { href: "/tig", label: "TIG csomag", icon: "T" }
-    ]
-  },
+const globalBottomNav = [{ href: "/projects", label: "Projektek", icon: "P" }];
+
+function projectMobileMenuSections(projectId: string): NavSection[] {
+  return [
+    {
+      title: "Munka",
+      items: [
+        { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "!" },
+        { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "W" }
+      ]
+    },
+    {
+      title: "Dokumentáció",
+      items: [
+        { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "D" },
+        { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "N" },
+        { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "T" }
+      ]
+    },
+    {
+      title: "Admin",
+      items: [
+        { href: "/subcontractors", label: "Alvállalkozók", icon: "A" },
+        { href: "/projects", label: "Projektek", icon: "P" }
+      ]
+    }
+  ];
+}
+
+const globalMobileMenuSections: NavSection[] = [
   {
     title: "Admin",
     items: [
+      { href: "/projects/new", label: "Új projekt", icon: "+" },
       { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
     ]
   }
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  if (href === "/issues") return pathname === "/issues" || (pathname.startsWith("/issues/") && pathname !== "/issues/new");
-  return pathname.startsWith(href);
+  if (href === "/projects") return pathname === "/projects";
+  if (href.endsWith("/issues")) return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`));
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function isBottomNavActive(pathname: string, href: string, isMenuOpen: boolean) {
@@ -91,6 +129,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [pendingMenuHref, setPendingMenuHref] = useState<string | null>(null);
   const activePathname = hasHydrated ? pathname : "";
+  const projectId = getProjectId(activePathname);
+  const navSections = projectId ? projectNavSections(projectId) : globalNavSections;
+  const bottomNav = projectId ? projectBottomNav(projectId) : globalBottomNav;
+  const mobileMenuSections = projectId ? projectMobileMenuSections(projectId) : globalMobileMenuSections;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -112,8 +154,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname, pendingMenuHref]);
 
   function closeMenuToDashboard() {
-    setPendingMenuHref("/");
-    router.push("/");
+    const target = projectId ? `/projects/${projectId}` : "/projects";
+    setPendingMenuHref(target);
+    router.push(target);
   }
 
   function navigateFromMenu(href: string) {
@@ -134,7 +177,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="Kivitely kezdőlap">
+        <Link href={projectId ? `/projects/${projectId}` : "/projects"} className="brand" aria-label="Kivitely kezdőlap">
           <span className="brand-mark">KV</span>
           <span>
             <strong>Kivitely</strong>

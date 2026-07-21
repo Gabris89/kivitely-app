@@ -21,8 +21,9 @@ const severityLabels: Record<BlockerSeverity, string> = {
   critical: "Kritikus"
 };
 
-export default async function BlockersPage() {
-  const blockers = await listActiveBlockers();
+export default async function BlockersPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const blockers = await listActiveBlockers(projectId);
 
   return (
     <>
@@ -30,7 +31,7 @@ export default async function BlockersPage() {
         title="Akadálylista"
         subtitle="Read-only áttekintés az aktív, munkát lassító akadályokról."
       >
-        <HeaderLink href="/blockers/new" variant="primary">+ Új akadály</HeaderLink>
+        <HeaderLink href={`/projects/${projectId}/blockers/new`} variant="primary">+ Új akadály</HeaderLink>
       </PageHeader>
 
       <section className="blocker-page-list" aria-label="Aktív akadályok">

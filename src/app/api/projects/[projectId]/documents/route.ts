@@ -60,11 +60,13 @@ function getEffectiveMimeType(file: File) {
   return inferredType || file.type || "application/octet-stream";
 }
 
-export async function GET() {
-  return NextResponse.json({ data: await listProjectDocuments() });
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  return NextResponse.json({ data: await listProjectDocuments(projectId) });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
   const contentType = request.headers.get("content-type") || "";
 
   if (!contentType.includes("multipart/form-data")) {
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await createProjectDocumentRecord({
-    projectId: String(formData.get("projectId") || "") || undefined,
+    projectId,
     documentType,
     title,
     description: String(formData.get("description") || "").trim() || undefined,

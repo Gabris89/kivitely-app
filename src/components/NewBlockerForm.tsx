@@ -16,7 +16,7 @@ const responsibleOptions = [
   "Supabase Burkolo Kft."
 ];
 
-export function NewBlockerForm() {
+export function NewBlockerForm({ projectId }: { projectId: string }) {
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -39,7 +39,7 @@ export function NewBlockerForm() {
       responsibleName: String(formData.get("responsibleName") || "")
     };
 
-    const response = await fetch("/api/blockers", {
+    const response = await fetch(`/api/projects/${projectId}/blockers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)

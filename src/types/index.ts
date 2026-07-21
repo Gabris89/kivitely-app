@@ -14,6 +14,7 @@ export type EvidenceType = "before_photo" | "after_photo" | "document" | "commen
 
 export type Project = {
   id: string;
+  publicId: string;
   name: string;
   address: string;
   client: string;

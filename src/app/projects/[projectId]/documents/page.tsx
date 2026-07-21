@@ -5,8 +5,9 @@ import { listProjectDocuments } from "@/lib/repository";
 
 export const dynamic = "force-dynamic";
 
-export default async function DocumentsPage() {
-  const documents = await listProjectDocuments();
+export default async function DocumentsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const documents = await listProjectDocuments(projectId);
 
   return (
     <>
@@ -15,7 +16,7 @@ export default async function DocumentsPage() {
         subtitle="Projekt szintű tervek és dokumentumok feltöltése, megnyitása és áttekintése."
       />
 
-      <ProjectDocumentUploadForm />
+      <ProjectDocumentUploadForm projectId={projectId} />
 
       <DocumentFilters documents={documents} />
     </>

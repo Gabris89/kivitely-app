@@ -12,9 +12,9 @@ import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
-export default async function IssueDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const issue = await getIssue(id);
+export default async function IssueDetailPage({ params }: { params: Promise<{ projectId: string; id: string }> }) {
+  const { projectId, id } = await params;
+  const issue = await getIssue(id, projectId);
 
   if (!issue) notFound();
 
@@ -24,9 +24,9 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeader title={`${issue.id} · ${issue.title}`}>
-        <Link className="button ghost" href="/issues">Vissza</Link>
+        <Link className="button ghost" href={`/projects/${projectId}/issues`}>Vissza</Link>
         {tigReadiness.ready ? (
-          <Link className="button primary" href="/tig">TIG csomag előnézet</Link>
+          <Link className="button primary" href={`/projects/${projectId}/tig`}>TIG csomag előnézet</Link>
         ) : null}
       </PageHeader>
 

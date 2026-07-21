@@ -4,13 +4,13 @@ import { getEvidenceChecklistStatus, getIssueTigReadiness } from "@/lib/issueMet
 import type { Issue } from "@/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 
-function IssueFieldCard({ issue }: { issue: Issue }) {
+function IssueFieldCard({ issue, projectId }: { issue: Issue; projectId: string }) {
   const evidence = getEvidenceChecklistStatus(issue);
   const tig = getIssueTigReadiness(issue);
   const photoCount = issue.photosBefore + issue.photosAfter;
 
   return (
-    <Link href={`/issues/${issue.id}`} className="issue-card">
+    <Link href={`/projects/${projectId}/issues/${issue.id}`} className="issue-card">
       <div className="issue-card-head">
         <span className="id-link">{issue.id}</span>
         <StatusBadge status={issue.status} />
@@ -31,12 +31,12 @@ function IssueFieldCard({ issue }: { issue: Issue }) {
   );
 }
 
-export function IssueTable({ issues, compact = false }: { issues: Issue[]; compact?: boolean }) {
+export function IssueTable({ issues, projectId, compact = false }: { issues: Issue[]; projectId: string; compact?: boolean }) {
   return (
     <>
       <div className="issue-card-list">
         {issues.map((issue) => (
-          <IssueFieldCard issue={issue} key={issue.id} />
+          <IssueFieldCard issue={issue} projectId={projectId} key={issue.id} />
         ))}
       </div>
 
@@ -57,7 +57,7 @@ export function IssueTable({ issues, compact = false }: { issues: Issue[]; compa
             {issues.map((issue) => (
               <tr key={issue.id}>
                 <td>
-                  <Link href={`/issues/${issue.id}`} className="id-link">
+                  <Link href={`/projects/${projectId}/issues/${issue.id}`} className="id-link">
                     {issue.id}
                   </Link>
                 </td>

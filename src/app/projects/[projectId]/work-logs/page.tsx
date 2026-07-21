@@ -23,8 +23,9 @@ function formatQuantity(quantity?: number, unit?: string) {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
-export default async function WorkLogsPage() {
-  const workLogs = await listWorkLogs();
+export default async function WorkLogsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+  const workLogs = await listWorkLogs(projectId);
 
   return (
     <>

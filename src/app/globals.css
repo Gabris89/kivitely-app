@@ -131,6 +131,36 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .page-header p { margin: 10px 0 0; color: var(--muted); }
 .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
+.project-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 8px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  width: fit-content;
+  max-width: 100%;
+}
+.project-banner-id {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  color: var(--bg);
+  background: var(--brand);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.project-banner-name {
+  overflow: hidden;
+  color: var(--soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
 .button {
   display: inline-flex;
   align-items: center;

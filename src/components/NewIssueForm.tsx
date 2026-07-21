@@ -3,18 +3,17 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { project, subcontractors } from "@/data/mock";
+import type { Subcontractor } from "@/types";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
   message: string;
 };
 
-type RequiredIssueField = "title" | "project" | "location" | "trade" | "priority" | "subcontractor" | "dueDate";
+type RequiredIssueField = "title" | "location" | "trade" | "priority" | "subcontractor" | "dueDate";
 
 const requiredFields: Array<{ name: RequiredIssueField; label: string }> = [
   { name: "title", label: "hiba címe" },
-  { name: "project", label: "projekt" },
   { name: "location", label: "helyszín" },
   { name: "trade", label: "szakág" },
   { name: "priority", label: "prioritás" },
@@ -22,7 +21,15 @@ const requiredFields: Array<{ name: RequiredIssueField; label: string }> = [
   { name: "dueDate", label: "határidő" }
 ];
 
-export function NewIssueForm() {
+export function NewIssueForm({
+  projectId,
+  projectName,
+  subcontractors
+}: {
+  projectId: string;
+  projectName: string;
+  subcontractors: Subcontractor[];
+}) {
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
 
@@ -61,7 +68,6 @@ export function NewIssueForm() {
     const formData = new FormData(form);
     const payload = {
       title: String(formData.get("title") || ""),
-      project: String(formData.get("project") || ""),
       location: String(formData.get("location") || ""),
       trade: String(formData.get("trade") || ""),
       priority: String(formData.get("priority") || "normal"),
@@ -84,7 +90,7 @@ export function NewIssueForm() {
 
     setInvalidFields(new Set());
 
-    const response = await fetch("/api/issues", {
+    const response = await fetch(`/api/projects/${projectId}/issues`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -106,9 +112,9 @@ export function NewIssueForm() {
           Hiba címe
           <input name="title" aria-invalid={isInvalid("title")} placeholder="Pl. Sérült burkolat a lépcsőháznál" suppressHydrationWarning />
         </label>
-        <label className={isInvalid("project") ? "field-error" : undefined}>
+        <label>
           Projekt
-          <input name="project" defaultValue={project.name} readOnly aria-invalid={isInvalid("project")} suppressHydrationWarning />
+          <input defaultValue={projectName} readOnly suppressHydrationWarning />
         </label>
         <label className={isInvalid("location") ? "field-error" : undefined}>
           Helyszín
@@ -164,7 +170,7 @@ export function NewIssueForm() {
 
       <div className="form-footer">
         <div className="form-actions">
-          <Link className="button ghost" href="/issues">Mégse</Link>
+          <Link className="button ghost" href={`/projects/${projectId}/issues`}>Mégse</Link>
           <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
             {saveState.status === "saving" ? "Mentés..." : "Hiba rögzítése"}
           </button>
