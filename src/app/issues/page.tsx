@@ -1,11 +1,11 @@
-import { listIssues } from "@/lib/repository";
+import { listIssues, listProjects } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { IssueFilters } from "@/components/IssueFilters";
 
 export const dynamic = "force-dynamic";
 
 export default async function AllIssuesPage() {
-  const issues = await listIssues();
+  const [issues, projects] = await Promise.all([listIssues(), listProjects()]);
 
   return (
     <>
@@ -18,7 +18,7 @@ export default async function AllIssuesPage() {
           <h2>Aktív hibák</h2>
           <span className="pill">összes projekt</span>
         </div>
-        <IssueFilters issues={issues} showProject />
+        <IssueFilters issues={issues} showProject projects={projects} />
       </section>
     </>
   );

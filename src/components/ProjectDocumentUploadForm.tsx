@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SaveIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -105,6 +106,7 @@ export function ProjectDocumentUploadForm({ projectId }: { projectId: string }) 
           <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
         ) : <span />}
         <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+          <SaveIcon />
           {saveState.status === "saving" ? "Feltöltés..." : "Dokumentum feltöltése"}
         </button>
       </div>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { signIn } from "./actions";
 
 function safeNextPath(value?: string) {
@@ -19,11 +20,10 @@ export default async function LoginPage({
           sent but before/while React hydrates - same known cause as ProjectDocumentUploadForm. */}
       <form className="card login-card" action={signIn} suppressHydrationWarning>
         <div className="login-head">
-          <span className="brand-mark">KV</span>
-          <div>
-            <strong>Kivitely</strong>
-            <small>Bejelentkezés</small>
-          </div>
+          <span className="brand-mark">
+            <Image src="/brand/logo.png" alt="Kivitely" width={120} height={120} priority />
+          </span>
+          <small>Bejelentkezés</small>
         </div>
 
         {params.error ? <div className="inline-note error-message">{params.error}</div> : null}

@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { SaveIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -103,6 +104,7 @@ export function NewBlockerForm({ projectId }: { projectId: string }) {
       <div className="form-footer">
         {saveState.message ? <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span> : <span />}
         <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+          <SaveIcon />
           {saveState.status === "saving" ? "Mentés..." : "Akadály rögzítése"}
         </button>
       </div>

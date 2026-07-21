@@ -45,6 +45,25 @@ export type CreateIssueResult = {
   mode: "supabase" | "mock";
 };
 
+export type UpdateIssueInput = {
+  title: string;
+  description?: string;
+  location: string;
+  area?: string;
+  trade?: string;
+  subcontractor: string;
+  assignee?: string;
+  dueDate: string;
+  priority?: Priority;
+  valueHuf?: number;
+  status?: IssueStatus;
+};
+
+export type UpdateIssueResult = {
+  issue: Issue | null;
+  mode: "supabase" | "mock";
+};
+
 export type CreateBlockerInput = {
   projectId: string;
   title: string;
@@ -57,6 +76,27 @@ export type CreateBlockerInput = {
 
 export type CreateBlockerResult = {
   blocker: BlockerItem;
+  mode: "supabase" | "mock";
+};
+
+export type UpdateBlockerInput = {
+  title: string;
+  description: string;
+  trade?: string;
+  area?: string;
+  severity?: BlockerSeverity;
+  status: BlockerStatus;
+  resolutionNote?: string;
+  responsibleName?: string;
+};
+
+export type UpdateBlockerResult = {
+  blocker: BlockerItem | null;
+  mode: "supabase" | "mock";
+};
+
+export type DeleteBlockerResult = {
+  ok: boolean;
   mode: "supabase" | "mock";
 };
 
@@ -101,6 +141,11 @@ export type CreateIssueEvidenceResult = {
 };
 
 export type DeleteIssueEvidenceResult = {
+  ok: boolean;
+  mode: "supabase" | "mock";
+};
+
+export type DeleteIssueResult = {
   ok: boolean;
   mode: "supabase" | "mock";
 };
@@ -160,17 +205,6 @@ export type SavePlanCalibrationResult = {
   ok: boolean;
   mode: "supabase" | "mock";
 };
-
-export type MoveIssueStatusResult =
-  | {
-      ok: true;
-      issue: Issue;
-      mode: "supabase" | "mock";
-    }
-  | {
-      ok: false;
-      error: string;
-    };
 
 type SupabaseIssueRow = {
   id: string;
@@ -276,7 +310,7 @@ type SupabaseBlockerRow = {
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
-  projects?: { name: string | null } | null;
+  projects?: { name: string | null; public_id: string | null } | null;
   created_by?: { display_name: string | null } | null;
   responsible?: { display_name: string | null } | null;
 };
@@ -495,7 +529,7 @@ function mapBlocker(row: SupabaseBlockerRow): BlockerItem {
   return {
     id: row.id,
     publicId: row.public_id,
-    projectId: row.project_id,
+    projectId: row.projects?.public_id || "",
     projectName: row.projects?.name || "Nincs megadva",
     createdByProfileId: row.created_by_profile_id || "",
     createdByName: row.created_by?.display_name || "Nincs megadva",
@@ -1454,20 +1488,146 @@ export async function listActiveBlockers(projectId: string) {
   if (error) return fallback;
   if (!rows?.length) return [];
 
+  const withRelations = await attachBlockerRelations(rows);
+  return withRelations.map(mapBlocker);
+}
+
+export async function listBlockers(projectId?: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return mockBlockerItems;
+
+  let query = supabase.from("blocker_list").select("*").order("created_at", { ascending: false });
+
+  if (projectId) {
+    const projectDbId = await getSupabaseProjectDbId(projectId);
+    if (!projectDbId) return [];
+    query = query.eq("project_id", projectDbId);
+  }
+
+  const { data, error } = await query;
+
+  logSupabaseReadError("blocker_list", error);
+
+  if (error) return mockBlockerItems;
+  const rows = (data as SupabaseBlockerRow[] | null) || [];
+  const withRelations = await attachBlockerRelations(rows);
+  return withRelations.map(mapBlocker);
+}
+
+export async function getBlockerByPublicId(publicId: string) {
+  const blockers = await listBlockers();
+  return blockers.find((blocker) => blocker.publicId === publicId);
+}
+
+async function getSupabaseBlockerDbId(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("blocker_list")
+    .select("id")
+    .eq("public_id", publicId)
+    .maybeSingle();
+
+  logSupabaseReadError("blocker id lookup", error);
+
+  return error ? null : data?.id || null;
+}
+
+async function updateSupabaseBlocker(publicId: string, input: UpdateBlockerInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const responsibleResult = input.responsibleName
+    ? await supabase.from("profiles").select("id,display_name").eq("display_name", input.responsibleName).maybeSingle()
+    : null;
+
+  logSupabaseReadError("profiles for blocker update", responsibleResult?.error || null);
+
+  const responsible = responsibleResult?.error ? null : responsibleResult?.data || null;
+  const isNewlyResolved = input.status === "resolved" || input.status === "closed";
+
+  const { data, error } = await supabase
+    .from("blocker_list")
+    .update({
+      title: input.title,
+      description: input.description,
+      trade: input.trade || null,
+      area: input.area || null,
+      severity: normalizeBlockerSeverity(input.severity),
+      status: input.status,
+      resolution_note: input.resolutionNote || null,
+      resolved_at: isNewlyResolved ? new Date().toISOString() : null,
+      responsible_profile_id: responsible?.id || null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("public_id", publicId)
+    .select("*")
+    .maybeSingle();
+
+  logSupabaseWriteError("blocker update", error);
+
+  if (error || !data) return null;
+  const [withRelations] = await attachBlockerRelations([data as SupabaseBlockerRow]);
+  return mapBlocker(withRelations);
+}
+
+export async function updateBlockerRecord(publicId: string, input: UpdateBlockerInput): Promise<UpdateBlockerResult> {
+  const updated = await updateSupabaseBlocker(publicId, input);
+
+  if (updated) {
+    return { blocker: updated, mode: "supabase" };
+  }
+
+  return { blocker: null, mode: "mock" };
+}
+
+async function deleteSupabaseBlocker(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const blockerDbId = await getSupabaseBlockerDbId(publicId);
+  if (!blockerDbId) return null;
+
+  const { error } = await supabase.from("blocker_list").delete().eq("id", blockerDbId);
+
+  logSupabaseWriteError("blocker delete", error);
+
+  return error ? null : true;
+}
+
+export async function deleteBlockerRecord(publicId: string): Promise<DeleteBlockerResult> {
+  const supabaseDeleted = await deleteSupabaseBlocker(publicId);
+
+  if (supabaseDeleted) {
+    return { ok: true, mode: "supabase" };
+  }
+
+  if (getSupabaseClient()) {
+    return { ok: false, mode: "mock" };
+  }
+
+  return { ok: true, mode: "mock" };
+}
+
+async function attachBlockerRelations(rows: SupabaseBlockerRow[]) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return rows;
+
   const [{ data: projects, error: projectError }, { data: profiles, error: profileError }] = await Promise.all([
-    supabase.from("projects").select("id,name"),
+    supabase.from("projects").select("id,name,public_id"),
     supabase.from("profiles").select("id,display_name")
   ]);
 
   logSupabaseReadError("projects for blocker_list", projectError);
   logSupabaseReadError("profiles for blocker_list", profileError);
 
-  const projectNames = new Map((projects || []).map((project) => [project.id, project.name]));
+  const projectInfo = new Map((projects || []).map((project) => [project.id, { name: project.name, public_id: project.public_id }]));
   const profileNames = new Map((profiles || []).map((profile) => [profile.id, profile.display_name]));
 
-  return rows.map((row) => mapBlocker({
+  return rows.map((row) => ({
     ...row,
-    projects: { name: projectNames.get(row.project_id) || null },
+    projects: projectInfo.get(row.project_id) || null,
     created_by: { display_name: row.created_by_profile_id ? profileNames.get(row.created_by_profile_id) || null : null },
     responsible: { display_name: row.responsible_profile_id ? profileNames.get(row.responsible_profile_id) || null : null }
   }));
@@ -1495,7 +1655,7 @@ function createMockBlocker(input: CreateBlockerInput): BlockerItem {
   return {
     id: `mock-blocker-${Date.now()}`,
     publicId: `AKA-M${String(Date.now()).slice(-3)}`,
-    projectId: mockProject.id,
+    projectId: mockProject.publicId,
     projectName: mockProject.name,
     createdByProfileId: "mock-user",
     createdByName: "Mock fallback",
@@ -1562,7 +1722,7 @@ async function createSupabaseBlocker(input: CreateBlockerInput): Promise<Blocker
   return {
     id: `supabase-blocker-${Date.now()}`,
     publicId,
-    projectId: project.id,
+    projectId: project.publicId,
     projectName: project.name,
     createdByProfileId: "",
     createdByName: "Supabase",
@@ -1683,50 +1843,6 @@ export async function createIssueRecord(input: CreateIssueInput): Promise<Create
   };
 }
 
-export function moveIssueStatus(issue: Issue, targetStatus: IssueStatus): MoveIssueStatusResult {
-  if (!canMoveIssue(issue, targetStatus, "project_manager")) {
-    return {
-      ok: false,
-      error: `Nem engedélyezett státuszváltás: ${issue.status} → ${targetStatus}`
-    };
-  }
-
-  return {
-    ok: true,
-    issue: {
-      ...issue,
-      status: targetStatus,
-      updatedAt: new Date().toISOString().slice(0, 10)
-    },
-    mode: "mock"
-  };
-}
-
-async function updateSupabaseIssueStatus(issue: Issue, targetStatus: IssueStatus) {
-  const supabase = getSupabaseClient();
-  if (!supabase) return null;
-
-  const issueDbId = await getSupabaseIssueDbId(issue.id);
-  if (!issueDbId) return null;
-
-  const { data, error } = await supabase
-    .from("issues")
-    .update({
-      status: targetStatus,
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", issueDbId)
-    .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
-    .single();
-
-  logSupabaseWriteError("issue status", error);
-
-  return error || !data ? null : {
-    issue: mapIssue(data as SupabaseIssueRow),
-    issueDbId
-  };
-}
-
 async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, targetStatus: IssueStatus) {
   const supabase = getSupabaseClient();
   if (!supabase) return false;
@@ -1747,25 +1863,91 @@ async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, target
   return !error;
 }
 
-export async function moveIssueStatusRecord(issue: Issue, targetStatus: IssueStatus): Promise<MoveIssueStatusResult> {
-  if (!canMoveIssue(issue, targetStatus, "project_manager")) {
-    return {
-      ok: false,
-      error: `Nem engedélyezett státuszváltás: ${issue.status} → ${targetStatus}`
-    };
+async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): Promise<Issue | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const currentIssue = await getIssue(publicId);
+  if (!currentIssue) return null;
+
+  const issueDbId = await getSupabaseIssueDbId(publicId);
+  if (!issueDbId) return null;
+
+  const { data: subcontractors, error: subcontractorError } = await supabase
+    .from("subcontractors")
+    .select("id,name");
+
+  logSupabaseReadError("subcontractors for issue update", subcontractorError);
+
+  const subcontractor = subcontractors?.find((item) => item.name === input.subcontractor) || null;
+  const targetStatus = input.status && canMoveIssue(currentIssue, input.status) ? input.status : currentIssue.status;
+
+  const { data, error } = await supabase
+    .from("issues")
+    .update({
+      title: input.title,
+      description: input.description || "",
+      location: input.location,
+      area: input.area || "Nincs megadva",
+      trade: input.trade || "Nincs megadva",
+      subcontractor_id: subcontractor?.id || null,
+      assignee_name: input.assignee || subcontractor?.name || "Nincs megadva",
+      due_date: input.dueDate,
+      priority: normalizePriority(input.priority),
+      value_huf: input.valueHuf || 0,
+      status: targetStatus,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", issueDbId)
+    .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
+    .single();
+
+  logSupabaseWriteError("issue update", error);
+
+  if (error || !data) return null;
+
+  if (targetStatus !== currentIssue.status) {
+    await createSupabaseStatusEvent(currentIssue, issueDbId, targetStatus);
   }
 
-  const supabaseResult = await updateSupabaseIssueStatus(issue, targetStatus);
-
-  if (supabaseResult) {
-    await createSupabaseStatusEvent(issue, supabaseResult.issueDbId, targetStatus);
-
-    return {
-      ok: true,
-      issue: supabaseResult.issue,
-      mode: "supabase"
-    };
-  }
-
-  return moveIssueStatus(issue, targetStatus);
+  return mapIssue(data as SupabaseIssueRow);
 }
+
+export async function updateIssueRecord(publicId: string, input: UpdateIssueInput): Promise<UpdateIssueResult> {
+  const updated = await updateSupabaseIssue(publicId, input);
+
+  if (updated) {
+    return { issue: updated, mode: "supabase" };
+  }
+
+  return { issue: null, mode: "mock" };
+}
+
+async function deleteSupabaseIssue(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const issueDbId = await getSupabaseIssueDbId(publicId);
+  if (!issueDbId) return null;
+
+  const { error } = await supabase.from("issues").delete().eq("id", issueDbId);
+
+  logSupabaseWriteError("issue delete", error);
+
+  return error ? null : true;
+}
+
+export async function deleteIssueRecord(publicId: string): Promise<DeleteIssueResult> {
+  const supabaseDeleted = await deleteSupabaseIssue(publicId);
+
+  if (supabaseDeleted) {
+    return { ok: true, mode: "supabase" };
+  }
+
+  if (getSupabaseClient()) {
+    return { ok: false, mode: "mock" };
+  }
+
+  return { ok: true, mode: "mock" };
+}
+

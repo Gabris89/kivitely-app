@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SaveIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -89,6 +90,7 @@ export function SubcontractorForm({ mode, publicId, initial }: Props) {
           <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
         ) : <span />}
         <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+          <SaveIcon />
           {saveState.status === "saving" ? "Mentés..." : mode === "create" ? "Alvállalkozó létrehozása" : "Mentés"}
         </button>
       </div>

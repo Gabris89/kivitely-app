@@ -4,6 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import type { Subcontractor } from "@/types";
+import { SaveIcon, CloseIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -171,11 +172,12 @@ export function NewIssueForm({
 
       <div className="form-footer">
         <div className="form-actions">
-          <Link className="button ghost" href={`/projects/${projectId}/issues`}>Mégse</Link>
+          <Link className="button ghost" href={`/projects/${projectId}/issues`}><CloseIcon />Mégse</Link>
           {saveState.status === "saved" && saveState.issueId ? (
             <Link className="button primary" href={`/projects/${projectId}/issues/${saveState.issueId}`}>Megnyitás</Link>
           ) : null}
           <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+            <SaveIcon />
             {saveState.status === "saving" ? "Mentés..." : "Hiba rögzítése"}
           </button>
         </div>

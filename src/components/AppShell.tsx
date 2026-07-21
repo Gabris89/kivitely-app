@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -49,6 +50,7 @@ function projectNavSections(projectId: string): NavSection[] {
       title: "Admin",
       items: [
         { href: "/issues", label: "Összes hiba", icon: "issues" },
+        { href: "/blockers", label: "Összes akadály", icon: "blockers" },
         { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
         { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
       ]
@@ -68,6 +70,7 @@ const globalNavSections: NavSection[] = [
     title: "Admin",
     items: [
       { href: "/issues", label: "Összes hiba", icon: "issues" },
+      { href: "/blockers", label: "Összes akadály", icon: "blockers" },
       { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
       { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
     ]
@@ -95,6 +98,7 @@ function projectMobileMenuGroups(projectId: string): NavItem[][] {
     ],
     [
       { href: "/issues", label: "Összes hiba", icon: "issues" },
+      { href: "/blockers", label: "Összes akadály", icon: "blockers" },
       { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
       { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" },
       { href: "/projects", label: "Projektek", icon: "projects" }
@@ -106,6 +110,7 @@ const globalMobileMenuGroups: NavItem[][] = [
   [
     { href: "/projects/new", label: "Új projekt", icon: "add" },
     { href: "/issues", label: "Összes hiba", icon: "issues" },
+    { href: "/blockers", label: "Összes akadály", icon: "blockers" },
     { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
     { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
   ]
@@ -178,10 +183,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <aside className="sidebar">
         <Link href={projectId ? `/projects/${projectId}` : "/projects"} className="brand" aria-label="Kivitely kezdőlap">
-          <span className="brand-mark">KV</span>
-          <span>
-            <strong>Kivitely</strong>
-            <small>Mock-data MVP</small>
+          <span className="brand-mark">
+            <Image src="/brand/logo.png" alt="Kivitely" width={120} height={120} priority />
           </span>
         </Link>
 
@@ -203,6 +206,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <form action={signOut} className="sidebar-logout" suppressHydrationWarning>
           <button type="submit" className="button ghost">
+            <NavIcon name="logout" />
             Kijelentkezés
           </button>
         </form>
@@ -237,6 +241,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <form action={signOut} className="mobile-menu-section" suppressHydrationWarning>
               <button type="submit" className="button ghost">
+                <NavIcon name="logout" />
                 Kijelentkezés
               </button>
             </form>

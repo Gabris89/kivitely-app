@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createBlockerRecord, listActiveBlockers } from "@/lib/repository";
+import { createBlockerRecord, listBlockers } from "@/lib/repository";
 import type { BlockerSeverity } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ const allowedSeverities: BlockerSeverity[] = ["low", "normal", "high", "critical
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  return NextResponse.json({ data: await listActiveBlockers(projectId) });
+  return NextResponse.json({ data: await listBlockers(projectId) });
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {

@@ -1,19 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Issue, IssueStatus, Project } from "@/types";
-import { issueStatusLabels, issueStatusOrder } from "@/lib/workflow";
-import { IssueTable } from "@/components/IssueTable";
+import type { BlockerItem, BlockerStatus, Project } from "@/types";
+import { blockerStatusLabels, blockerStatusOrder } from "@/lib/blockerWorkflow";
+import { BlockerTable } from "@/components/BlockerTable";
 import { SearchBox } from "@/components/SearchBox";
 
-type Filter = "all" | IssueStatus;
+type Filter = "all" | BlockerStatus;
 
-export function IssueFilters({
-  issues,
+export function BlockerFilters({
+  blockers,
   showProject = false,
   projects = []
 }: {
-  issues: Issue[];
+  blockers: BlockerItem[];
   showProject?: boolean;
   projects?: Project[];
 }) {
@@ -21,28 +21,29 @@ export function IssueFilters({
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  const filteredIssues = useMemo(() => {
+  const filteredBlockers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return issues.filter((issue) => {
-      const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
-      const matchesProject = projectFilter === "all" || issue.projectId === projectFilter;
-      const matchesSearch = !normalizedSearch || [issue.id, issue.title, issue.location, issue.subcontractor, issue.assignee, issue.projectName]
+    return blockers.filter((blocker) => {
+      const matchesStatus = statusFilter === "all" || blocker.status === statusFilter;
+      const matchesProject = projectFilter === "all" || blocker.projectId === projectFilter;
+      const matchesSearch = !normalizedSearch || [blocker.publicId, blocker.title, blocker.trade, blocker.area, blocker.responsibleName, blocker.projectName]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch);
 
       return matchesStatus && matchesProject && matchesSearch;
     });
-  }, [issues, search, statusFilter, projectFilter]);
+  }, [blockers, search, statusFilter, projectFilter]);
 
   return (
     <div className="issue-filter-stack">
       <SearchBox
         value={search}
         onChange={setSearch}
-        placeholder="ID, hiba, helyszín, alvállalkozó..."
-        resultCount={filteredIssues.length}
+        placeholder="ID, cím, szakma, felelős..."
+        resultCount={filteredBlockers.length}
       />
 
       {showProject && projects.length > 0 ? (
@@ -63,21 +64,21 @@ export function IssueFilters({
 
       <div className="status-filter-row" aria-label="Státusz szűrők">
         <button className={statusFilter === "all" ? "active" : ""} type="button" onClick={() => setStatusFilter("all")}>
-          Összes <strong>{issues.length}</strong>
+          Összes <strong>{blockers.length}</strong>
         </button>
-        {issueStatusOrder.map((status) => {
-          const count = issues.filter((issue) => issue.status === status).length;
+        {blockerStatusOrder.map((status) => {
+          const count = blockers.filter((blocker) => blocker.status === status).length;
           if (count === 0) return null;
 
           return (
             <button key={status} className={statusFilter === status ? "active" : ""} type="button" onClick={() => setStatusFilter(status)}>
-              {issueStatusLabels[status]} <strong>{count}</strong>
+              {blockerStatusLabels[status]} <strong>{count}</strong>
             </button>
           );
         })}
       </div>
 
-      <IssueTable issues={filteredIssues} showProject={showProject} />
+      <BlockerTable blockers={filteredBlockers} showProject={showProject} />
     </div>
   );
 }

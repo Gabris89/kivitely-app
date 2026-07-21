@@ -6,17 +6,7 @@ import { formatDate } from "@/lib/format";
 import type { ProjectDocument, ProjectDocumentType } from "@/types";
 import { ProjectDocumentViewer } from "@/components/ProjectDocumentViewer";
 import { SearchBox } from "@/components/SearchBox";
-
-function TrashIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4 7h16" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M6 7l1 14h10l1-14" />
-      <path d="M9 7V4h6v3" />
-    </svg>
-  );
-}
+import { TrashIcon } from "@/components/ActionIcons";
 
 const documentTypeLabels: Record<ProjectDocumentType, string> = {
   architectural_plan: "Építész terv",

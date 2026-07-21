@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Subcontractor } from "@/types";
+import { PencilIcon, TrashIcon } from "@/components/ActionIcons";
 
 export function SubcontractorList({ subcontractors }: { subcontractors: Subcontractor[] }) {
   const router = useRouter();
@@ -47,13 +48,14 @@ export function SubcontractorList({ subcontractors }: { subcontractors: Subcontr
             <div><dt>Heti zárási arány</dt><dd>{sub.weeklyClosureRate}%</dd></div>
           </dl>
           <div className="sub-card-actions">
-            <Link className="button ghost" href={`/subcontractors/${sub.publicId}/edit`}>Szerkesztés</Link>
+            <Link className="button ghost" href={`/subcontractors/${sub.publicId}/edit`}><PencilIcon />Szerkesztés</Link>
             <button
               type="button"
-              className="button ghost"
+              className="button danger"
               disabled={deletingId === sub.publicId}
               onClick={() => deleteSubcontractor(sub)}
             >
+              <TrashIcon />
               {deletingId === sub.publicId ? "Törlés..." : "Törlés"}
             </button>
           </div>

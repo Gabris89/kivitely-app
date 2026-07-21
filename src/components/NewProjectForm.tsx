@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
+import { SaveIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -78,6 +79,7 @@ export function NewProjectForm() {
             <Link className="button primary" href={`/projects/${saveState.projectId}`}>Megnyitás</Link>
           ) : null}
           <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+            <SaveIcon />
             {saveState.status === "saving" ? "Mentés..." : "Projekt létrehozása"}
           </button>
         </div>

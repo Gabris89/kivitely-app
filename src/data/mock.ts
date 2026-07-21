@@ -242,7 +242,7 @@ export const blockerItems: BlockerItem[] = [
   {
     id: "mock-blocker-1",
     publicId: "AKA-001",
-    projectId: project.id,
+    projectId: project.publicId,
     projectName: project.name,
     createdByProfileId: "worker-mock-1",
     createdByName: "Kovacs Anna",
@@ -260,7 +260,7 @@ export const blockerItems: BlockerItem[] = [
   {
     id: "mock-blocker-2",
     publicId: "AKA-002",
-    projectId: project.id,
+    projectId: project.publicId,
     projectName: project.name,
     createdByProfileId: "subcontractor-mock-1",
     createdByName: "Burkolo Kft.",
