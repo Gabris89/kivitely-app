@@ -1955,14 +1955,33 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
-  width: min(980px, calc(100vw - 36px));
-  height: min(860px, calc(100vh - 36px));
+  width: min(1180px, calc(100vw - 24px));
+  height: min(94vh, 980px);
   padding: 14px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: rgba(12, 20, 36, 0.98);
   box-shadow: var(--shadow);
+}
+/* True full-screen for the measurement tool, on phone and desktop alike:
+   no title/filename row (it has its own toolbar + Bezárás), no backdrop
+   margin, no rounded corners eating into the edges - every pixel goes to
+   the plan and its controls. */
+.document-viewer-backdrop-full { padding: 0; }
+/* Compound selector (not just .document-viewer-full) so this reliably wins
+   over the mobile @media .document-viewer override below regardless of
+   stylesheet order - both would otherwise be equal-specificity single
+   classes on the same element. */
+.document-viewer.document-viewer-full {
+  grid-template-rows: minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  padding: 0;
+  border: none;
+  border-radius: 0;
 }
 .document-viewer-head {
   display: flex;
@@ -2061,6 +2080,201 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+.measure-tool {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.measure-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.measure-toolbar-group { display: flex; align-items: center; gap: 8px; }
+.measure-toolbar select {
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.measure-message { margin: 6px 14px 0; }
+.measure-hint { margin: 6px 14px 0; color: var(--soft); font-size: 12px; line-height: 1.5; }
+.measure-undo {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 9px;
+  color: var(--soft);
+  font-size: 11px;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.measure-undo-danger { color: #ffaaa8; border-color: rgba(255, 107, 107, 0.4); background: rgba(255, 107, 107, 0.1); }
+.measure-point-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 6px 14px 0;
+}
+.measure-point-nav-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.measure-point-nav-group .measure-undo { margin-left: 0; }
+.measure-point-nav-label { color: var(--muted); font-size: 12px; font-weight: 850; min-width: 34px; text-align: center; }
+.measure-nudge {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--soft);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.measure-nudge:hover { color: var(--text); border-color: rgba(154, 247, 213, 0.5); }
+.measure-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  align-self: flex-start;
+  margin-top: 5px;
+}
+.measure-calibrate-input,
+.measure-save-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 14px 0;
+}
+.measure-calibrate-input label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+.measure-calibrate-input input,
+.measure-save-row input {
+  min-width: 140px;
+  padding: 8px 12px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.measure-save-row input { flex: 1 1 180px; }
+.measure-save-row textarea {
+  flex: 2 1 240px;
+  min-width: 180px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  resize: vertical;
+}
+.measure-save-row .button { flex: 0 0 auto; }
+.measure-stage-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 260px;
+  margin: 12px 14px;
+  overflow: auto;
+  /* The browser's own scroll-anchoring tries to keep whatever it thinks
+     was "in view" fixed whenever the content inside resizes (exactly what
+     zooming does) - it was fighting our own cursor/pinch-anchored scroll
+     math below, each zoom step pulling toward whatever the browser's
+     heuristic picked instead of the point the user was actually zooming
+     into. Disabling it here leaves scroll positioning entirely to our JS. */
+  overflow-anchor: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  /* pan-x pan-y (not pinch-zoom): a two-finger pinch is handled by our own
+     JS (see PlanMeasurementTool's touch handlers) so it zooms the plan
+     itself instead of the whole browser page. Explicitly listing only
+     pan-x/pan-y stops the browser from also trying to natively pinch-zoom
+     this element, so the two don't fight each other; single-finger
+     scrolling/panning still works exactly as before. */
+  touch-action: pan-x pan-y;
+}
+.measure-base-image, .measure-base-canvas { display: block; }
+.measure-konva-stage { position: absolute; top: 0; left: 0; touch-action: pan-x pan-y; }
+.measure-list {
+  flex: 0 0 auto;
+  max-height: 160px;
+  margin: 0 14px 14px;
+  padding-top: 10px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+.measure-list-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  color: var(--soft);
+  background: none;
+  border: none;
+}
+.measure-list h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.measure-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.measure-list-item:last-child { border-bottom: none; }
+.measure-list-item > div:first-child { min-width: 0; }
+.measure-list-item .measure-undo,
+.measure-list-item .document-row-delete { flex-shrink: 0; margin-left: 0; }
+.measure-list-item strong { display: block; font-size: 13px; }
+.measure-list-item small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.measure-note { margin: 4px 0 0; color: var(--soft); font-size: 12px; line-height: 1.4; }
+.measure-hint-full { margin-right: 4px; }
+.measure-hint-compact { color: var(--text); font-weight: 850; }
+
+/* Phones: the plan itself is the whole point of this tool, so every row of
+   chrome above/below it is space stolen from what the user actually needs
+   to see. Drop the descriptive instructions (kept on wider screens), shrink
+   the remaining controls, and tighten every margin/gap that isn't load-bearing. */
+@media (max-width: 720px) {
+  .measure-hint-full { display: none; }
+  .measure-hint { margin: 4px 10px 0; font-size: 11px; }
+  .measure-message { margin: 4px 10px 0; }
+  .measure-toolbar { padding: 6px 10px; gap: 6px 8px; }
+  .measure-toolbar .button { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+  .measure-toolbar-group { gap: 4px; }
+  .measure-point-nav { margin: 4px 10px 0; gap: 6px 10px; }
+  .measure-nudge { width: 26px; height: 26px; font-size: 12px; }
+  .measure-undo { padding: 3px 7px; font-size: 10px; }
+  .measure-calibrate-input, .measure-save-row { margin: 6px 10px 0; }
+  .measure-stage-wrap { margin: 6px 10px; min-height: 0; }
+  .measure-list { margin: 0 10px 10px; }
 }
 .pdf-viewer {
   display: flex;

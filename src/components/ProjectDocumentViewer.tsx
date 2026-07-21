@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PdfCanvasViewer } from "@/components/PdfCanvasViewer";
+import { PlanMeasurementTool } from "@/components/PlanMeasurementTool";
 import type { ProjectDocument } from "@/types";
 
 type Props = {
@@ -41,6 +42,7 @@ function ZoomOutIcon() {
 export function ProjectDocumentViewer({ doc }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [zoom, setZoom] = useState(MIN_ZOOM);
+  const [measureMode, setMeasureMode] = useState(false);
 
   const url = doc.url;
   const isImage = (doc.mimeType || "").startsWith("image/");
@@ -82,6 +84,7 @@ export function ProjectDocumentViewer({ doc }: Props) {
 
   function open() {
     setZoom(MIN_ZOOM);
+    setMeasureMode(false);
     setIsOpen(true);
   }
 
@@ -104,43 +107,54 @@ export function ProjectDocumentViewer({ doc }: Props) {
       </button>
 
       {isOpen ? (
-        <div className="document-viewer-backdrop" role="presentation" onClick={() => setIsOpen(false)}>
+        <div
+          className={measureMode ? "document-viewer-backdrop document-viewer-backdrop-full" : "document-viewer-backdrop"}
+          role="presentation"
+          onClick={() => setIsOpen(false)}
+        >
           <div
-            className="document-viewer"
+            className={measureMode ? "document-viewer document-viewer-full" : "document-viewer"}
             role="dialog"
             aria-modal="true"
             aria-label={doc.title}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="document-viewer-head">
-              <div className="document-viewer-meta">
-                <strong>{doc.title}</strong>
-                {doc.fileName ? <span>{doc.fileName}</span> : null}
-              </div>
+            {!measureMode ? (
+              <div className="document-viewer-head">
+                <div className="document-viewer-meta">
+                  <strong>{doc.title}</strong>
+                  {doc.fileName ? <span>{doc.fileName}</span> : null}
+                </div>
 
-              <div className="document-viewer-head-actions">
-                {isImage ? (
-                  <>
-                    <button type="button" className="document-viewer-zoom" onClick={zoomOut} disabled={zoom <= MIN_ZOOM} aria-label="Kicsinyítés">
-                      <ZoomOutIcon />
-                    </button>
-                    <span className="document-viewer-zoom-level">{Math.round(zoom * 100)}%</span>
-                    <button type="button" className="document-viewer-zoom" onClick={zoomIn} disabled={zoom >= MAX_ZOOM} aria-label="Nagyítás">
-                      <ZoomInIcon />
-                    </button>
-                  </>
-                ) : null}
-                <a className="document-viewer-external" href={url} target="_blank" rel="noreferrer">
-                  Böngészőben
-                </a>
-                <button type="button" className="document-viewer-close" onClick={() => setIsOpen(false)} aria-label="Bezárás">
-                  <CloseIcon />
-                </button>
+                <div className="document-viewer-head-actions">
+                  {isImage ? (
+                    <>
+                      <button type="button" className="document-viewer-zoom" onClick={zoomOut} disabled={zoom <= MIN_ZOOM} aria-label="Kicsinyítés">
+                        <ZoomOutIcon />
+                      </button>
+                      <span className="document-viewer-zoom-level">{Math.round(zoom * 100)}%</span>
+                      <button type="button" className="document-viewer-zoom" onClick={zoomIn} disabled={zoom >= MAX_ZOOM} aria-label="Nagyítás">
+                        <ZoomInIcon />
+                      </button>
+                    </>
+                  ) : null}
+                  <button type="button" className="button ghost" onClick={() => setMeasureMode(true)}>
+                    Mérés
+                  </button>
+                  <a className="document-viewer-external" href={url} target="_blank" rel="noreferrer">
+                    Böngészőben
+                  </a>
+                  <button type="button" className="document-viewer-close" onClick={() => setIsOpen(false)} aria-label="Bezárás">
+                    <CloseIcon />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="document-viewer-stage">
-              {isImage ? (
+              {measureMode ? (
+                <PlanMeasurementTool doc={doc} onClose={() => setMeasureMode(false)} />
+              ) : isImage ? (
                 <div className="document-viewer-image-scroll">
                   <div className="document-viewer-image-inner" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}>
                     <img

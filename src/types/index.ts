@@ -173,6 +173,23 @@ export type ProjectDocument = {
   updatedAt: string;
 };
 
+export type PlanMeasurementType = "area" | "length";
+
+export type PlanMeasurementPoint = { x: number; y: number };
+
+export type PlanMeasurement = {
+  id: string;
+  documentId: string;
+  pageNumber: number;
+  measurementType: PlanMeasurementType;
+  points: PlanMeasurementPoint[];
+  calculatedValue: number;
+  label?: string;
+  note?: string;
+  createdByProfileId?: string;
+  createdAt: string;
+};
+
 export type DashboardMetrics = {
   openIssues: number;
   overdueIssues: number;

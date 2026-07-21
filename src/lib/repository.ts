@@ -10,7 +10,7 @@ import {
   tigPackages as mockTigPackages,
   workLogs as mockWorkLogs
 } from "@/data/mock";
-import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
+import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
@@ -82,6 +82,39 @@ export type CreateProjectDocumentResult = {
 };
 
 export type DeleteProjectDocumentResult = {
+  ok: boolean;
+  mode: "supabase" | "mock";
+};
+
+export type CreatePlanMeasurementInput = {
+  documentId: string;
+  pageNumber: number;
+  measurementType: PlanMeasurementType;
+  points: PlanMeasurementPoint[];
+  calculatedValue: number;
+  label?: string;
+  note?: string;
+};
+
+export type CreatePlanMeasurementResult = {
+  measurement: PlanMeasurement | null;
+  mode: "supabase" | "mock";
+};
+
+export type DeletePlanMeasurementResult = {
+  ok: boolean;
+  mode: "supabase" | "mock";
+};
+
+export type UpdatePlanMeasurementInput = {
+  measurementId: string;
+  points: PlanMeasurementPoint[];
+  calculatedValue: number;
+  label?: string;
+  note?: string;
+};
+
+export type SavePlanCalibrationResult = {
   ok: boolean;
   mode: "supabase" | "mock";
 };
@@ -222,6 +255,19 @@ type SupabaseProjectDocumentRow = {
   updated_at: string;
   projects?: { name: string | null } | null;
   profiles?: { display_name: string | null } | null;
+};
+
+type SupabasePlanMeasurementRow = {
+  id: string;
+  document_id: string;
+  page_number: number;
+  measurement_type: PlanMeasurementType;
+  points: PlanMeasurementPoint[];
+  calculated_value: number;
+  label: string | null;
+  note: string | null;
+  created_by_profile_id: string | null;
+  created_at: string;
 };
 
 function dateOnly(value?: string | null) {
@@ -439,6 +485,21 @@ function mapProjectDocument(row: SupabaseProjectDocumentRow): ProjectDocument {
     archivedAt: dateOnly(row.archived_at),
     createdAt: dateOnly(row.created_at),
     updatedAt: dateOnly(row.updated_at)
+  };
+}
+
+function mapPlanMeasurement(row: SupabasePlanMeasurementRow): PlanMeasurement {
+  return {
+    id: row.id,
+    documentId: row.document_id,
+    pageNumber: row.page_number,
+    measurementType: row.measurement_type,
+    points: row.points,
+    calculatedValue: row.calculated_value,
+    label: row.label || undefined,
+    note: row.note || undefined,
+    createdByProfileId: row.created_by_profile_id || undefined,
+    createdAt: row.created_at
   };
 }
 
@@ -925,6 +986,109 @@ export async function deleteProjectDocumentRecord(documentId: string): Promise<D
     ok: true,
     mode: "mock"
   };
+}
+
+export async function listPlanMeasurements(documentId: string): Promise<PlanMeasurement[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("plan_measurements")
+    .select("*")
+    .eq("document_id", documentId)
+    .order("created_at", { ascending: false });
+
+  logSupabaseReadError("plan_measurements", error);
+
+  const rows = data as SupabasePlanMeasurementRow[] | null;
+  if (error || !rows) return [];
+  return rows.map(mapPlanMeasurement);
+}
+
+export async function createPlanMeasurementRecord(input: CreatePlanMeasurementInput): Promise<CreatePlanMeasurementResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { measurement: null, mode: "mock" };
+
+  const { data, error } = await supabase
+    .from("plan_measurements")
+    .insert({
+      document_id: input.documentId,
+      page_number: input.pageNumber,
+      measurement_type: input.measurementType,
+      points: input.points,
+      calculated_value: input.calculatedValue,
+      label: input.label || null,
+      note: input.note || null
+    })
+    .select("*")
+    .single();
+
+  logSupabaseWriteError("plan_measurements", error);
+
+  if (error || !data) return { measurement: null, mode: "mock" };
+  return { measurement: mapPlanMeasurement(data as SupabasePlanMeasurementRow), mode: "supabase" };
+}
+
+export async function deletePlanMeasurementRecord(measurementId: string): Promise<DeletePlanMeasurementResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, mode: "mock" };
+
+  const { error } = await supabase.from("plan_measurements").delete().eq("id", measurementId);
+
+  logSupabaseWriteError("plan_measurements delete", error);
+
+  return { ok: !error, mode: error ? "mock" : "supabase" };
+}
+
+export async function updatePlanMeasurementRecord(input: UpdatePlanMeasurementInput): Promise<CreatePlanMeasurementResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { measurement: null, mode: "mock" };
+
+  const { data, error } = await supabase
+    .from("plan_measurements")
+    .update({
+      points: input.points,
+      calculated_value: input.calculatedValue,
+      label: input.label || null,
+      note: input.note || null
+    })
+    .eq("id", input.measurementId)
+    .select("*")
+    .single();
+
+  logSupabaseWriteError("plan_measurements update", error);
+
+  if (error || !data) return { measurement: null, mode: "mock" };
+  return { measurement: mapPlanMeasurement(data as SupabasePlanMeasurementRow), mode: "supabase" };
+}
+
+export async function getPlanCalibration(documentId: string): Promise<number | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("plan_calibrations")
+    .select("meters_per_unit")
+    .eq("document_id", documentId)
+    .maybeSingle();
+
+  logSupabaseReadError("plan_calibrations", error);
+
+  if (error || !data) return null;
+  return (data as { meters_per_unit: number }).meters_per_unit;
+}
+
+export async function savePlanCalibration(documentId: string, metersPerUnit: number): Promise<SavePlanCalibrationResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, mode: "mock" };
+
+  const { error } = await supabase
+    .from("plan_calibrations")
+    .upsert({ document_id: documentId, meters_per_unit: metersPerUnit, updated_at: new Date().toISOString() });
+
+  logSupabaseWriteError("plan_calibrations", error);
+
+  return { ok: !error, mode: error ? "mock" : "supabase" };
 }
 
 export async function listActiveBlockers() {
