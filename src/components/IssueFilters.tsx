@@ -8,7 +8,7 @@ import { SearchBox } from "@/components/SearchBox";
 
 type Filter = "all" | IssueStatus;
 
-export function IssueFilters({ issues, projectId }: { issues: Issue[]; projectId: string }) {
+export function IssueFilters({ issues, showProject = false }: { issues: Issue[]; showProject?: boolean }) {
   const [statusFilter, setStatusFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
 
@@ -17,7 +17,7 @@ export function IssueFilters({ issues, projectId }: { issues: Issue[]; projectId
 
     return issues.filter((issue) => {
       const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
-      const matchesSearch = !normalizedSearch || [issue.id, issue.title, issue.location, issue.subcontractor, issue.assignee]
+      const matchesSearch = !normalizedSearch || [issue.id, issue.title, issue.location, issue.subcontractor, issue.assignee, issue.projectName]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearch);
@@ -51,7 +51,7 @@ export function IssueFilters({ issues, projectId }: { issues: Issue[]; projectId
         })}
       </div>
 
-      <IssueTable issues={filteredIssues} projectId={projectId} />
+      <IssueTable issues={filteredIssues} showProject={showProject} />
     </div>
   );
 }

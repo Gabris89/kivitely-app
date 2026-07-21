@@ -71,7 +71,7 @@ insert into issues (
 ) values
 (
   '33333333-3333-4333-8333-333333333333',
-  'KIV-104',
+  'HIB-104',
   '11111111-1111-4111-8111-111111111111',
   '22222222-2222-4222-8222-222222222222',
   'Burkolat serult a lepcsohaznal',
@@ -89,7 +89,7 @@ insert into issues (
 ),
 (
   '44444444-4444-4444-8444-444444444444',
-  'KIV-201',
+  'HIB-201',
   '11111111-1111-4111-8111-111111111111',
   '22222222-2222-4222-8222-222222222222',
   'Fuga hiany ellenorzese a furdoszobaban',
@@ -129,7 +129,7 @@ insert into issue_evidence (
 ) values
 (
   '55555555-5555-4555-8555-555555555555',
-  (select id from issues where public_id = 'KIV-104'),
+  (select id from issues where public_id = 'HIB-104'),
   'before_photo',
   'seed/kiv-104-before.jpg',
   'Seed elotte foto',
@@ -137,7 +137,7 @@ insert into issue_evidence (
 ),
 (
   '66666666-6666-4666-8666-666666666666',
-  (select id from issues where public_id = 'KIV-104'),
+  (select id from issues where public_id = 'HIB-104'),
   'after_photo',
   'seed/kiv-104-after.jpg',
   'Seed utana foto',
@@ -161,17 +161,17 @@ insert into issue_events (
 ) values
 (
   '77777777-7777-4777-8777-777777777777',
-  (select id from issues where public_id = 'KIV-104'),
+  (select id from issues where public_id = 'HIB-104'),
   'created',
   null,
   'assigned',
   'Seed hiba rogzitve',
-  'A KIV-104 seed rekord letrejott a Supabase read-only teszthez.',
+  'A HIB-104 seed rekord letrejott a Supabase read-only teszthez.',
   '2026-07-06 08:10:00+00'
 ),
 (
   '88888888-8888-4888-8888-888888888888',
-  (select id from issues where public_id = 'KIV-104'),
+  (select id from issues where public_id = 'HIB-104'),
   'status_changed',
   'assigned',
   'tig_ready',

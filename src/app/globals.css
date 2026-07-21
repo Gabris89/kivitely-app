@@ -1011,6 +1011,8 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .sub-card .risk, .sub-card .ok { height: max-content; padding: 7px 9px; border-radius: 999px; font-size: 12px; font-weight: 900; }
 .sub-card .risk { color: #ffaaa8; background: rgba(255, 107, 107, 0.15); }
 .sub-card .ok { color: #8af0bd; background: rgba(72, 213, 151, 0.14); }
+.sub-card-head div span:first-child { color: var(--muted); font-size: 13px; font-weight: 850; }
+.sub-card-actions { display: flex; gap: 10px; margin-top: 16px; }
 dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
 dl div { padding: 0 0 12px; border: none; border-bottom: 1px solid var(--line); background: none; }
 dt { color: var(--muted); font-size: 12px; }

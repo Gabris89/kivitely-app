@@ -71,16 +71,16 @@ export function NewProjectForm() {
 
       <div className="form-footer">
         {saveState.message ? (
-          <span className={saveState.status === "error" ? "error-message" : "success-message"}>
-            {saveState.message}{" "}
-            {saveState.status === "saved" && saveState.projectId ? (
-              <Link href={`/projects/${saveState.projectId}`}>Megnyitás</Link>
-            ) : null}
-          </span>
+          <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
         ) : <span />}
-        <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
-          {saveState.status === "saving" ? "Mentés..." : "Projekt létrehozása"}
-        </button>
+        <div className="form-actions">
+          {saveState.status === "saved" && saveState.projectId ? (
+            <Link className="button primary" href={`/projects/${saveState.projectId}`}>Megnyitás</Link>
+          ) : null}
+          <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+            {saveState.status === "saving" ? "Mentés..." : "Projekt létrehozása"}
+          </button>
+        </div>
       </div>
     </form>
   );

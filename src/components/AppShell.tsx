@@ -60,7 +60,11 @@ const globalNavSections: NavSection[] = [
   },
   {
     title: "Admin",
-    items: [{ href: "/subcontractors", label: "Alvállalkozók", icon: "A" }]
+    items: [
+      { href: "/issues", label: "Összes hiba", icon: "H" },
+      { href: "/workflow", label: "Workflow tábla", icon: "W" },
+      { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
+    ]
   }
 ];
 
@@ -106,6 +110,8 @@ const globalMobileMenuSections: NavSection[] = [
     title: "Admin",
     items: [
       { href: "/projects/new", label: "Új projekt", icon: "+" },
+      { href: "/issues", label: "Összes hiba", icon: "H" },
+      { href: "/workflow", label: "Workflow tábla", icon: "W" },
       { href: "/subcontractors", label: "Alvállalkozók", icon: "A" }
     ]
   }

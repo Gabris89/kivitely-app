@@ -12,7 +12,9 @@ export const project: Project = {
 
 export const issues: Issue[] = [
   {
-    id: "KIV-104",
+    id: "HIB-104",
+    projectId: project.publicId,
+    projectName: project.name,
     title: "Burkolat sérült a lépcsőháznál",
     description: "A földszinti lépcsőház bejáratánál 3 db járólap sarka sérült. Javítás után új fotó szükséges, mert a terület TIG bizonyítékba kerül.",
     location: "A épület · Földszint",
@@ -31,7 +33,9 @@ export const issues: Issue[] = [
     tags: ["burkolat", "TIG", "fotó"]
   },
   {
-    id: "KIV-112",
+    id: "HIB-112",
+    projectId: project.publicId,
+    projectName: project.name,
     title: "Hiányzó dugalj a nappaliban",
     description: "A B/203 lakás nappalijában a terv szerinti jobb oldali dugalj nem készült el.",
     location: "B épület · 2. emelet · B/203",
@@ -50,7 +54,9 @@ export const issues: Issue[] = [
     tags: ["villany", "lejárt"]
   },
   {
-    id: "KIV-118",
+    id: "HIB-118",
+    projectId: project.publicId,
+    projectName: project.name,
     title: "Gépész strang takarás hiányos",
     description: "A gépészeti aknában a tűzgátló lezárás dokumentációja és fotója hiányzik.",
     location: "C épület · 4. emelet",
@@ -69,7 +75,9 @@ export const issues: Issue[] = [
     tags: ["gépészet", "QA/QC"]
   },
   {
-    id: "KIV-121",
+    id: "HIB-121",
+    projectId: project.publicId,
+    projectName: project.name,
     title: "Festési javítás a folyosón",
     description: "A folyosón több ponton javítófestés szükséges az átadás előtt.",
     location: "A épület · 1. emelet",
@@ -88,7 +96,9 @@ export const issues: Issue[] = [
     tags: ["festés"]
   },
   {
-    id: "KIV-126",
+    id: "HIB-126",
+    projectId: project.publicId,
+    projectName: project.name,
     title: "Erkélykorlát rögzítési jegyzőkönyv hiányzik",
     description: "Az átadási dokumentációhoz hiányzik a korlát rögzítését igazoló jegyzőkönyv.",
     location: "B épület · 3. emelet",
@@ -107,7 +117,9 @@ export const issues: Issue[] = [
     tags: ["dokumentum", "átadás"]
   },
   {
-    id: "KIV-130",
+    id: "HIB-130",
+    projectId: project.publicId,
+    projectName: project.name,
     title: "Vizesblokk szilikonozás ellenőrzése",
     description: "A fürdőszobai szilikonozás több lakásban hullámos, átadás előtt ellenőrizni kell.",
     location: "A/B épület · több lakás",
@@ -128,16 +140,16 @@ export const issues: Issue[] = [
 ];
 
 export const subcontractors: Subcontractor[] = [
-  { id: "sub-1", name: "Elektro Pro Bt.", trade: "Villanyszerelés", contact: "Kiss Balázs", phone: "+36 30 111 2233", openIssues: 11, overdueIssues: 3, readyIssues: 2, weeklyClosureRate: 54 },
-  { id: "sub-2", name: "Burkoló Kft.", trade: "Burkolás", contact: "Nagy Péter", phone: "+36 20 444 7788", openIssues: 8, overdueIssues: 1, readyIssues: 4, weeklyClosureRate: 76 },
-  { id: "sub-3", name: "Gépész Master Kft.", trade: "Gépészet", contact: "Tóth Máté", phone: "+36 70 222 9911", openIssues: 6, overdueIssues: 2, readyIssues: 1, weeklyClosureRate: 48 },
-  { id: "sub-4", name: "Color Team Kft.", trade: "Festés", contact: "Varga Dénes", phone: "+36 30 888 1234", openIssues: 4, overdueIssues: 0, readyIssues: 1, weeklyClosureRate: 82 }
+  { id: "sub-1", publicId: "ALV-001", name: "Elektro Pro Bt.", trade: "Villanyszerelés", contact: "Kiss Balázs", phone: "+36 30 111 2233", openIssues: 11, overdueIssues: 3, readyIssues: 2, weeklyClosureRate: 54 },
+  { id: "sub-2", publicId: "ALV-002", name: "Burkoló Kft.", trade: "Burkolás", contact: "Nagy Péter", phone: "+36 20 444 7788", openIssues: 8, overdueIssues: 1, readyIssues: 4, weeklyClosureRate: 76 },
+  { id: "sub-3", publicId: "ALV-003", name: "Gépész Master Kft.", trade: "Gépészet", contact: "Tóth Máté", phone: "+36 70 222 9911", openIssues: 6, overdueIssues: 2, readyIssues: 1, weeklyClosureRate: 48 },
+  { id: "sub-4", publicId: "ALV-004", name: "Color Team Kft.", trade: "Festés", contact: "Varga Dénes", phone: "+36 30 888 1234", openIssues: 4, overdueIssues: 0, readyIssues: 1, weeklyClosureRate: 82 }
 ];
 
 export const activities: Activity[] = [
-  { id: "a1", icon: "📷", title: "Javítás utáni fotó feltöltve", description: "Burkoló Kft. · KIV-104", time: "12 perce" },
+  { id: "a1", icon: "📷", title: "Javítás utáni fotó feltöltve", description: "Burkoló Kft. · HIB-104", time: "12 perce" },
   { id: "a2", icon: "🧾", title: "TIG piszkozat frissült", description: "3 új lezárt hiba kapcsolva", time: "38 perce" },
-  { id: "a3", icon: "⚠️", title: "Határidő lejárt", description: "Elektro Pro Bt. · KIV-112", time: "tegnap 17:00" }
+  { id: "a3", icon: "⚠️", title: "Határidő lejárt", description: "Elektro Pro Bt. · HIB-112", time: "tegnap 17:00" }
 ];
 
 export const tigItems: TigItem[] = [
@@ -149,23 +161,23 @@ export const tigItems: TigItem[] = [
 
 
 export const evidencePhotos: EvidencePhoto[] = [
-  { id: "photo-1", issueId: "KIV-104", type: "before_photo", label: "Sérült járólap közelről", uploadedBy: "Gábor művezető", uploadedAt: "2026-07-02 09:14" },
-  { id: "photo-2", issueId: "KIV-104", type: "before_photo", label: "Lépcsőház áttekintő fotó", uploadedBy: "Gábor művezető", uploadedAt: "2026-07-02 09:15" },
-  { id: "photo-3", issueId: "KIV-104", type: "after_photo", label: "Javítás után - 1", uploadedBy: "Nagy Péter", uploadedAt: "2026-07-06 13:22" },
-  { id: "photo-4", issueId: "KIV-104", type: "after_photo", label: "Javítás után - 2", uploadedBy: "Nagy Péter", uploadedAt: "2026-07-06 13:25" },
-  { id: "photo-5", issueId: "KIV-112", type: "before_photo", label: "Hiányzó dugalj helye", uploadedBy: "Gábor művezető", uploadedAt: "2026-07-01 11:03" },
-  { id: "photo-6", issueId: "KIV-118", type: "before_photo", label: "Strang takarás állapota", uploadedBy: "Tóth Máté", uploadedAt: "2026-07-03 15:42" },
-  { id: "photo-7", issueId: "KIV-126", type: "before_photo", label: "Korlát rögzítési pont", uploadedBy: "Szalai Ákos", uploadedAt: "2026-07-02 16:10" }
+  { id: "photo-1", issueId: "HIB-104", type: "before_photo", label: "Sérült járólap közelről", uploadedBy: "Gábor művezető", uploadedAt: "2026-07-02 09:14" },
+  { id: "photo-2", issueId: "HIB-104", type: "before_photo", label: "Lépcsőház áttekintő fotó", uploadedBy: "Gábor művezető", uploadedAt: "2026-07-02 09:15" },
+  { id: "photo-3", issueId: "HIB-104", type: "after_photo", label: "Javítás után - 1", uploadedBy: "Nagy Péter", uploadedAt: "2026-07-06 13:22" },
+  { id: "photo-4", issueId: "HIB-104", type: "after_photo", label: "Javítás után - 2", uploadedBy: "Nagy Péter", uploadedAt: "2026-07-06 13:25" },
+  { id: "photo-5", issueId: "HIB-112", type: "before_photo", label: "Hiányzó dugalj helye", uploadedBy: "Gábor művezető", uploadedAt: "2026-07-01 11:03" },
+  { id: "photo-6", issueId: "HIB-118", type: "before_photo", label: "Strang takarás állapota", uploadedBy: "Tóth Máté", uploadedAt: "2026-07-03 15:42" },
+  { id: "photo-7", issueId: "HIB-126", type: "before_photo", label: "Korlát rögzítési pont", uploadedBy: "Szalai Ákos", uploadedAt: "2026-07-02 16:10" }
 ];
 
 export const issueEvents: IssueEvent[] = [
-  { id: "evt-1", issueId: "KIV-104", type: "created", title: "Hiba rögzítve", description: "Burkolat sérülés létrehozva fotókkal.", actor: "Gábor művezető", createdAt: "2026-07-02 09:16" },
-  { id: "evt-2", issueId: "KIV-104", type: "assigned", title: "Kiosztva alvállalkozónak", description: "Burkoló Kft. kapta a javítást 2026-07-08 határidővel.", actor: "Projektvezető", createdAt: "2026-07-02 10:02" },
-  { id: "evt-3", issueId: "KIV-104", type: "photo_uploaded", title: "Utána fotó feltöltve", description: "2 db javítás utáni fotó érkezett.", actor: "Nagy Péter", createdAt: "2026-07-06 13:25" },
-  { id: "evt-4", issueId: "KIV-104", type: "status_changed", title: "Készre jelentve", description: "Ellenőrzésre vár a projektvezetőnél.", actor: "Nagy Péter", createdAt: "2026-07-06 13:27" },
-  { id: "evt-5", issueId: "KIV-112", type: "created", title: "Hiba rögzítve", description: "Hiányzó dugalj a B/203 nappaliban.", actor: "Gábor művezető", createdAt: "2026-07-01 11:05" },
-  { id: "evt-6", issueId: "KIV-112", type: "status_changed", title: "Határidő figyelmeztetés", description: "Automatikus figyelmeztetés: nincs készre jelentés.", actor: "Kivitely rendszer", createdAt: "2026-07-05 18:00" },
-  { id: "evt-7", issueId: "KIV-118", type: "assigned", title: "Folyamatban", description: "Gépész Master Kft. dolgozik a javításon.", actor: "Projektvezető", createdAt: "2026-07-06 08:30" }
+  { id: "evt-1", issueId: "HIB-104", type: "created", title: "Hiba rögzítve", description: "Burkolat sérülés létrehozva fotókkal.", actor: "Gábor művezető", createdAt: "2026-07-02 09:16" },
+  { id: "evt-2", issueId: "HIB-104", type: "assigned", title: "Kiosztva alvállalkozónak", description: "Burkoló Kft. kapta a javítást 2026-07-08 határidővel.", actor: "Projektvezető", createdAt: "2026-07-02 10:02" },
+  { id: "evt-3", issueId: "HIB-104", type: "photo_uploaded", title: "Utána fotó feltöltve", description: "2 db javítás utáni fotó érkezett.", actor: "Nagy Péter", createdAt: "2026-07-06 13:25" },
+  { id: "evt-4", issueId: "HIB-104", type: "status_changed", title: "Készre jelentve", description: "Ellenőrzésre vár a projektvezetőnél.", actor: "Nagy Péter", createdAt: "2026-07-06 13:27" },
+  { id: "evt-5", issueId: "HIB-112", type: "created", title: "Hiba rögzítve", description: "Hiányzó dugalj a B/203 nappaliban.", actor: "Gábor művezető", createdAt: "2026-07-01 11:05" },
+  { id: "evt-6", issueId: "HIB-112", type: "status_changed", title: "Határidő figyelmeztetés", description: "Automatikus figyelmeztetés: nincs készre jelentés.", actor: "Kivitely rendszer", createdAt: "2026-07-05 18:00" },
+  { id: "evt-7", issueId: "HIB-118", type: "assigned", title: "Folyamatban", description: "Gépész Master Kft. dolgozik a javításon.", actor: "Projektvezető", createdAt: "2026-07-06 08:30" }
 ];
 
 export const tigPackages: TigPackage[] = [
@@ -174,7 +186,7 @@ export const tigPackages: TigPackage[] = [
     projectId: project.id,
     subcontractor: "Burkoló Kft.",
     status: "draft",
-    issueIds: ["KIV-104", "KIV-130"],
+    issueIds: ["HIB-104", "HIB-130"],
     grossValueHuf: 610000,
     proofCount: 7,
     createdAt: "2026-07-06",
@@ -185,7 +197,7 @@ export const tigPackages: TigPackage[] = [
     projectId: project.id,
     subcontractor: "Gépész Master Kft.",
     status: "ready_for_review",
-    issueIds: ["KIV-118"],
+    issueIds: ["HIB-118"],
     grossValueHuf: 760000,
     proofCount: 3,
     createdAt: "2026-07-06",
@@ -229,6 +241,7 @@ export const workLogs: WorkLog[] = [
 export const blockerItems: BlockerItem[] = [
   {
     id: "mock-blocker-1",
+    publicId: "AKA-001",
     projectId: project.id,
     projectName: project.name,
     createdByProfileId: "worker-mock-1",
@@ -246,6 +259,7 @@ export const blockerItems: BlockerItem[] = [
   },
   {
     id: "mock-blocker-2",
+    publicId: "AKA-002",
     projectId: project.id,
     projectName: project.name,
     createdByProfileId: "subcontractor-mock-1",

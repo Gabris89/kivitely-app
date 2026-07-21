@@ -60,6 +60,35 @@ export type CreateBlockerResult = {
   mode: "supabase" | "mock";
 };
 
+export type CreateSubcontractorInput = {
+  name: string;
+  trade?: string;
+  contactName?: string;
+  phone?: string;
+};
+
+export type CreateSubcontractorResult = {
+  subcontractor: Subcontractor;
+  mode: "supabase" | "mock";
+};
+
+export type UpdateSubcontractorInput = {
+  name: string;
+  trade?: string;
+  contactName?: string;
+  phone?: string;
+};
+
+export type UpdateSubcontractorResult = {
+  subcontractor: Subcontractor | null;
+  mode: "supabase" | "mock";
+};
+
+export type DeleteSubcontractorResult = {
+  ok: boolean;
+  mode: "supabase" | "mock";
+};
+
 export type CreateIssueEvidenceInput = {
   type: "before_photo" | "after_photo";
   label?: string;
@@ -146,6 +175,7 @@ export type MoveIssueStatusResult =
 type SupabaseIssueRow = {
   id: string;
   public_id: string;
+  project_id: string;
   title: string;
   description: string | null;
   location: string | null;
@@ -160,6 +190,7 @@ type SupabaseIssueRow = {
   updated_at: string;
   subcontractors?: { name: string | null } | null;
   issue_evidence?: { evidence_type: EvidenceType }[] | null;
+  projects?: { name: string | null; public_id: string | null } | null;
 };
 
 type SupabaseProjectRow = {
@@ -174,6 +205,7 @@ type SupabaseProjectRow = {
 
 type SupabaseSubcontractorRow = {
   id: string;
+  public_id: string;
   name: string;
   trade: string | null;
   contact_name: string | null;
@@ -230,6 +262,7 @@ type SupabaseWorkLogRow = {
 
 type SupabaseBlockerRow = {
   id: string;
+  public_id: string;
   project_id: string;
   created_by_profile_id: string | null;
   responsible_profile_id: string | null;
@@ -300,6 +333,8 @@ function mapIssue(row: SupabaseIssueRow): Issue {
 
   return {
     id: row.public_id,
+    projectId: row.projects?.public_id || "",
+    projectName: row.projects?.name || "Nincs megadva",
     title: row.title,
     description: row.description || "",
     location: row.location || "Nincs megadva",
@@ -336,6 +371,7 @@ function mapSubcontractor(row: SupabaseSubcontractorRow, issues: Issue[]): Subco
 
   return {
     id: row.id,
+    publicId: row.public_id,
     name: row.name,
     trade: row.trade || "Nincs megadva",
     contact: row.contact_name || "Nincs megadva",
@@ -458,6 +494,7 @@ function mapWorkLog(row: SupabaseWorkLogRow): WorkLog {
 function mapBlocker(row: SupabaseBlockerRow): BlockerItem {
   return {
     id: row.id,
+    publicId: row.public_id,
     projectId: row.project_id,
     projectName: row.projects?.name || "Nincs megadva",
     createdByProfileId: row.created_by_profile_id || "",
@@ -539,11 +576,11 @@ function nextPublicIssueId(publicIds: string[]) {
   const nextNumber = Math.max(
     100,
     ...publicIds
-      .map((id) => Number(id.replace("KIV-", "")))
+      .map((id) => Number(id.replace("HIB-", "")))
       .filter((value) => Number.isFinite(value))
   ) + 1;
 
-  return `KIV-${nextNumber}`;
+  return `HIB-${nextNumber}`;
 }
 
 async function listSupabaseIssues(projectId?: string) {
@@ -552,7 +589,7 @@ async function listSupabaseIssues(projectId?: string) {
 
   let query = supabase
     .from("issues")
-    .select("*,subcontractors(name),issue_evidence(evidence_type)")
+    .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
     .order("updated_at", { ascending: false });
 
   if (projectId) {
@@ -565,8 +602,8 @@ async function listSupabaseIssues(projectId?: string) {
 
   logSupabaseReadError("issues", error);
 
-  const rows = data as SupabaseIssueRow[] | null;
-  if (error || !rows?.length) return null;
+  if (error) return null;
+  const rows = (data as SupabaseIssueRow[] | null) || [];
   return rows.map(mapIssue);
 }
 
@@ -887,6 +924,174 @@ export async function listSubcontractors() {
   return rows?.length ? rows.map((row) => mapSubcontractor(row, issues)) : mockSubcontractors;
 }
 
+export async function getSubcontractorByPublicId(publicId: string) {
+  const subcontractors = await listSubcontractors();
+  return subcontractors.find((subcontractor) => subcontractor.publicId === publicId);
+}
+
+async function getSupabaseSubcontractorDbId(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("subcontractors")
+    .select("id")
+    .eq("public_id", publicId)
+    .maybeSingle();
+
+  logSupabaseReadError("subcontractor id lookup", error);
+
+  return error ? null : data?.id || null;
+}
+
+function nextPublicSubcontractorId(publicIds: string[]) {
+  const nextNumber = Math.max(
+    0,
+    ...publicIds
+      .map((id) => Number(id.replace("ALV-", "")))
+      .filter((value) => Number.isFinite(value))
+  ) + 1;
+
+  return `ALV-${String(nextNumber).padStart(3, "0")}`;
+}
+
+function createMockSubcontractor(input: CreateSubcontractorInput): Subcontractor {
+  return {
+    id: `mock-subcontractor-${Date.now()}`,
+    publicId: `ALV-M${String(Date.now()).slice(-3)}`,
+    name: input.name,
+    trade: input.trade || "Nincs megadva",
+    contact: input.contactName || "Nincs megadva",
+    phone: input.phone || "",
+    openIssues: 0,
+    overdueIssues: 0,
+    readyIssues: 0,
+    weeklyClosureRate: 0
+  };
+}
+
+async function createSupabaseSubcontractor(input: CreateSubcontractorInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: existing, error: existingError } = await supabase
+    .from("subcontractors")
+    .select("public_id");
+
+  logSupabaseReadError("subcontractor public ids for insert", existingError);
+
+  if (existingError) return null;
+
+  const publicId = nextPublicSubcontractorId((existing || []).map((row) => row.public_id));
+
+  const { data, error } = await supabase
+    .from("subcontractors")
+    .insert({
+      public_id: publicId,
+      name: input.name,
+      trade: input.trade || null,
+      contact_name: input.contactName || null,
+      phone: input.phone || null
+    })
+    .select("*")
+    .single();
+
+  logSupabaseWriteError("subcontractors", error);
+
+  return error || !data ? null : mapSubcontractor(data as SupabaseSubcontractorRow, []);
+}
+
+export async function createSubcontractorRecord(input: CreateSubcontractorInput): Promise<CreateSubcontractorResult> {
+  const supabaseSubcontractor = await createSupabaseSubcontractor(input);
+
+  if (supabaseSubcontractor) {
+    return {
+      subcontractor: supabaseSubcontractor,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    subcontractor: createMockSubcontractor(input),
+    mode: "mock"
+  };
+}
+
+async function updateSupabaseSubcontractor(publicId: string, input: UpdateSubcontractorInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("subcontractors")
+    .update({
+      name: input.name,
+      trade: input.trade || null,
+      contact_name: input.contactName || null,
+      phone: input.phone || null
+    })
+    .eq("public_id", publicId)
+    .select("*")
+    .maybeSingle();
+
+  logSupabaseWriteError("subcontractor update", error);
+
+  if (error || !data) return null;
+  return mapSubcontractor(data as SupabaseSubcontractorRow, await listIssues());
+}
+
+export async function updateSubcontractorRecord(publicId: string, input: UpdateSubcontractorInput): Promise<UpdateSubcontractorResult> {
+  const updated = await updateSupabaseSubcontractor(publicId, input);
+
+  if (updated) {
+    return {
+      subcontractor: updated,
+      mode: "supabase"
+    };
+  }
+
+  return {
+    subcontractor: null,
+    mode: "mock"
+  };
+}
+
+async function deleteSupabaseSubcontractor(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const subcontractorDbId = await getSupabaseSubcontractorDbId(publicId);
+  if (!subcontractorDbId) return null;
+
+  const { error } = await supabase.from("subcontractors").delete().eq("id", subcontractorDbId);
+
+  logSupabaseWriteError("subcontractor delete", error);
+
+  return error ? null : true;
+}
+
+export async function deleteSubcontractorRecord(publicId: string): Promise<DeleteSubcontractorResult> {
+  const supabaseDeleted = await deleteSupabaseSubcontractor(publicId);
+
+  if (supabaseDeleted) {
+    return {
+      ok: true,
+      mode: "supabase"
+    };
+  }
+
+  if (getSupabaseClient()) {
+    return {
+      ok: false,
+      mode: "mock"
+    };
+  }
+
+  return {
+    ok: true,
+    mode: "mock"
+  };
+}
+
 export function listTigItems(): TigItem[] {
   return mockTigItems;
 }
@@ -906,9 +1111,9 @@ export async function listTigPackages(projectId: string) {
 
   logSupabaseReadError("tig_packages", error);
 
-  const rows = data as SupabaseTigPackageRow[] | null;
   if (error) return mockTigPackages;
-  return rows?.length ? rows.map(mapTigPackage) : mockTigPackages;
+  const rows = (data as SupabaseTigPackageRow[] | null) || [];
+  return rows.map(mapTigPackage);
 }
 
 export async function listWorkLogs(projectId: string) {
@@ -927,9 +1132,9 @@ export async function listWorkLogs(projectId: string) {
 
   logSupabaseReadError("work_logs", error);
 
-  const rows = data as SupabaseWorkLogRow[] | null;
   if (error) return mockWorkLogs;
-  return rows?.length ? rows.map(mapWorkLog) : mockWorkLogs;
+  const rows = (data as SupabaseWorkLogRow[] | null) || [];
+  return rows.map(mapWorkLog);
 }
 
 export async function listProjectDocuments(projectId: string) {
@@ -948,9 +1153,9 @@ export async function listProjectDocuments(projectId: string) {
 
   logSupabaseReadError("project_documents", error);
 
-  const rows = data as SupabaseProjectDocumentRow[] | null;
   if (error) return mockProjectDocuments;
-  return rows?.length ? rows.map(mapProjectDocument) : mockProjectDocuments;
+  const rows = (data as SupabaseProjectDocumentRow[] | null) || [];
+  return rows.map(mapProjectDocument);
 }
 
 function createMockProjectDocument(input: CreateProjectDocumentInput, projectData: Project): ProjectDocument {
@@ -1247,7 +1452,7 @@ export async function listActiveBlockers(projectId: string) {
 
   const rows = data as SupabaseBlockerRow[] | null;
   if (error) return fallback;
-  if (!rows?.length) return fallback;
+  if (!rows?.length) return [];
 
   const [{ data: projects, error: projectError }, { data: profiles, error: profileError }] = await Promise.all([
     supabase.from("projects").select("id,name"),
@@ -1273,11 +1478,23 @@ function normalizeBlockerSeverity(severity?: BlockerSeverity) {
   return severity && allowed.includes(severity) ? severity : "normal";
 }
 
+function nextPublicBlockerId(publicIds: string[]) {
+  const nextNumber = Math.max(
+    0,
+    ...publicIds
+      .map((id) => Number(id.replace("AKA-", "")))
+      .filter((value) => Number.isFinite(value))
+  ) + 1;
+
+  return `AKA-${String(nextNumber).padStart(3, "0")}`;
+}
+
 function createMockBlocker(input: CreateBlockerInput): BlockerItem {
   const today = new Date().toISOString().slice(0, 10);
 
   return {
     id: `mock-blocker-${Date.now()}`,
+    publicId: `AKA-M${String(Date.now()).slice(-3)}`,
     projectId: mockProject.id,
     projectName: mockProject.name,
     createdByProfileId: "mock-user",
@@ -1313,9 +1530,20 @@ async function createSupabaseBlocker(input: CreateBlockerInput): Promise<Blocker
 
   const responsible = responsibleResult?.error ? null : responsibleResult?.data || null;
 
+  const { data: existingBlockers, error: existingError } = await supabase
+    .from("blocker_list")
+    .select("public_id");
+
+  logSupabaseReadError("blocker public ids for insert", existingError);
+
+  if (existingError) return null;
+
+  const publicId = nextPublicBlockerId((existingBlockers || []).map((row) => row.public_id));
+
   const { data, error } = await supabase
     .from("blocker_list")
     .insert({
+      public_id: publicId,
       project_id: project.id,
       responsible_profile_id: responsible?.id || null,
       title: input.title,
@@ -1333,6 +1561,7 @@ async function createSupabaseBlocker(input: CreateBlockerInput): Promise<Blocker
   const today = new Date().toISOString().slice(0, 10);
   return {
     id: `supabase-blocker-${Date.now()}`,
+    publicId,
     projectId: project.id,
     projectName: project.name,
     createdByProfileId: "",
@@ -1403,7 +1632,7 @@ async function createSupabaseIssue(input: CreateIssueInput) {
       priority: normalizePriority(input.priority),
       value_huf: input.valueHuf || 0
     })
-    .select("*,subcontractors(name),issue_evidence(evidence_type)")
+    .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
     .single();
 
   logSupabaseWriteError("issues", error);
@@ -1412,11 +1641,13 @@ async function createSupabaseIssue(input: CreateIssueInput) {
 }
 
 export function createIssue(input: CreateIssueInput): Issue {
-  const nextNumber = Math.max(...mockIssues.map((issue) => Number(issue.id.replace("KIV-", "")))) + 1;
+  const nextNumber = Math.max(...mockIssues.map((issue) => Number(issue.id.replace("HIB-", "")))) + 1;
   const today = new Date().toISOString().slice(0, 10);
 
   return {
-    id: `KIV-${nextNumber}`,
+    id: `HIB-${nextNumber}`,
+    projectId: input.projectId,
+    projectName: mockProject.name,
     title: input.title,
     description: input.description || "",
     location: input.location,
@@ -1485,7 +1716,7 @@ async function updateSupabaseIssueStatus(issue: Issue, targetStatus: IssueStatus
       updated_at: new Date().toISOString()
     })
     .eq("id", issueDbId)
-    .select("*,subcontractors(name),issue_evidence(evidence_type)")
+    .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
     .single();
 
   logSupabaseWriteError("issue status", error);

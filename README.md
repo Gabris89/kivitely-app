@@ -49,14 +49,19 @@ http://localhost:3000
 ## Main Routes
 
 ```text
-/                       Dashboard
-/issues                 Hibalista with search and status filters
-/issues/new             New issue form with Supabase insert fallback
-/issues/KIV-104         Issue detail workflow
-/workflow               Kanban-style workflow board
-/subcontractors         Subcontractor view
-/tig                    TIG preparation view
-/mobile                 Mobile/PWA field view
+/                                     Redirects to /projects
+/projects                            Project list, entry point
+/projects/new                        New project form
+/projects/[projectId]                Project dashboard (module menu)
+/projects/[projectId]/issues         Hibalista with search and status filters
+/projects/[projectId]/issues/new     New issue form with Supabase insert fallback
+/projects/[projectId]/issues/HIB-104 Issue detail workflow
+/projects/[projectId]/blockers       Akadálylista
+/projects/[projectId]/documents      Project documents/plans, incl. plan measurement tool
+/projects/[projectId]/work-logs      Teljesítménynapló
+/projects/[projectId]/tig            TIG preparation view
+/projects/[projectId]/workflow       Kanban-style workflow board
+/subcontractors                      Subcontractor view (not project-scoped)
 ```
 
 ## Supabase Integration

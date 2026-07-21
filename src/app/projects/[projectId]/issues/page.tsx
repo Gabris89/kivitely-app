@@ -20,7 +20,7 @@ export default async function IssuesPage({ params }: { params: Promise<{ project
           <h2>Aktív hibák</h2>
           <span className="pill">szűrés · keresés · státusz</span>
         </div>
-        <IssueFilters issues={issues} projectId={projectId} />
+        <IssueFilters issues={issues} />
       </section>
     </>
   );

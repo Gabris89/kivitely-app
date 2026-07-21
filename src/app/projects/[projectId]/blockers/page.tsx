@@ -39,7 +39,7 @@ export default async function BlockersPage({ params }: { params: Promise<{ proje
           <article className={`card blocker-page-card blocker-${blocker.severity}`} key={blocker.id}>
             <div className="blocker-page-head">
               <div>
-                <span>{blocker.projectName}</span>
+                <span>{blocker.publicId}</span>
                 <h2>{blocker.title}</h2>
               </div>
               <div className="blocker-page-badges">

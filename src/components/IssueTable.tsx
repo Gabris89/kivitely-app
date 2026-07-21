@@ -4,19 +4,20 @@ import { getEvidenceChecklistStatus, getIssueTigReadiness } from "@/lib/issueMet
 import type { Issue } from "@/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 
-function IssueFieldCard({ issue, projectId }: { issue: Issue; projectId: string }) {
+function IssueFieldCard({ issue, showProject }: { issue: Issue; showProject: boolean }) {
   const evidence = getEvidenceChecklistStatus(issue);
   const tig = getIssueTigReadiness(issue);
   const photoCount = issue.photosBefore + issue.photosAfter;
 
   return (
-    <Link href={`/projects/${projectId}/issues/${issue.id}`} className="issue-card">
+    <Link href={`/projects/${issue.projectId}/issues/${issue.id}`} className="issue-card">
       <div className="issue-card-head">
         <span className="id-link">{issue.id}</span>
         <StatusBadge status={issue.status} />
       </div>
       <strong>{issue.title}</strong>
       <div className="issue-card-meta">
+        {showProject ? <span>{issue.projectName}</span> : null}
         <span>{issue.location}</span>
         <span>{issue.subcontractor}</span>
       </div>
@@ -31,12 +32,12 @@ function IssueFieldCard({ issue, projectId }: { issue: Issue; projectId: string 
   );
 }
 
-export function IssueTable({ issues, projectId, compact = false }: { issues: Issue[]; projectId: string; compact?: boolean }) {
+export function IssueTable({ issues, compact = false, showProject = false }: { issues: Issue[]; compact?: boolean; showProject?: boolean }) {
   return (
     <>
       <div className="issue-card-list">
         {issues.map((issue) => (
-          <IssueFieldCard issue={issue} projectId={projectId} key={issue.id} />
+          <IssueFieldCard issue={issue} showProject={showProject} key={issue.id} />
         ))}
       </div>
 
@@ -45,6 +46,7 @@ export function IssueTable({ issues, projectId, compact = false }: { issues: Iss
           <thead>
             <tr>
               <th>ID</th>
+              {showProject ? <th>Projekt</th> : null}
               <th>Hiba</th>
               {!compact ? <th>Helyszín</th> : null}
               <th>Felelős</th>
@@ -57,10 +59,11 @@ export function IssueTable({ issues, projectId, compact = false }: { issues: Iss
             {issues.map((issue) => (
               <tr key={issue.id}>
                 <td>
-                  <Link href={`/projects/${projectId}/issues/${issue.id}`} className="id-link">
+                  <Link href={`/projects/${issue.projectId}/issues/${issue.id}`} className="id-link">
                     {issue.id}
                   </Link>
                 </td>
+                {showProject ? <td>{issue.projectName}</td> : null}
                 <td>
                   <div className="issue-title-cell">
                     <strong>{issue.title}</strong>

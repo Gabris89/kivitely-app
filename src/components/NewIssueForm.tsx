@@ -8,6 +8,7 @@ import type { Subcontractor } from "@/types";
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
   message: string;
+  issueId?: string;
 };
 
 type RequiredIssueField = "title" | "location" | "trade" | "priority" | "subcontractor" | "dueDate";
@@ -102,7 +103,7 @@ export function NewIssueForm({
     }
 
     const result = await response.json();
-    setSaveState({ status: "saved", message: `Hiba rögzítve: ${result.data.id}. Képet a hiba részletezőn tudsz feltölteni.` });
+    setSaveState({ status: "saved", message: `Hiba rögzítve: ${result.data.id}. Képet a hiba részletezőn tudsz feltölteni.`, issueId: result.data.id });
   }
 
   return (
@@ -171,6 +172,9 @@ export function NewIssueForm({
       <div className="form-footer">
         <div className="form-actions">
           <Link className="button ghost" href={`/projects/${projectId}/issues`}>Mégse</Link>
+          {saveState.status === "saved" && saveState.issueId ? (
+            <Link className="button primary" href={`/projects/${projectId}/issues/${saveState.issueId}`}>Megnyitás</Link>
+          ) : null}
           <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
             {saveState.status === "saving" ? "Mentés..." : "Hiba rögzítése"}
           </button>

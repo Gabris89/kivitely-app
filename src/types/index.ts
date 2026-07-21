@@ -24,6 +24,8 @@ export type Project = {
 
 export type Issue = {
   id: string;
+  projectId: string;
+  projectName: string;
   title: string;
   description: string;
   location: string;
@@ -67,6 +69,7 @@ export type IssueEvent = {
 
 export type Subcontractor = {
   id: string;
+  publicId: string;
   name: string;
   trade: string;
   contact: string;
@@ -129,6 +132,7 @@ export type BlockerSeverity = "low" | "normal" | "high" | "critical";
 
 export type BlockerItem = {
   id: string;
+  publicId: string;
   projectId: string;
   projectName: string;
   createdByProfileId: string;
