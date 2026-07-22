@@ -2956,16 +2956,17 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .tig-create-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .tig-create-buttons { display: flex; gap: 10px; }
 
-.tig-package { display: grid; gap: 12px; }
-.tig-package-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.tig-package-head strong { display: block; }
-.tig-package-head span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
-.tig-package-value { display: grid; gap: 6px; justify-items: end; flex-shrink: 0; text-align: right; }
+.tig-package { padding: 16px 18px; display: grid; gap: 14px; }
+.tig-package-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tig-package-title strong { display: block; font-size: 15px; letter-spacing: -0.02em; }
+.tig-package-title span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.tig-package-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+.tig-package-amount { font-size: 20px; letter-spacing: -0.02em; white-space: nowrap; }
 .tig-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.tig-actions .button { min-height: 40px; padding: 9px 13px; font-size: 13px; }
-.tig-confirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+.tig-actions .button { min-height: 40px; padding: 9px 14px; font-size: 13px; }
+.tig-confirm-text { color: var(--muted); font-size: 13px; }
 
-.tig-status { border: 1px solid var(--line); }
+.tig-status { flex-shrink: 0; border: 1px solid var(--line); }
 .tig-status-draft { color: var(--muted); }
 .tig-status-ready_for_review { color: var(--warn); border-color: rgba(255, 209, 102, 0.4); }
 .tig-status-approved { color: var(--ok); border-color: rgba(72, 213, 151, 0.4); }
@@ -2979,14 +2980,9 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .tig-selected-summary { text-align: center; }
   .tig-create-buttons { flex-direction: column-reverse; }
   .tig-create-buttons .button { width: 100%; }
-  /* Csomag-kártya: fejléc egymás alá, érték + státusz egy sorban balra. */
-  .tig-package-head { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .tig-package-value {
-    grid-auto-flow: column;
-    justify-content: start;
-    justify-items: start;
-    align-items: center;
-    text-align: left;
-  }
+  /* Csomag-kártya: az összeg és a gombok egymás alá, a gombok teljes szélesen. */
+  .tig-package-bottom { align-items: stretch; }
+  .tig-actions { width: 100%; }
   .tig-actions .button { flex: 1 1 auto; }
+  .tig-confirm-text { width: 100%; }
 }

@@ -277,51 +277,51 @@ export function TigWorkspace({
             const actions = nextActions[pkg.status];
             const isBusy = busyId === pkg.id;
             return (
-              <div className="package-card tig-package" key={pkg.id}>
-                <div className="tig-package-head">
-                  <div>
+              <div className="card tig-package" key={pkg.id}>
+                <div className="tig-package-top">
+                  <div className="tig-package-title">
                     <strong>{pkg.id} · {pkg.subcontractor}</strong>
                     <span>
                       {pkg.issueIds.length} tétel · {pkg.proofCount} bizonyíték
                       {pkg.performanceDate ? ` · teljesítés: ${pkg.performanceDate}` : ""}
                     </span>
                   </div>
-                  <div className="tig-package-value">
-                    <b>{formatHuf(value)}</b>
-                    <span className={`pill tig-status tig-status-${pkg.status}`}>{statusLabels[pkg.status]}</span>
-                  </div>
+                  <span className={`pill tig-status tig-status-${pkg.status}`}>{statusLabels[pkg.status]}</span>
                 </div>
 
-                <div className="tig-actions">
-                  {actions.map((action) => (
-                    <button
-                      key={action.to}
-                      type="button"
-                      className={`button ${action.primary ? "primary" : "ghost"}`}
-                      onClick={() => changeStatus(pkg.id, action.to)}
-                      disabled={isBusy}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
+                <div className="tig-package-bottom">
+                  <b className="tig-package-amount">{formatHuf(value)}</b>
 
-                  {pkg.status === "draft" ? (
-                    confirmDelete === pkg.id ? (
-                      <span className="tig-confirm">
-                        Törlöd?
-                        <button type="button" className="button danger" onClick={() => remove(pkg.id)} disabled={isBusy}>
-                          Igen
-                        </button>
-                        <button type="button" className="button ghost" onClick={() => setConfirmDelete(null)}>
-                          Mégse
-                        </button>
-                      </span>
-                    ) : (
-                      <button type="button" className="button ghost" onClick={() => setConfirmDelete(pkg.id)} disabled={isBusy}>
-                        Törlés
+                  {confirmDelete === pkg.id ? (
+                    <div className="tig-actions">
+                      <span className="tig-confirm-text">Biztosan törlöd?</span>
+                      <button type="button" className="button danger" onClick={() => remove(pkg.id)} disabled={isBusy}>
+                        Igen, törlöm
                       </button>
-                    )
-                  ) : null}
+                      <button type="button" className="button ghost" onClick={() => setConfirmDelete(null)}>
+                        Mégse
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="tig-actions">
+                      {actions.map((action) => (
+                        <button
+                          key={action.to}
+                          type="button"
+                          className={`button ${action.primary ? "primary" : "ghost"}`}
+                          onClick={() => changeStatus(pkg.id, action.to)}
+                          disabled={isBusy}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                      {pkg.status === "draft" ? (
+                        <button type="button" className="button ghost" onClick={() => setConfirmDelete(pkg.id)} disabled={isBusy}>
+                          Törlés
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
             );
