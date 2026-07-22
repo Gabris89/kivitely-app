@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatHuf } from "@/lib/format";
+import { TrashIcon } from "@/components/ActionIcons";
 import type { TigItem, TigPackage, TigPackageStatus } from "@/types";
 
 type SubOption = { publicId: string; name: string; trade: string };
@@ -316,8 +317,15 @@ export function TigWorkspace({
                         </button>
                       ))}
                       {pkg.status === "draft" ? (
-                        <button type="button" className="button ghost" onClick={() => setConfirmDelete(pkg.id)} disabled={isBusy}>
-                          Törlés
+                        <button
+                          type="button"
+                          className="icon-btn danger tig-delete"
+                          aria-label="Csomag törlése"
+                          title="Törlés"
+                          onClick={() => setConfirmDelete(pkg.id)}
+                          disabled={isBusy}
+                        >
+                          <TrashIcon />
                         </button>
                       ) : null}
                     </div>
