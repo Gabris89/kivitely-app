@@ -2943,8 +2943,18 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .tig-candidates { display: grid; gap: 10px; }
 .tig-candidate-empty { margin: 0; color: var(--muted); font-size: 13px; }
 .tig-item-selectable { cursor: pointer; }
-.tig-meta input[type="date"] { color-scheme: dark; }
 .tig-selected-summary { color: var(--soft); font-size: 13px; font-weight: 700; }
+
+/* Meta: egyoszlopos elrendezés; az időszak kezdete/vége párban (desktopon
+   egymás mellett, mobilon egymás alatt). */
+.tig-meta { grid-template-columns: 1fr; }
+.tig-meta input[type="date"] { color-scheme: dark; }
+.tig-period { display: grid; gap: 8px; }
+.tig-field-label { color: var(--muted); font-size: 12px; font-weight: 850; }
+.tig-period-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.tig-create-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tig-create-buttons { display: flex; gap: 10px; }
 
 .tig-package { display: grid; gap: 12px; }
 .tig-package-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -2953,10 +2963,30 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .tig-package-value { display: grid; gap: 6px; justify-items: end; flex-shrink: 0; text-align: right; }
 .tig-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tig-actions .button { min-height: 40px; padding: 9px 13px; font-size: 13px; }
-.tig-confirm { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+.tig-confirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
 
 .tig-status { border: 1px solid var(--line); }
 .tig-status-draft { color: var(--muted); }
 .tig-status-ready_for_review { color: var(--warn); border-color: rgba(255, 209, 102, 0.4); }
 .tig-status-approved { color: var(--ok); border-color: rgba(72, 213, 151, 0.4); }
 .tig-status-sent { color: var(--brand); border-color: rgba(90, 209, 245, 0.4); }
+
+@media (max-width: 720px) {
+  /* Időszak egymás alá; a create-panel alja átlátható, gombok teljes szélesen
+     (a primary akció felül). */
+  .tig-period-grid { grid-template-columns: 1fr; }
+  .tig-create-footer { flex-direction: column; align-items: stretch; }
+  .tig-selected-summary { text-align: center; }
+  .tig-create-buttons { flex-direction: column-reverse; }
+  .tig-create-buttons .button { width: 100%; }
+  /* Csomag-kártya: fejléc egymás alá, érték + státusz egy sorban balra. */
+  .tig-package-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .tig-package-value {
+    grid-auto-flow: column;
+    justify-content: start;
+    justify-items: start;
+    align-items: center;
+    text-align: left;
+  }
+  .tig-actions .button { flex: 1 1 auto; }
+}

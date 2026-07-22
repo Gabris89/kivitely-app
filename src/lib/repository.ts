@@ -2142,7 +2142,7 @@ export async function listTigCandidateIssues(projectId: string, subcontractorPub
 
   const { data, error } = await supabase
     .from("issues")
-    .select("public_id, title, value_huf, subcontractors(name), issue_evidence(evidence_type)")
+    .select("id, public_id, title, value_huf, subcontractors(name), issue_evidence(evidence_type)")
     .eq("project_id", projectDbId)
     .eq("subcontractor_id", subDbId)
     .eq("status", "tig_ready");
@@ -2150,20 +2150,30 @@ export async function listTigCandidateIssues(projectId: string, subcontractorPub
   logSupabaseReadError("tig candidates", error);
   if (error || !data) return [];
 
+  // Már valamely TIG csomagba tett hibák kizárása – egy hiba ne kerülhessen
+  // két csomagba (kettős számlázás elkerülése). A hiba-id globálisan egyedi és
+  // egy projekthez tartozik, ezért elég az összes csomag-kapcsolatot nézni.
+  const { data: usedData, error: usedError } = await supabase.from("tig_package_issues").select("issue_id");
+  logSupabaseReadError("tig used issues", usedError);
+  const usedIds = new Set(((usedData as { issue_id: string }[] | null) || []).map((row) => row.issue_id));
+
   return (data as unknown as {
+    id: string;
     public_id: string;
     title: string;
     value_huf: number | string | null;
     subcontractors?: { name: string | null } | null;
     issue_evidence?: { evidence_type: string }[] | null;
-  }[]).map((row) => ({
-    id: row.public_id,
-    title: row.title,
-    subcontractor: row.subcontractors?.name || "Nincs megadva",
-    valueHuf: numberValue(row.value_huf),
-    proofCount: (row.issue_evidence || []).length,
-    included: false
-  }));
+  }[])
+    .filter((row) => !usedIds.has(row.id))
+    .map((row) => ({
+      id: row.public_id,
+      title: row.title,
+      subcontractor: row.subcontractors?.name || "Nincs megadva",
+      valueHuf: numberValue(row.value_huf),
+      proofCount: (row.issue_evidence || []).length,
+      included: false
+    }));
 }
 
 export async function createTigPackage(input: CreateTigPackageInput): Promise<TigWriteResult> {

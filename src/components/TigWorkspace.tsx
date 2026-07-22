@@ -221,23 +221,28 @@ export function TigWorkspace({
                 onChange={(event) => setMeta({ ...meta, performanceDate: event.target.value })}
               />
             </label>
+            <div className="tig-period">
+              <span className="tig-field-label">Elszámolási időszak</span>
+              <div className="tig-period-grid">
+                <label>
+                  Kezdete
+                  <input
+                    type="date"
+                    value={meta.periodStart}
+                    onChange={(event) => setMeta({ ...meta, periodStart: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Vége
+                  <input
+                    type="date"
+                    value={meta.periodEnd}
+                    onChange={(event) => setMeta({ ...meta, periodEnd: event.target.value })}
+                  />
+                </label>
+              </div>
+            </div>
             <label>
-              Időszak kezdete
-              <input
-                type="date"
-                value={meta.periodStart}
-                onChange={(event) => setMeta({ ...meta, periodStart: event.target.value })}
-              />
-            </label>
-            <label>
-              Időszak vége
-              <input
-                type="date"
-                value={meta.periodEnd}
-                onChange={(event) => setMeta({ ...meta, periodEnd: event.target.value })}
-              />
-            </label>
-            <label className="full">
               Megjegyzés (szerződés / mérföldkő)
               <textarea
                 value={meta.note}
@@ -247,14 +252,14 @@ export function TigWorkspace({
             </label>
           </div>
 
-          <div className="form-footer">
-            <button type="button" className="button ghost" onClick={resetCreate}>
-              Mégse
-            </button>
-            <div className="form-actions">
-              <span className="tig-selected-summary">
-                {selected.size} tétel · {formatHuf(selectedValue)}
-              </span>
+          <div className="tig-create-footer">
+            <span className="tig-selected-summary">
+              {selected.size} tétel · {formatHuf(selectedValue)}
+            </span>
+            <div className="tig-create-buttons">
+              <button type="button" className="button ghost" onClick={resetCreate}>
+                Mégse
+              </button>
               <button type="button" className="button primary" onClick={submitCreate} disabled={saving}>
                 {saving ? "Létrehozás…" : "Csomag létrehozása"}
               </button>
