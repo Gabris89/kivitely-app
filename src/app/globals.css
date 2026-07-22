@@ -2935,3 +2935,28 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
     margin: 2px 0 8px;
   }
 }
+
+/* ─── TIG workspace ─────────────────────────────────────────────────────── */
+.tig-workspace { display: grid; gap: 16px; }
+.tig-error { margin: 0; }
+.tig-create { display: grid; gap: 18px; }
+.tig-candidates { display: grid; gap: 10px; }
+.tig-candidate-empty { margin: 0; color: var(--muted); font-size: 13px; }
+.tig-item-selectable { cursor: pointer; }
+.tig-meta input[type="date"] { color-scheme: dark; }
+.tig-selected-summary { color: var(--soft); font-size: 13px; font-weight: 700; }
+
+.tig-package { display: grid; gap: 12px; }
+.tig-package-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tig-package-head strong { display: block; }
+.tig-package-head span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.tig-package-value { display: grid; gap: 6px; justify-items: end; flex-shrink: 0; text-align: right; }
+.tig-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tig-actions .button { min-height: 40px; padding: 9px 13px; font-size: 13px; }
+.tig-confirm { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+
+.tig-status { border: 1px solid var(--line); }
+.tig-status-draft { color: var(--muted); }
+.tig-status-ready_for_review { color: var(--warn); border-color: rgba(255, 209, 102, 0.4); }
+.tig-status-approved { color: var(--ok); border-color: rgba(72, 213, 151, 0.4); }
+.tig-status-sent { color: var(--brand); border-color: rgba(90, 209, 245, 0.4); }
