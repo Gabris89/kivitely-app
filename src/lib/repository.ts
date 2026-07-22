@@ -291,10 +291,18 @@ type SupabaseTigPackageRow = {
   public_id: string;
   status: TigPackage["status"];
   gross_value_huf: number | string | null;
+  net_value_huf: number | string | null;
+  performance_date: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  note: string | null;
   created_at: string;
   updated_at: string;
   subcontractors?: { name: string | null } | null;
-  tig_package_issues?: { issue_id: string }[] | null;
+  tig_package_issues?: {
+    issue_id: string;
+    issues?: { public_id: string | null; issue_evidence?: { evidence_type: string }[] | null } | null;
+  }[] | null;
 };
 
 type SupabaseWorkLogRow = {
@@ -516,14 +524,24 @@ function mapIssueEvent(row: SupabaseIssueEventRow, issueId: string): IssueEvent 
 }
 
 function mapTigPackage(row: SupabaseTigPackageRow): TigPackage {
+  const links = row.tig_package_issues || [];
+  // proofCount SZÁRMAZTATOTT: a kapcsolt hibákhoz tartozó bizonyítékok (fotók)
+  // összege – nem tárolt fix érték.
+  const proofCount = links.reduce((sum, link) => sum + (link.issues?.issue_evidence?.length || 0), 0);
+
   return {
     id: row.public_id,
     projectId: row.project_id,
     subcontractor: row.subcontractors?.name || "Nincs megadva",
     status: row.status,
-    issueIds: row.tig_package_issues?.map((item) => item.issue_id) || [],
+    issueIds: links.map((item) => item.issues?.public_id || item.issue_id),
     grossValueHuf: numberValue(row.gross_value_huf),
-    proofCount: 0,
+    netValueHuf: numberValue(row.net_value_huf),
+    proofCount,
+    performanceDate: row.performance_date || undefined,
+    periodStart: row.period_start || undefined,
+    periodEnd: row.period_end || undefined,
+    note: row.note || undefined,
     createdAt: dateOnly(row.created_at),
     updatedAt: dateOnly(row.updated_at)
   };
@@ -1224,7 +1242,7 @@ export async function listTigPackages(projectId: string) {
 
   const { data, error } = await supabase
     .from("tig_packages")
-    .select("*,subcontractors(name),tig_package_issues(issue_id)")
+    .select("*,subcontractors(name),tig_package_issues(issue_id, issues(public_id, issue_evidence(evidence_type)))")
     .eq("project_id", projectDbId)
     .order("updated_at", { ascending: false });
 
@@ -2034,5 +2052,261 @@ export async function deleteIssueRecord(publicId: string): Promise<DeleteIssueRe
   }
 
   return { ok: true, mode: "mock" };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIG (teljesítésigazolás) write flow
+// Minden művelet authenticated kliensen (getServerSupabaseClient), soha nem anon.
+// A csomag értéke a kapcsolt hibák valueHuf összege; a proofCount származtatott.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type TigStatus = TigPackage["status"];
+
+const tigSelect =
+  "*,subcontractors(name),tig_package_issues(issue_id, issues(public_id, issue_evidence(evidence_type)))";
+
+const TIG_TRANSITIONS: Record<TigStatus, TigStatus[]> = {
+  draft: ["ready_for_review"],
+  ready_for_review: ["approved", "draft"],
+  approved: ["sent", "ready_for_review"],
+  sent: []
+};
+
+export type CreateTigPackageInput = {
+  projectId: string; // projekt public id
+  subcontractorId: string; // alvállalkozó public id
+  issueIds: string[]; // hiba public id-k
+  performanceDate?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  note?: string | null;
+};
+
+export type TigMetaInput = {
+  performanceDate?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  note?: string | null;
+};
+
+export type TigWriteResult = { package: TigPackage | null; ok: boolean; error?: string };
+
+function nextPublicTigId(publicIds: string[]) {
+  const nextNumber =
+    Math.max(
+      0,
+      ...publicIds.map((id) => Number(String(id).replace("TIG-", ""))).filter((value) => Number.isFinite(value))
+    ) + 1;
+  return `TIG-${String(nextNumber).padStart(3, "0")}`;
+}
+
+async function getTigPackageByPublicId(publicId: string): Promise<TigPackage | null> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.from("tig_packages").select(tigSelect).eq("public_id", publicId).maybeSingle();
+  logSupabaseReadError("tig package by public id", error);
+  return !error && data ? mapTigPackage(data as SupabaseTigPackageRow) : null;
+}
+
+async function getTigPackageRef(publicId: string): Promise<{ id: string; status: TigStatus } | null> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.from("tig_packages").select("id, status").eq("public_id", publicId).maybeSingle();
+  logSupabaseReadError("tig package id lookup", error);
+  return error || !data ? null : (data as { id: string; status: TigStatus });
+}
+
+async function getIssueRefsByPublicIds(publicIds: string[]): Promise<{ id: string; value_huf: number | string | null }[]> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase || publicIds.length === 0) return [];
+
+  const { data, error } = await supabase.from("issues").select("id, value_huf").in("public_id", publicIds);
+  logSupabaseReadError("issue refs by public id", error);
+  return error ? [] : ((data as { id: string; value_huf: number | string | null }[]) || []);
+}
+
+// A mock listTigItems kiváltása: az adott projekt adott alvállalkozójához tartozó
+// tig_ready hibák, amelyekből TIG-tétel lehet. (A már csomagba tett hibák
+// kiszűrése egyelőre nyitott – lásd terv.)
+export async function listTigCandidateIssues(projectId: string, subcontractorPublicId: string): Promise<TigItem[]> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return mockTigItems;
+
+  const [projectDbId, subDbId] = await Promise.all([
+    getSupabaseProjectDbId(projectId),
+    getSupabaseSubcontractorDbId(subcontractorPublicId)
+  ]);
+  if (!projectDbId || !subDbId) return [];
+
+  const { data, error } = await supabase
+    .from("issues")
+    .select("public_id, title, value_huf, subcontractors(name), issue_evidence(evidence_type)")
+    .eq("project_id", projectDbId)
+    .eq("subcontractor_id", subDbId)
+    .eq("status", "tig_ready");
+
+  logSupabaseReadError("tig candidates", error);
+  if (error || !data) return [];
+
+  return (data as unknown as {
+    public_id: string;
+    title: string;
+    value_huf: number | string | null;
+    subcontractors?: { name: string | null } | null;
+    issue_evidence?: { evidence_type: string }[] | null;
+  }[]).map((row) => ({
+    id: row.public_id,
+    title: row.title,
+    subcontractor: row.subcontractors?.name || "Nincs megadva",
+    valueHuf: numberValue(row.value_huf),
+    proofCount: (row.issue_evidence || []).length,
+    included: false
+  }));
+}
+
+export async function createTigPackage(input: CreateTigPackageInput): Promise<TigWriteResult> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
+
+  const [projectDbId, subDbId] = await Promise.all([
+    getSupabaseProjectDbId(input.projectId),
+    getSupabaseSubcontractorDbId(input.subcontractorId)
+  ]);
+  if (!projectDbId) return { package: null, ok: false, error: "Ismeretlen projekt." };
+  if (!subDbId) return { package: null, ok: false, error: "Válassz alvállalkozót." };
+
+  const issues = await getIssueRefsByPublicIds(input.issueIds);
+  const value = issues.reduce((sum, issue) => sum + numberValue(issue.value_huf), 0);
+
+  const { data: existing } = await supabase.from("tig_packages").select("public_id");
+  const publicId = nextPublicTigId(((existing as { public_id: string }[]) || []).map((row) => row.public_id));
+
+  const { data, error } = await supabase
+    .from("tig_packages")
+    .insert({
+      public_id: publicId,
+      project_id: projectDbId,
+      subcontractor_id: subDbId,
+      status: "draft",
+      gross_value_huf: value,
+      net_value_huf: value,
+      performance_date: input.performanceDate || null,
+      period_start: input.periodStart || null,
+      period_end: input.periodEnd || null,
+      note: input.note || null
+    })
+    .select("id, public_id")
+    .single();
+
+  logSupabaseWriteError("tig_packages insert", error);
+  if (error || !data) return { package: null, ok: false, error: "A csomag létrehozása nem sikerült." };
+
+  if (issues.length) {
+    const links = issues.map((issue) => ({ tig_package_id: data.id, issue_id: issue.id }));
+    const { error: linkError } = await supabase.from("tig_package_issues").insert(links);
+    logSupabaseWriteError("tig_package_issues insert", linkError);
+  }
+
+  return { package: await getTigPackageByPublicId(publicId), ok: true };
+}
+
+export async function setTigPackageIssues(packagePublicId: string, issuePublicIds: string[]): Promise<TigWriteResult> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
+
+  const ref = await getTigPackageRef(packagePublicId);
+  if (!ref) return { package: null, ok: false, error: "Nincs ilyen csomag." };
+  if (ref.status !== "draft") {
+    return { package: await getTigPackageByPublicId(packagePublicId), ok: false, error: "Csak piszkozat szerkeszthető." };
+  }
+
+  await supabase.from("tig_package_issues").delete().eq("tig_package_id", ref.id);
+
+  const issues = await getIssueRefsByPublicIds(issuePublicIds);
+  if (issues.length) {
+    const links = issues.map((issue) => ({ tig_package_id: ref.id, issue_id: issue.id }));
+    const { error: linkError } = await supabase.from("tig_package_issues").insert(links);
+    logSupabaseWriteError("tig_package_issues replace", linkError);
+  }
+
+  const value = issues.reduce((sum, issue) => sum + numberValue(issue.value_huf), 0);
+  await supabase
+    .from("tig_packages")
+    .update({ gross_value_huf: value, net_value_huf: value, updated_at: new Date().toISOString() })
+    .eq("id", ref.id);
+
+  return { package: await getTigPackageByPublicId(packagePublicId), ok: true };
+}
+
+export async function updateTigPackageMeta(packagePublicId: string, meta: TigMetaInput): Promise<TigWriteResult> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
+
+  const ref = await getTigPackageRef(packagePublicId);
+  if (!ref) return { package: null, ok: false, error: "Nincs ilyen csomag." };
+
+  const { error } = await supabase
+    .from("tig_packages")
+    .update({
+      performance_date: meta.performanceDate ?? null,
+      period_start: meta.periodStart ?? null,
+      period_end: meta.periodEnd ?? null,
+      note: meta.note ?? null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", ref.id);
+
+  logSupabaseWriteError("tig_packages meta update", error);
+  return { package: await getTigPackageByPublicId(packagePublicId), ok: !error, error: error ? "Mentés sikertelen." : undefined };
+}
+
+export async function moveTigPackageStatus(packagePublicId: string, nextStatus: TigStatus): Promise<TigWriteResult> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
+
+  const ref = await getTigPackageRef(packagePublicId);
+  if (!ref) return { package: null, ok: false, error: "Nincs ilyen csomag." };
+
+  if (!TIG_TRANSITIONS[ref.status]?.includes(nextStatus)) {
+    return {
+      package: await getTigPackageByPublicId(packagePublicId),
+      ok: false,
+      error: `Nem megengedett állapotváltás: ${ref.status} → ${nextStatus}.`
+    };
+  }
+
+  // Validációs kapu az "ellenőrzésre vár" állapothoz.
+  if (nextStatus === "ready_for_review") {
+    const full = await getTigPackageByPublicId(packagePublicId);
+    if (!full || full.issueIds.length === 0) {
+      return { package: full, ok: false, error: "Legalább egy tétel kell a csomagba." };
+    }
+    if (full.proofCount === 0) {
+      return { package: full, ok: false, error: "Legalább egy fotós bizonyíték szükséges a tételeken." };
+    }
+  }
+
+  const { error } = await supabase
+    .from("tig_packages")
+    .update({ status: nextStatus, updated_at: new Date().toISOString() })
+    .eq("id", ref.id);
+
+  logSupabaseWriteError("tig_packages status", error);
+  return { package: await getTigPackageByPublicId(packagePublicId), ok: !error, error: error ? "Állapotváltás sikertelen." : undefined };
+}
+
+export async function deleteTigPackage(packagePublicId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { ok: false, error: "Nincs adatbázis-kapcsolat." };
+
+  const ref = await getTigPackageRef(packagePublicId);
+  if (!ref) return { ok: false, error: "Nincs ilyen csomag." };
+  if (ref.status !== "draft") return { ok: false, error: "Csak piszkozat törölhető." };
+
+  const { error } = await supabase.from("tig_packages").delete().eq("id", ref.id);
+  logSupabaseWriteError("tig_packages delete", error);
+  return { ok: !error, error: error ? "Törlés sikertelen." : undefined };
 }
 

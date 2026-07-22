@@ -97,14 +97,21 @@ export type TigItem = {
   included: boolean;
 };
 
+export type TigPackageStatus = "draft" | "ready_for_review" | "approved" | "sent";
+
 export type TigPackage = {
   id: string;
   projectId: string;
   subcontractor: string;
-  status: "draft" | "ready_for_review" | "approved" | "sent";
+  status: TigPackageStatus;
   issueIds: string[];
   grossValueHuf: number;
+  netValueHuf?: number;
   proofCount: number;
+  performanceDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  note?: string;
   createdAt: string;
   updatedAt: string;
 };
