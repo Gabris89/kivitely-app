@@ -13,6 +13,7 @@ import {
 import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getServerSupabaseClient, isAuthConfigured } from "@/lib/supabase/server";
 
 export type CreateProjectInput = {
   name: string;
@@ -436,17 +437,20 @@ function mapSubcontractor(row: SupabaseSubcontractorRow, issues: Issue[]): Subco
 }
 
 function getIssueEvidencePublicUrl(storagePath?: string | null) {
-  const supabase = getSupabaseClient();
-  if (!supabase || !storagePath?.startsWith("issues/")) return undefined;
+  // Publikus URL összeállítása – csak string-építés, nem igényel auth-ot (a
+  // bucket publikus olvasásra), ezért marad az anon kliens.
+  const anonClient = getSupabaseClient();
+  if (!anonClient || !storagePath?.startsWith("issues/")) return undefined;
 
-  return supabase.storage.from(issueEvidenceBucket).getPublicUrl(storagePath).data.publicUrl;
+  return anonClient.storage.from(issueEvidenceBucket).getPublicUrl(storagePath).data.publicUrl;
 }
 
 function getProjectDocumentPublicUrl(storagePath?: string | null) {
-  const supabase = getSupabaseClient();
-  if (!supabase || !storagePath?.startsWith("projects/")) return undefined;
+  // Lásd fent: publikus URL, marad az anon kliens.
+  const anonClient = getSupabaseClient();
+  if (!anonClient || !storagePath?.startsWith("projects/")) return undefined;
 
-  return supabase.storage.from(projectDocumentsBucket).getPublicUrl(storagePath).data.publicUrl;
+  return anonClient.storage.from(projectDocumentsBucket).getPublicUrl(storagePath).data.publicUrl;
 }
 
 function mapEvidence(row: SupabaseEvidenceRow, issueId: string): EvidencePhoto {
@@ -636,7 +640,7 @@ function nextPublicIssueId(publicIds: string[]) {
 }
 
 async function listSupabaseIssues(projectId?: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   let query = supabase
@@ -660,7 +664,7 @@ async function listSupabaseIssues(projectId?: string) {
 }
 
 async function getSupabaseIssueDbId(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -675,7 +679,7 @@ async function getSupabaseIssueDbId(publicId: string) {
 }
 
 export async function listProjects() {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return [mockProject];
 
   const { data, error } = await supabase
@@ -691,7 +695,7 @@ export async function listProjects() {
 }
 
 export async function getProjectByPublicId(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return publicId === mockProject.publicId ? mockProject : null;
 
   const { data, error } = await supabase
@@ -706,7 +710,7 @@ export async function getProjectByPublicId(publicId: string) {
 }
 
 async function getSupabaseProjectDbId(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -744,7 +748,7 @@ function createMockProjectRecord(input: CreateProjectInput): Project {
 }
 
 async function createSupabaseProject(input: CreateProjectInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data: existingProjects, error: existingError } = await supabase
@@ -792,7 +796,7 @@ export async function createProjectRecord(input: CreateProjectInput): Promise<Cr
 }
 
 async function updateSupabaseProject(publicId: string, input: UpdateProjectInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -824,7 +828,7 @@ export async function updateProjectRecord(publicId: string, input: UpdateProject
 }
 
 async function deleteSupabaseProject(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const projectDbId = await getSupabaseProjectDbId(publicId);
@@ -844,7 +848,7 @@ export async function deleteProjectRecord(publicId: string): Promise<DeleteProje
     return { ok: true, mode: "supabase" };
   }
 
-  if (getSupabaseClient()) {
+  if (isAuthConfigured()) {
     return { ok: false, mode: "mock" };
   }
 
@@ -865,7 +869,7 @@ export async function getIssue(id: string, projectId?: string) {
 
 export async function getIssueEvidence(issueId: string) {
   const issueDbId = await getSupabaseIssueDbId(issueId);
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   const result = issueDbId && supabase
     ? await supabase
         .from("issue_evidence")
@@ -882,7 +886,7 @@ export async function getIssueEvidence(issueId: string) {
 
 async function createSupabaseIssueEvidence(issueId: string, input: CreateIssueEvidenceInput) {
   const issueDbId = await getSupabaseIssueDbId(issueId);
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
 
   if (!issueDbId || !supabase) return null;
 
@@ -946,7 +950,7 @@ export async function createIssueEvidenceRecord(issueId: string, input: CreateIs
 
 async function deleteSupabaseIssueEvidence(issueId: string, evidenceId: string) {
   const issueDbId = await getSupabaseIssueDbId(issueId);
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
 
   if (!issueDbId || !supabase) return null;
 
@@ -993,7 +997,7 @@ export async function deleteIssueEvidenceRecord(issueId: string, evidenceId: str
     };
   }
 
-  if (getSupabaseClient()) {
+  if (isAuthConfigured()) {
     return {
       ok: false,
       mode: "mock"
@@ -1008,7 +1012,7 @@ export async function deleteIssueEvidenceRecord(issueId: string, evidenceId: str
 
 export async function getIssueEvents(issueId: string) {
   const issueDbId = await getSupabaseIssueDbId(issueId);
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   const result = issueDbId && supabase
     ? await supabase
         .from("issue_events")
@@ -1024,7 +1028,7 @@ export async function getIssueEvents(issueId: string) {
 }
 
 export async function listSubcontractors() {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   const issues = await listIssues();
   const result = supabase
     ? await supabase
@@ -1045,7 +1049,7 @@ export async function getSubcontractorByPublicId(publicId: string) {
 }
 
 async function getSupabaseSubcontractorDbId(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -1086,7 +1090,7 @@ function createMockSubcontractor(input: CreateSubcontractorInput): Subcontractor
 }
 
 async function createSupabaseSubcontractor(input: CreateSubcontractorInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data: existing, error: existingError } = await supabase
@@ -1133,7 +1137,7 @@ export async function createSubcontractorRecord(input: CreateSubcontractorInput)
 }
 
 async function updateSupabaseSubcontractor(publicId: string, input: UpdateSubcontractorInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -1171,7 +1175,7 @@ export async function updateSubcontractorRecord(publicId: string, input: UpdateS
 }
 
 async function deleteSupabaseSubcontractor(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const subcontractorDbId = await getSupabaseSubcontractorDbId(publicId);
@@ -1194,7 +1198,7 @@ export async function deleteSubcontractorRecord(publicId: string): Promise<Delet
     };
   }
 
-  if (getSupabaseClient()) {
+  if (isAuthConfigured()) {
     return {
       ok: false,
       mode: "mock"
@@ -1212,7 +1216,7 @@ export function listTigItems(): TigItem[] {
 }
 
 export async function listTigPackages(projectId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return mockTigPackages;
 
   const projectDbId = await getSupabaseProjectDbId(projectId);
@@ -1232,7 +1236,7 @@ export async function listTigPackages(projectId: string) {
 }
 
 export async function listWorkLogs(projectId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return mockWorkLogs;
 
   const projectDbId = await getSupabaseProjectDbId(projectId);
@@ -1253,7 +1257,7 @@ export async function listWorkLogs(projectId: string) {
 }
 
 export async function listProjectDocuments(projectId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return mockProjectDocuments;
 
   const projectDbId = await getSupabaseProjectDbId(projectId);
@@ -1301,7 +1305,7 @@ function createMockProjectDocument(input: CreateProjectDocumentInput, projectDat
 }
 
 async function createSupabaseProjectDocument(input: CreateProjectDocumentInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const projectData = await getProjectByPublicId(input.projectId);
@@ -1393,7 +1397,7 @@ export async function createProjectDocumentRecord(input: CreateProjectDocumentIn
 }
 
 async function deleteSupabaseProjectDocument(documentId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data: document, error: lookupError } = await supabase
@@ -1431,7 +1435,7 @@ export async function deleteProjectDocumentRecord(documentId: string): Promise<D
     };
   }
 
-  if (getSupabaseClient()) {
+  if (isAuthConfigured()) {
     return {
       ok: false,
       mode: "mock"
@@ -1445,7 +1449,7 @@ export async function deleteProjectDocumentRecord(documentId: string): Promise<D
 }
 
 export async function listPlanMeasurements(documentId: string): Promise<PlanMeasurement[]> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -1462,7 +1466,7 @@ export async function listPlanMeasurements(documentId: string): Promise<PlanMeas
 }
 
 export async function createPlanMeasurementRecord(input: CreatePlanMeasurementInput): Promise<CreatePlanMeasurementResult> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return { measurement: null, mode: "mock" };
 
   const { data, error } = await supabase
@@ -1486,7 +1490,7 @@ export async function createPlanMeasurementRecord(input: CreatePlanMeasurementIn
 }
 
 export async function deletePlanMeasurementRecord(measurementId: string): Promise<DeletePlanMeasurementResult> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, mode: "mock" };
 
   const { error } = await supabase.from("plan_measurements").delete().eq("id", measurementId);
@@ -1497,7 +1501,7 @@ export async function deletePlanMeasurementRecord(measurementId: string): Promis
 }
 
 export async function updatePlanMeasurementRecord(input: UpdatePlanMeasurementInput): Promise<CreatePlanMeasurementResult> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return { measurement: null, mode: "mock" };
 
   const { data, error } = await supabase
@@ -1519,7 +1523,7 @@ export async function updatePlanMeasurementRecord(input: UpdatePlanMeasurementIn
 }
 
 export async function getPlanCalibration(documentId: string): Promise<number | null> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -1535,7 +1539,7 @@ export async function getPlanCalibration(documentId: string): Promise<number | n
 }
 
 export async function savePlanCalibration(documentId: string, metersPerUnit: number): Promise<SavePlanCalibrationResult> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, mode: "mock" };
 
   const { error } = await supabase
@@ -1550,7 +1554,7 @@ export async function savePlanCalibration(documentId: string, metersPerUnit: num
 export async function listActiveBlockers(projectId: string) {
   const activeStatuses: BlockerStatus[] = ["open", "in_progress", "waiting_external"];
   const fallback = mockBlockerItems.filter((blocker) => activeStatuses.includes(blocker.status));
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return fallback;
 
   const projectDbId = await getSupabaseProjectDbId(projectId);
@@ -1574,7 +1578,7 @@ export async function listActiveBlockers(projectId: string) {
 }
 
 export async function listBlockers(projectId?: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return mockBlockerItems;
 
   let query = supabase.from("blocker_list").select("*").order("created_at", { ascending: false });
@@ -1601,7 +1605,7 @@ export async function getBlockerByPublicId(publicId: string) {
 }
 
 async function getSupabaseBlockerDbId(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -1616,7 +1620,7 @@ async function getSupabaseBlockerDbId(publicId: string) {
 }
 
 async function updateSupabaseBlocker(publicId: string, input: UpdateBlockerInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const responsibleResult = input.responsibleName
@@ -1664,7 +1668,7 @@ export async function updateBlockerRecord(publicId: string, input: UpdateBlocker
 }
 
 async function deleteSupabaseBlocker(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const blockerDbId = await getSupabaseBlockerDbId(publicId);
@@ -1684,7 +1688,7 @@ export async function deleteBlockerRecord(publicId: string): Promise<DeleteBlock
     return { ok: true, mode: "supabase" };
   }
 
-  if (getSupabaseClient()) {
+  if (isAuthConfigured()) {
     return { ok: false, mode: "mock" };
   }
 
@@ -1692,7 +1696,7 @@ export async function deleteBlockerRecord(publicId: string): Promise<DeleteBlock
 }
 
 async function attachBlockerRelations(rows: SupabaseBlockerRow[]) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return rows;
 
   const [{ data: projects, error: projectError }, { data: profiles, error: profileError }] = await Promise.all([
@@ -1753,7 +1757,7 @@ function createMockBlocker(input: CreateBlockerInput): BlockerItem {
 }
 
 async function createSupabaseBlocker(input: CreateBlockerInput): Promise<BlockerItem | null> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const project = await getProjectByPublicId(input.projectId);
@@ -1837,7 +1841,7 @@ export async function createBlockerRecord(input: CreateBlockerInput): Promise<Cr
 }
 
 async function createSupabaseIssue(input: CreateIssueInput) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const [projectDbId, { data: subcontractors, error: subcontractorError }, { data: existingIssues, error: issueIdError }] = await Promise.all([
@@ -1925,7 +1929,7 @@ export async function createIssueRecord(input: CreateIssueInput): Promise<Create
 }
 
 async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, targetStatus: IssueStatus) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return false;
 
   const { error } = await supabase
@@ -1945,7 +1949,7 @@ async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, target
 }
 
 async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): Promise<Issue | null> {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const currentIssue = await getIssue(publicId);
@@ -2005,7 +2009,7 @@ export async function updateIssueRecord(publicId: string, input: UpdateIssueInpu
 }
 
 async function deleteSupabaseIssue(publicId: string) {
-  const supabase = getSupabaseClient();
+  const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
   const issueDbId = await getSupabaseIssueDbId(publicId);
@@ -2025,7 +2029,7 @@ export async function deleteIssueRecord(publicId: string): Promise<DeleteIssueRe
     return { ok: true, mode: "supabase" };
   }
 
-  if (getSupabaseClient()) {
+  if (isAuthConfigured()) {
     return { ok: false, mode: "mock" };
   }
 

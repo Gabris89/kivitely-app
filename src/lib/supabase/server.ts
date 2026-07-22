@@ -8,6 +8,15 @@ export function isAuthConfigured() {
   return Boolean(supabaseUrl && supabasePublishableKey);
 }
 
+// A repository ezen keresztül éri el az adatbázist: a bejelentkezett felhasználó
+// session-cookie-ját továbbítja, így a DB-műveletek az "authenticated" szerepben
+// futnak (nem "anon"-ként). Ha nincs Supabase konfigurálva, null-t ad – így a
+// repository mock-módú fallbackje (if (!supabase) ...) változatlanul működik.
+export async function getServerSupabaseClient() {
+  if (!isAuthConfigured()) return null;
+  return createAuthServerClient();
+}
+
 export async function createAuthServerClient() {
   const cookieStore = await cookies();
 
