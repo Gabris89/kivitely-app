@@ -7,6 +7,7 @@ import type { ProjectDocument, ProjectDocumentType } from "@/types";
 import { ProjectDocumentViewer } from "@/components/ProjectDocumentViewer";
 import { SearchBox } from "@/components/SearchBox";
 import { TrashIcon } from "@/components/ActionIcons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const documentTypeLabels: Record<ProjectDocumentType, string> = {
   architectural_plan: "Építész terv",
@@ -53,10 +54,10 @@ export function DocumentFilters({ documents }: { documents: ProjectDocument[] })
   const [typeFilter, setTypeFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ProjectDocument | null>(null);
 
   async function deleteDocument(document: ProjectDocument) {
-    if (!window.confirm(`Biztosan törlöd ezt a dokumentumot: "${document.title}"?`)) return;
-
+    setPendingDelete(null);
     setDeletingId(document.id);
 
     const response = await fetch(`/api/documents/${document.id}`, { method: "DELETE" }).catch(() => undefined);
@@ -143,7 +144,7 @@ export function DocumentFilters({ documents }: { documents: ProjectDocument[] })
                   type="button"
                   className="document-row-delete"
                   disabled={deletingId === document.id}
-                  onClick={() => deleteDocument(document)}
+                  onClick={() => setPendingDelete(document)}
                   aria-label="Dokumentum törlése"
                   title="Dokumentum törlése"
                 >
@@ -165,6 +166,14 @@ export function DocumentFilters({ documents }: { documents: ProjectDocument[] })
           </div>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Dokumentum törlése"
+        message={`Biztosan törlöd ezt a dokumentumot: "${pendingDelete?.title}"? Ez nem visszavonható.`}
+        onConfirm={() => pendingDelete && deleteDocument(pendingDelete)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

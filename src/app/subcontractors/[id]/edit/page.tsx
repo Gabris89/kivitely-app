@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSubcontractorByPublicId } from "@/lib/repository";
-import { HeaderLink, PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@/components/PageHeader";
 import { SubcontractorForm } from "@/components/SubcontractorForm";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,7 @@ export default async function EditSubcontractorPage({ params }: { params: Promis
 
   return (
     <>
-      <PageHeader title={`${subcontractor.publicId} · ${subcontractor.name} szerkesztése`}>
-        <HeaderLink href="/subcontractors" variant="ghost">Vissza az alvállalkozókhoz</HeaderLink>
-      </PageHeader>
+      <PageHeader title={`${subcontractor.publicId} · ${subcontractor.name} szerkesztése`} />
       <SubcontractorForm
         mode="edit"
         publicId={subcontractor.publicId}

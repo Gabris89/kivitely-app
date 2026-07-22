@@ -111,16 +111,16 @@ export function NewIssueForm({
     <form className="card form-card" method="post" noValidate onChange={handleFormChange} onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
         <label className={isInvalid("title") ? "field-error" : undefined}>
-          Hiba címe
-          <input name="title" aria-invalid={isInvalid("title")} placeholder="Pl. Sérült burkolat a lépcsőháznál" suppressHydrationWarning />
+          <span className="visually-hidden">Hiba címe</span>
+          <input name="title" aria-invalid={isInvalid("title")} placeholder="Hiba címe" suppressHydrationWarning />
         </label>
         <label>
           Projekt
           <input defaultValue={projectName} readOnly suppressHydrationWarning />
         </label>
         <label className={isInvalid("location") ? "field-error" : undefined}>
-          Helyszín
-          <input name="location" aria-invalid={isInvalid("location")} placeholder="A épület · 1. emelet · folyosó" suppressHydrationWarning />
+          <span className="visually-hidden">Helyszín</span>
+          <input name="location" aria-invalid={isInvalid("location")} placeholder="Helyszín" suppressHydrationWarning />
         </label>
         <label className={isInvalid("trade") ? "field-error" : undefined}>
           Szakág
@@ -160,11 +160,11 @@ export function NewIssueForm({
           <input name="dueDate" type="date" aria-invalid={isInvalid("dueDate")} suppressHydrationWarning />
         </label>
         <label>
-          Becslés / TIG érték
-          <input name="valueHuf" type="number" placeholder="Pl. 250000" min="0" step="10000" suppressHydrationWarning />
+          <span className="visually-hidden">Becslés / TIG érték</span>
+          <input name="valueHuf" type="number" placeholder="Becslés / TIG érték" min="0" step="10000" suppressHydrationWarning />
         </label>
         <label className="full">
-          Leírás
+          <span className="visually-hidden">Leírás</span>
           <textarea name="description" placeholder="Írd le röviden, mit kell javítani, mit vársz bizonyítékként, és mi alapján fogadod el." suppressHydrationWarning />
         </label>
         <p className="form-help full">Képet a hiba létrehozása után, a részletező oldalon tudsz feltölteni.</p>

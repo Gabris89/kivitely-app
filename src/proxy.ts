@@ -51,6 +51,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(homeUrl);
   }
 
+  // Without this, the browser (and Next's client router cache) can serve a
+  // stale page from history - e.g. an already-authenticated page after
+  // signing out and pressing back, or a /login page with a stale "next"
+  // redirect target baked into its hidden form field from an earlier visit.
+  // no-store forces a fresh request every time, including for /login itself.
+  response.headers.set("Cache-Control", "no-store, must-revalidate");
+
   return response;
 }
 

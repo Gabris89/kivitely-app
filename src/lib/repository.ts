@@ -26,6 +26,24 @@ export type CreateProjectResult = {
   mode: "supabase" | "mock";
 };
 
+export type UpdateProjectInput = {
+  name: string;
+  address?: string;
+  client?: string;
+  phase?: string;
+  progress?: number;
+};
+
+export type UpdateProjectResult = {
+  project: Project | null;
+  mode: "supabase" | "mock";
+};
+
+export type DeleteProjectResult = {
+  ok: boolean;
+  mode: "supabase" | "mock";
+};
+
 export type CreateIssueInput = {
   title: string;
   projectId: string;
@@ -769,6 +787,69 @@ export async function createProjectRecord(input: CreateProjectInput): Promise<Cr
 
   return {
     project: createMockProjectRecord(input),
+    mode: "mock"
+  };
+}
+
+async function updateSupabaseProject(publicId: string, input: UpdateProjectInput) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("projects")
+    .update({
+      name: input.name,
+      address: input.address || null,
+      client: input.client || null,
+      phase: input.phase || null,
+      progress: input.progress ?? 0
+    })
+    .eq("public_id", publicId)
+    .select("*")
+    .maybeSingle();
+
+  logSupabaseWriteError("project update", error);
+
+  return error || !data ? null : mapProject(data as SupabaseProjectRow);
+}
+
+export async function updateProjectRecord(publicId: string, input: UpdateProjectInput): Promise<UpdateProjectResult> {
+  const updated = await updateSupabaseProject(publicId, input);
+
+  if (updated) {
+    return { project: updated, mode: "supabase" };
+  }
+
+  return { project: null, mode: "mock" };
+}
+
+async function deleteSupabaseProject(publicId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const projectDbId = await getSupabaseProjectDbId(publicId);
+  if (!projectDbId) return null;
+
+  const { error } = await supabase.from("projects").delete().eq("id", projectDbId);
+
+  logSupabaseWriteError("project delete", error);
+
+  return error ? null : true;
+}
+
+export async function deleteProjectRecord(publicId: string): Promise<DeleteProjectResult> {
+  const supabaseDeleted = await deleteSupabaseProject(publicId);
+
+  if (supabaseDeleted) {
+    return { ok: true, mode: "supabase" };
+  }
+
+  if (getSupabaseClient()) {
+    return { ok: false, mode: "mock" };
+  }
+
+  return {
+    ok: true,
     mode: "mock"
   };
 }

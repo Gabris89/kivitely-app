@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getProjectByPublicId } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
+import { ProjectDetailPanel } from "@/components/ProjectDetailPanel";
+import { ChevronRightIcon } from "@/components/ActionIcons";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +28,19 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
         <HeaderLink href={`/projects/${projectId}/issues/new`} variant="primary">+ Új hiba</HeaderLink>
       </PageHeader>
 
-      <section className="module-menu" aria-label="Modulok">
+      <div className="entity-list" aria-label="Modulok">
         {modules.map((mod) => (
-          <Link key={mod.href} href={mod.href} className="card module-tile">
-            <h2>{mod.title}</h2>
-            <p>{mod.description}</p>
+          <Link key={mod.href} href={mod.href} className="entity-row">
+            <div className="entity-row-main">
+              <strong>{mod.title}</strong>
+              <span>{mod.description}</span>
+            </div>
+            <span className="entity-row-chevron"><ChevronRightIcon /></span>
           </Link>
         ))}
-      </section>
+      </div>
+
+      <ProjectDetailPanel project={project} />
     </>
   );
 }

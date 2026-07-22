@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/format";
 import { blockerStatusLabels, blockerStatusOrder, getBlockerWorkflowHint } from "@/lib/blockerWorkflow";
 import { BlockerStatusBadge, PriorityBadge } from "@/components/StatusBadge";
 import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionIcons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -19,6 +20,7 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
   const [isEditing, setIsEditing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
   const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,8 +62,7 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Biztosan törlöd ezt az akadályt: "${blocker.title}"?`)) return;
-
+    setConfirmOpen(false);
     setDeleting(true);
 
     const response = await fetch(`/api/projects/${projectId}/blockers/${blocker.publicId}`, { method: "DELETE" }).catch(() => undefined);
@@ -83,15 +84,27 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
           <h2>Akadály adatai</h2>
           <BlockerStatusBadge status={blocker.status} />
         </div>
-        <button
-          type="button"
-          className={`edit-toggle-btn${isEditing ? " active" : ""}`}
-          aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
-          aria-expanded={isEditing}
-          onClick={() => setIsEditing((current) => !current)}
-        >
-          <PencilIcon />
-        </button>
+        <div className="section-title-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Törlés"
+            title="Törlés"
+            disabled={deleting}
+            onClick={() => setConfirmOpen(true)}
+          >
+            <TrashIcon />
+          </button>
+          <button
+            type="button"
+            className={`edit-toggle-btn${isEditing ? " active" : ""}`}
+            aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
+            aria-expanded={isEditing}
+            onClick={() => setIsEditing((current) => !current)}
+          >
+            <PencilIcon />
+          </button>
+        </div>
       </div>
 
       {!isEditing ? (
@@ -130,8 +143,8 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
         <form className="detail-edit-form" onSubmit={handleSubmit} suppressHydrationWarning>
           <div className="form-grid">
             <label>
-              Cím
-              <input name="title" required defaultValue={blocker.title} placeholder="Pl. Hiányzó tervrészlet" />
+              <span className="visually-hidden">Cím</span>
+              <input name="title" required defaultValue={blocker.title} placeholder="Cím" />
             </label>
             <label>
               Állapot
@@ -151,28 +164,28 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
               </select>
             </label>
             <label>
-              Szakma
-              <input name="trade" defaultValue={blocker.trade} placeholder="Pl. Burkolás" />
+              <span className="visually-hidden">Szakma</span>
+              <input name="trade" defaultValue={blocker.trade} placeholder="Szakma" />
             </label>
             <label>
-              Terület
-              <input name="area" defaultValue={blocker.area} placeholder="Pl. Lépcsőház" />
+              <span className="visually-hidden">Terület</span>
+              <input name="area" defaultValue={blocker.area} placeholder="Terület" />
             </label>
             <label>
-              Felelős neve
+              <span className="visually-hidden">Felelős neve</span>
               <input
                 name="responsibleName"
                 defaultValue={blocker.responsibleName === "Nincs megadva" ? "" : blocker.responsibleName}
-                placeholder="Pl. Szabó Elek"
+                placeholder="Felelős neve"
               />
             </label>
             <label className="full">
-              Leírás
+              <span className="visually-hidden">Leírás</span>
               <textarea name="description" required defaultValue={blocker.description} placeholder="Írd le röviden, mi akadályozza a munkát és mire van szükség a folytatáshoz." />
             </label>
             <label className="full">
-              Megoldás / lezárás megjegyzése
-              <textarea name="resolutionNote" defaultValue={blocker.resolutionNote} placeholder="Pl. Az anyag beérkezett, a javítás folytatható." />
+              <span className="visually-hidden">Megoldás / lezárás megjegyzése</span>
+              <textarea name="resolutionNote" defaultValue={blocker.resolutionNote} placeholder="Megoldás / lezárás megjegyzése" />
             </label>
           </div>
 
@@ -181,10 +194,6 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
               <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
             ) : <span />}
             <div className="form-actions">
-              <button className="button danger" type="button" onClick={handleDelete} disabled={deleting}>
-                <TrashIcon />
-                {deleting ? "Törlés..." : "Akadály törlése"}
-              </button>
               <button className="button ghost" type="button" onClick={() => setIsEditing(false)}>
                 <CloseIcon />
                 Mégse
@@ -197,6 +206,14 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
           </div>
         </form>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Akadály törlése"
+        message={`Biztosan törlöd ezt az akadályt: "${blocker.title}"? Ez nem visszavonható.`}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </article>
   );
 }

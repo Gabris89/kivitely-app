@@ -37,5 +37,7 @@ export async function signOut() {
     await supabase.auth.signOut();
   }
 
-  redirect("/login");
+  // next=/ : a kijelentkezés utáni újra-bejelentkezés mindig a dashboardra
+  // vigyen vissza (ne az utoljára nyitott oldalra / a "Több" menüre).
+  redirect("/login?next=/");
 }

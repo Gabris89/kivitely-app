@@ -20,7 +20,6 @@ export default async function BlockersPage({ params }: { params: Promise<{ proje
       <section className="card panel-large">
         <div className="section-title">
           <h2>Akadályok</h2>
-          <span className="pill">szűrés · keresés · státusz</span>
         </div>
         <BlockerFilters blockers={blockers} />
       </section>

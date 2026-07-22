@@ -23,6 +23,7 @@ export function WorkflowBoard({ issues, projects = [] }: { issues: Issue[]; proj
           value={projectFilter}
           onChange={(event) => setProjectFilter(event.target.value)}
           style={{ marginBottom: 16 }}
+          suppressHydrationWarning
         >
           <option value="all">Összes projekt</option>
           {projects.map((project) => (

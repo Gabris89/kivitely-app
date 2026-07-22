@@ -38,12 +38,7 @@ export function IssueFilters({
 
   return (
     <div className="issue-filter-stack">
-      <SearchBox
-        value={search}
-        onChange={setSearch}
-        placeholder="ID, hiba, helyszín, alvállalkozó..."
-        resultCount={filteredIssues.length}
-      />
+      <SearchBox value={search} onChange={setSearch} placeholder="ID, hiba, helyszín, alvállalkozó..." />
 
       {showProject && projects.length > 0 ? (
         <select
@@ -51,6 +46,7 @@ export function IssueFilters({
           aria-label="Szűrés projektre"
           value={projectFilter}
           onChange={(event) => setProjectFilter(event.target.value)}
+          suppressHydrationWarning
         >
           <option value="all">Összes projekt</option>
           {projects.map((project) => (

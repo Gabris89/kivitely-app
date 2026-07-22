@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listProjects } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
+import { ChevronRightIcon } from "@/components/ActionIcons";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +14,21 @@ export default async function ProjectsPage() {
         <HeaderLink href="/projects/new" variant="primary">+ Új projekt</HeaderLink>
       </PageHeader>
 
-      <section className="module-menu" aria-label="Projektek">
-        {projects.map((project) => (
-          <Link key={project.id} href={`/projects/${project.publicId}`} className="card module-tile">
-            <h2>{project.publicId} · {project.name}</h2>
-            <p>{[project.phase, project.address].filter(Boolean).join(" · ") || "Nincs megadva"}</p>
-          </Link>
-        ))}
-
-        {!projects.length ? <p className="card empty-list">Még nincs projekt.</p> : null}
-      </section>
+      {projects.length ? (
+        <div className="entity-list" aria-label="Projektek">
+          {projects.map((project) => (
+            <Link key={project.id} href={`/projects/${project.publicId}`} className="entity-row">
+              <div className="entity-row-main">
+                <strong>{project.publicId} · {project.name}</strong>
+                <span>{[project.phase, project.address].filter(Boolean).join(" · ") || "Nincs megadva"}</span>
+              </div>
+              <span className="entity-row-chevron"><ChevronRightIcon /></span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="card empty-list">Még nincs projekt.</p>
+      )}
     </>
   );
 }

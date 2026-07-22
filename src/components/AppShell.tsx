@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
+import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 
 type NavItem = {
   href: string;
@@ -18,106 +19,102 @@ type NavSection = {
   items: NavItem[];
 };
 
-function getProjectId(pathname: string) {
-  return pathname.match(/^\/projects\/([^/]+)/)?.[1] || null;
+function getProjectId(pathname: string): string | null {
+  const id = pathname.match(/^\/projects\/([^/]+)/)?.[1] ?? null;
+  // A "/projects/new" (új projekt) nem projekt-kontextus.
+  if (id === "new") return null;
+  return id;
 }
 
-function projectNavSections(projectId: string): NavSection[] {
+// ── Egységes, scope-tudatos navigáció ──────────────────────────────────────
+// A menüpontok LISTÁJA nem attól függ, hogy globális ("Minden projekt") vagy
+// projekt-nézetben vagyunk. A jelenlegi projekt (scope) csak azt dönti el,
+// MELYIK adaton dolgoznak a modulok (a link célja), és hogy megjelennek-e a
+// kizárólag projektben értelmes extrák (Új hiba, Projekt dokumentáció).
+// Nincs többé "Hibalista" vs "Összes hiba" duplikáció, és nincs külön "Admin"
+// szekció – a "Minden projekt" scope adja az összesített nézetet.
+
+function workItems(projectId: string | null): NavItem[] {
+  const base = projectId ? `/projects/${projectId}` : "";
+  const items: NavItem[] = [
+    { href: projectId ? base : "/", label: "Áttekintés", icon: "dashboard" },
+    { href: projectId ? `${base}/issues` : "/issues", label: "Hibák", icon: "issues" },
+    { href: projectId ? `${base}/blockers` : "/blockers", label: "Akadályok", icon: "blockers" },
+    { href: projectId ? `${base}/workflow` : "/workflow", label: "Workflow tábla", icon: "workflow" }
+  ];
+  if (projectId) {
+    items.push({ href: `${base}/issues/new`, label: "Új hiba", icon: "add" });
+  }
+  return items;
+}
+
+function projectDocItems(projectId: string): NavItem[] {
+  const base = `/projects/${projectId}`;
   return [
-    {
-      title: "Projektek",
-      items: [{ href: "/projects", label: "Projektek", icon: "projects" }]
-    },
+    { href: `${base}/documents`, label: "Dokumentumok", icon: "documents" },
+    { href: `${base}/work-logs`, label: "Teljesítménynapló", icon: "worklog" },
+    { href: `${base}/tig`, label: "TIG csomag", icon: "tig" }
+  ];
+}
+
+const masterDataItems: NavItem[] = [
+  { href: "/projects", label: "Projektek", icon: "projects" },
+  { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
+];
+
+// Desktop sidebar – minden modul egy helyen, csoportosítva.
+function buildNavSections(projectId: string | null): NavSection[] {
+  const sections: NavSection[] = [{ title: "Munka", items: workItems(projectId) }];
+  if (projectId) {
+    sections.push({ title: "Projekt dokumentáció", items: projectDocItems(projectId) });
+  }
+  sections.push({ title: "Törzsadatok", items: masterDataItems });
+  return sections;
+}
+
+// Mobil alsó sáv – 3 elsődleges cél + a "Több" gomb (fix 4 hely, ennyi fér el
+// kényelmesen egy telefon alján), azonos szerkezettel mindkét scope-ban. A
+// középső "gyors létrehozás" akció a nézőponthoz igazodik: projektben új hiba
+// (a napi legfontosabb művelet), összesített nézetben új projekt. A Workflow és
+// az Akadályok a "Több" drawerbe kerül.
+function buildBottomNav(projectId: string | null): NavItem[] {
+  const base = projectId ? `/projects/${projectId}` : "";
+  return [
+    { href: projectId ? base : "/", label: "Áttekintés", icon: "dashboard" },
+    { href: projectId ? `${base}/issues` : "/issues", label: "Hibák", icon: "issues" },
+    projectId
+      ? { href: `${base}/issues/new`, label: "Új hiba", icon: "add" }
+      : { href: "/projects/new", label: "Új projekt", icon: "add" }
+  ];
+}
+
+// "Több" drawer – ami nincs az alsó sávban, egyetlen, csoportosított listában
+// (nem külön második menü). Ugyanaz a szerkezet mindkét scope-ban, a projekt-
+// dokumentáció csoport csak projekt-nézetben jelenik meg.
+function buildDrawerSections(projectId: string | null): NavSection[] {
+  const base = projectId ? `/projects/${projectId}` : "";
+  const sections: NavSection[] = [
     {
       title: "Munka",
       items: [
-        { href: `/projects/${projectId}`, label: "Dashboard", icon: "dashboard" },
-        { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "issues" },
-        { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "add" },
-        { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "blockers" },
-        { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "workflow" }
-      ]
-    },
-    {
-      title: "Dokumentáció",
-      items: [
-        { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "documents" },
-        { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "worklog" },
-        { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "tig" }
-      ]
-    },
-    {
-      title: "Admin",
-      items: [
-        { href: "/issues", label: "Összes hiba", icon: "issues" },
-        { href: "/blockers", label: "Összes akadály", icon: "blockers" },
-        { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
-        { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
+        { href: projectId ? `${base}/blockers` : "/blockers", label: "Akadályok", icon: "blockers" },
+        { href: projectId ? `${base}/workflow` : "/workflow", label: "Workflow tábla", icon: "workflow" }
       ]
     }
   ];
-}
-
-const globalNavSections: NavSection[] = [
-  {
-    title: "Projektek",
-    items: [
-      { href: "/projects", label: "Projektek", icon: "projects" },
-      { href: "/projects/new", label: "Új projekt", icon: "add" }
-    ]
-  },
-  {
-    title: "Admin",
-    items: [
-      { href: "/issues", label: "Összes hiba", icon: "issues" },
-      { href: "/blockers", label: "Összes akadály", icon: "blockers" },
-      { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
-    ]
+  if (projectId) {
+    sections.push({ title: "Projekt dokumentáció", items: projectDocItems(projectId) });
   }
-];
-
-function projectBottomNav(projectId: string): NavItem[] {
-  return [
-    { href: `/projects/${projectId}`, label: "Dashboard", icon: "dashboard" },
-    { href: `/projects/${projectId}/issues`, label: "Hibalista", icon: "issues" },
-    { href: `/projects/${projectId}/issues/new`, label: "Új hiba", icon: "add" }
-  ];
+  sections.push({ title: "Törzsadatok", items: masterDataItems });
+  return sections;
 }
-
-const globalBottomNav: NavItem[] = [{ href: "/projects", label: "Projektek", icon: "projects" }];
-
-function projectMobileMenuGroups(projectId: string): NavItem[][] {
-  return [
-    [
-      { href: `/projects/${projectId}/blockers`, label: "Akadálylista", icon: "blockers" },
-      { href: `/projects/${projectId}/workflow`, label: "Workflow tábla", icon: "workflow" },
-      { href: `/projects/${projectId}/documents`, label: "Dokumentumok", icon: "documents" },
-      { href: `/projects/${projectId}/work-logs`, label: "Teljesítménynapló", icon: "worklog" },
-      { href: `/projects/${projectId}/tig`, label: "TIG csomag", icon: "tig" }
-    ],
-    [
-      { href: "/issues", label: "Összes hiba", icon: "issues" },
-      { href: "/blockers", label: "Összes akadály", icon: "blockers" },
-      { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
-      { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" },
-      { href: "/projects", label: "Projektek", icon: "projects" }
-    ]
-  ];
-}
-
-const globalMobileMenuGroups: NavItem[][] = [
-  [
-    { href: "/projects/new", label: "Új projekt", icon: "add" },
-    { href: "/issues", label: "Összes hiba", icon: "issues" },
-    { href: "/blockers", label: "Összes akadály", icon: "blockers" },
-    { href: "/workflow", label: "Workflow tábla (összes)", icon: "workflow" },
-    { href: "/subcontractors", label: "Alvállalkozók", icon: "subcontractors" }
-  ]
-];
 
 function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
   if (href === "/projects") return pathname === "/projects";
+  // A projekt saját áttekintője (pl. /projects/PRJ-001) – minden más projekt-
+  // aloldal is ezzel a prefixszel kezdődik, ezért pontos egyezés kell.
+  if (/^\/projects\/[^/]+$/.test(href)) return pathname === href;
   if (href.endsWith("/issues")) return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -135,9 +132,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [pendingMenuHref, setPendingMenuHref] = useState<string | null>(null);
   const activePathname = hasHydrated ? pathname : "";
   const projectId = getProjectId(activePathname);
-  const navSections = projectId ? projectNavSections(projectId) : globalNavSections;
-  const bottomNav = projectId ? projectBottomNav(projectId) : globalBottomNav;
-  const mobileMenuGroups = projectId ? projectMobileMenuGroups(projectId) : globalMobileMenuGroups;
+  const navSections = buildNavSections(projectId);
+  const bottomNav = buildBottomNav(projectId);
+  const drawerSections = buildDrawerSections(projectId);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -145,6 +142,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    // Safari's back-forward cache freezes the whole page (including this
+    // component's React state, e.g. isMenuOpen) and restores it verbatim on
+    // back/forward navigation, without re-running any server checks - so a
+    // "Több" sheet left open before signing out can reappear open after
+    // going back, even though the session is gone. Cache-Control: no-store
+    // isn't reliably enough to stop this in Safari. event.persisted === true
+    // means the page came from bfcache, not a fresh load - force a real
+    // reload so auth state and component state both start clean.
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
   useEffect(() => {
@@ -158,8 +174,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timeoutId);
   }, [pathname, pendingMenuHref]);
 
+  // Bármilyen oldalváltáskor csukjuk be a "Több" drawert – így nem maradhat
+  // nyitva az auth-váltás (kijelentkezés → bejelentkezés) körül sem.
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setPendingMenuHref(null);
+  }, [pathname]);
+
   function closeMenuToDashboard() {
-    const target = projectId ? `/projects/${projectId}` : "/projects";
+    const target = projectId ? `/projects/${projectId}` : "/";
     setPendingMenuHref(target);
     router.push(target);
   }
@@ -182,11 +205,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link href={projectId ? `/projects/${projectId}` : "/projects"} className="brand" aria-label="Kivitely kezdőlap">
+        <Link href={projectId ? `/projects/${projectId}` : "/"} className="brand" aria-label="Kivitely kezdőlap">
           <span className="brand-mark">
             <Image src="/brand/logo.png" alt="Kivitely" width={120} height={120} priority />
           </span>
         </Link>
+
+        <ProjectSwitcher currentProjectId={projectId} />
 
         <nav className="nav-list" aria-label="Fő navigáció">
           {navSections.map((section) => (
@@ -212,6 +237,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </form>
       </aside>
 
+      <header className="mobile-topbar">
+        <ProjectSwitcher currentProjectId={projectId} />
+      </header>
+
       <main className="content">{children}</main>
 
       {isMenuOpen ? (
@@ -227,10 +256,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
 
-            {mobileMenuGroups.map((group, groupIndex) => (
-              <div className="mobile-menu-group" key={group[0]?.href || groupIndex}>
-                {groupIndex > 0 ? <div className="mobile-menu-divider" /> : null}
-                {group.map((item) => (
+            {drawerSections.map((section, sectionIndex) => (
+              <div className="mobile-menu-group" key={section.title}>
+                {sectionIndex > 0 ? <div className="mobile-menu-divider" /> : null}
+                <span className="nav-section-title">{section.title}</span>
+                {section.items.map((item) => (
                   <button key={item.href} type="button" onClick={() => navigateFromMenu(item.href)}>
                     <span className="nav-icon"><NavIcon name={item.icon} /></span>
                     {item.label}

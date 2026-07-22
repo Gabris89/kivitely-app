@@ -2,7 +2,8 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { SaveIcon } from "@/components/ActionIcons";
+import Link from "next/link";
+import { CloseIcon, SaveIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -65,8 +66,8 @@ export function NewBlockerForm({ projectId }: { projectId: string }) {
     <form className="card form-card" method="post" onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
         <label>
-          Cím
-          <input name="title" required placeholder="Pl. Hiányzó tervrészlet" />
+          <span className="visually-hidden">Cím</span>
+          <input name="title" required placeholder="Cím" />
         </label>
         <label>
           Súlyosság
@@ -78,12 +79,12 @@ export function NewBlockerForm({ projectId }: { projectId: string }) {
           </select>
         </label>
         <label>
-          Szakma
-          <input name="trade" placeholder="Pl. Burkolás" />
+          <span className="visually-hidden">Szakma</span>
+          <input name="trade" placeholder="Szakma" />
         </label>
         <label>
-          Terület
-          <input name="area" placeholder="Pl. Lépcsőház" />
+          <span className="visually-hidden">Terület</span>
+          <input name="area" placeholder="Terület" />
         </label>
         <label className="full">
           Felelős
@@ -96,17 +97,23 @@ export function NewBlockerForm({ projectId }: { projectId: string }) {
           </select>
         </label>
         <label className="full">
-          Leírás
+          <span className="visually-hidden">Leírás</span>
           <textarea name="description" required placeholder="Írd le röviden, mi akadályozza a munkát és mire van szükség a folytatáshoz." />
         </label>
       </div>
 
       <div className="form-footer">
-        {saveState.message ? <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span> : <span />}
-        <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
-          <SaveIcon />
-          {saveState.status === "saving" ? "Mentés..." : "Akadály rögzítése"}
-        </button>
+        <Link className="button ghost" href={`/projects/${projectId}/blockers`}>
+          <CloseIcon />
+          Vissza
+        </Link>
+        <div className="form-actions">
+          {saveState.message ? <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span> : null}
+          <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+            <SaveIcon />
+            {saveState.status === "saving" ? "Mentés..." : "Akadály rögzítése"}
+          </button>
+        </div>
       </div>
     </form>
   );

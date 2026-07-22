@@ -11,6 +11,7 @@ import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionIcons";
 import { EvidenceMetadataControls } from "@/components/EvidenceMetadataControls";
 import { EvidencePhotoGallery } from "@/components/EvidencePhotoGallery";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -32,6 +33,7 @@ export function IssueDetailPanel({
   const [isEditing, setIsEditing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
   const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const tigReadiness = getIssueTigReadiness(issue, photos);
   const nextStatuses = getNextStatuses(issue, "project_manager");
 
@@ -77,8 +79,7 @@ export function IssueDetailPanel({
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Biztosan törlöd ezt a hibát: "${issue.title}"?`)) return;
-
+    setConfirmOpen(false);
     setDeleting(true);
 
     const response = await fetch(`/api/issues/${issue.id}`, { method: "DELETE" }).catch(() => undefined);
@@ -100,15 +101,27 @@ export function IssueDetailPanel({
           <h2>Hiba adatai</h2>
           <StatusBadge status={issue.status} />
         </div>
-        <button
-          type="button"
-          className={`edit-toggle-btn${isEditing ? " active" : ""}`}
-          aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
-          aria-expanded={isEditing}
-          onClick={() => setIsEditing((current) => !current)}
-        >
-          <PencilIcon />
-        </button>
+        <div className="section-title-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Törlés"
+            title="Törlés"
+            disabled={deleting}
+            onClick={() => setConfirmOpen(true)}
+          >
+            <TrashIcon />
+          </button>
+          <button
+            type="button"
+            className={`edit-toggle-btn${isEditing ? " active" : ""}`}
+            aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
+            aria-expanded={isEditing}
+            onClick={() => setIsEditing((current) => !current)}
+          >
+            <PencilIcon />
+          </button>
+        </div>
       </div>
 
       {!isEditing ? (
@@ -149,8 +162,8 @@ export function IssueDetailPanel({
         <form className="detail-edit-form" onSubmit={handleSubmit} suppressHydrationWarning>
           <div className="form-grid">
             <label>
-              Hiba címe
-              <input name="title" required defaultValue={issue.title} />
+              <span className="visually-hidden">Hiba címe</span>
+              <input name="title" required defaultValue={issue.title} placeholder="Hiba címe" />
             </label>
             <label>
               Állapot
@@ -162,12 +175,12 @@ export function IssueDetailPanel({
               </select>
             </label>
             <label>
-              Helyszín
-              <input name="location" required defaultValue={issue.location} />
+              <span className="visually-hidden">Helyszín</span>
+              <input name="location" required defaultValue={issue.location} placeholder="Helyszín" />
             </label>
             <label>
-              Szakág
-              <input name="trade" defaultValue={issue.trade} />
+              <span className="visually-hidden">Szakág</span>
+              <input name="trade" defaultValue={issue.trade} placeholder="Szakág" />
             </label>
             <label>
               Prioritás
@@ -187,20 +200,20 @@ export function IssueDetailPanel({
               </select>
             </label>
             <label>
-              Kiosztott / felelős neve
-              <input name="assignee" defaultValue={issue.assignee} />
+              <span className="visually-hidden">Kiosztott / felelős neve</span>
+              <input name="assignee" defaultValue={issue.assignee} placeholder="Kiosztott / felelős neve" />
             </label>
             <label>
               Határidő
               <input name="dueDate" type="date" required defaultValue={issue.dueDate} />
             </label>
             <label>
-              Becslés / TIG érték
-              <input name="valueHuf" type="number" min="0" step="10000" defaultValue={issue.valueHuf} />
+              <span className="visually-hidden">Becslés / TIG érték</span>
+              <input name="valueHuf" type="number" min="0" step="10000" defaultValue={issue.valueHuf} placeholder="Becslés / TIG érték" />
             </label>
             <label className="full">
-              Leírás
-              <textarea name="description" defaultValue={issue.description} />
+              <span className="visually-hidden">Leírás</span>
+              <textarea name="description" defaultValue={issue.description} placeholder="Leírás" />
             </label>
           </div>
 
@@ -209,10 +222,6 @@ export function IssueDetailPanel({
               <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
             ) : <span />}
             <div className="form-actions">
-              <button className="button danger" type="button" onClick={handleDelete} disabled={deleting}>
-                <TrashIcon />
-                {deleting ? "Törlés..." : "Hiba törlése"}
-              </button>
               <button className="button ghost" type="button" onClick={() => setIsEditing(false)}>
                 <CloseIcon />
                 Mégse
@@ -229,6 +238,14 @@ export function IssueDetailPanel({
       <h2 className="block-heading">Fotók</h2>
       <EvidenceMetadataControls issueId={issue.id} />
       <EvidencePhotoGallery issue={issue} photos={photos} />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Hiba törlése"
+        message={`Biztosan törlöd ezt a hibát: "${issue.title}"? Ez nem visszavonható.`}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </article>
   );
 }

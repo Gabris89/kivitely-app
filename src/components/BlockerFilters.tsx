@@ -39,12 +39,7 @@ export function BlockerFilters({
 
   return (
     <div className="issue-filter-stack">
-      <SearchBox
-        value={search}
-        onChange={setSearch}
-        placeholder="ID, cím, szakma, felelős..."
-        resultCount={filteredBlockers.length}
-      />
+      <SearchBox value={search} onChange={setSearch} placeholder="ID, cím, szakma, felelős..." />
 
       {showProject && projects.length > 0 ? (
         <select
@@ -52,6 +47,7 @@ export function BlockerFilters({
           aria-label="Szűrés projektre"
           value={projectFilter}
           onChange={(event) => setProjectFilter(event.target.value)}
+          suppressHydrationWarning
         >
           <option value="all">Összes projekt</option>
           {projects.map((project) => (

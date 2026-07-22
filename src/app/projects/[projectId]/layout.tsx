@@ -14,13 +14,8 @@ export default async function ProjectLayout({
 
   if (!project) notFound();
 
-  return (
-    <>
-      <div className="project-banner">
-        <span className="project-banner-id">{project.publicId}</span>
-        <span className="project-banner-name">{project.name}</span>
-      </div>
-      {children}
-    </>
-  );
+  // A projekt azonosítója/neve mostantól a fejléc projektváltóban jelenik meg
+  // (ProjectSwitcher), ezért az oldalankénti projekt-banner megszűnt – így nincs
+  // dupla projekt-chip a képernyő tetején.
+  return <>{children}</>;
 }

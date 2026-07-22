@@ -4,7 +4,7 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  resultCount: number;
+  resultCount?: number;
   resultLabel?: string;
 };
 
@@ -20,9 +20,11 @@ export function SearchBox({ value, onChange, placeholder, resultCount, resultLab
           suppressHydrationWarning
         />
       </label>
-      <span className="result-count">
-        {resultCount} {resultLabel}
-      </span>
+      {resultCount !== undefined ? (
+        <span className="result-count">
+          {resultCount} {resultLabel}
+        </span>
+      ) : null}
     </div>
   );
 }

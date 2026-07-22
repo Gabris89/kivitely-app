@@ -25,6 +25,14 @@ export function CloseIcon() {
   );
 }
 
+export function ChevronRightIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
 export function TrashIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">

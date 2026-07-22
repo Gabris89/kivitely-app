@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { signIn } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 function safeNextPath(value?: string) {
   return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
@@ -37,7 +39,11 @@ export default async function LoginPage({
           <input name="password" type="password" autoComplete="current-password" required suppressHydrationWarning />
         </label>
 
-        <input type="hidden" name="next" value={next} suppressHydrationWarning />
+        {/* autoComplete="off": some browsers restore a form's previous field
+            values (including hidden inputs) from history/autofill on repeat
+            visits to the same form action - that would silently override this
+            request's actual "next" target with a stale one from an earlier visit. */}
+        <input type="hidden" name="next" value={next} autoComplete="off" suppressHydrationWarning />
 
         <button className="button primary" type="submit">
           Bejelentkezés

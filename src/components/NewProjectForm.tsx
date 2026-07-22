@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { SaveIcon } from "@/components/ActionIcons";
+import { CloseIcon, SaveIcon } from "@/components/ActionIcons";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -53,28 +53,32 @@ export function NewProjectForm() {
     <form className="card form-card" method="post" onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
         <label>
-          Projekt neve
-          <input name="name" required placeholder="Pl. Váci út 45. irodaház" suppressHydrationWarning />
+          <span className="visually-hidden">Projekt neve</span>
+          <input name="name" required placeholder="Projekt neve" suppressHydrationWarning />
         </label>
         <label>
-          Fázis
-          <input name="phase" placeholder="Pl. Kivitelezés" suppressHydrationWarning />
+          <span className="visually-hidden">Fázis</span>
+          <input name="phase" placeholder="Fázis" suppressHydrationWarning />
         </label>
         <label>
-          Cím
-          <input name="address" placeholder="Pl. 1132 Budapest, Váci út 45." suppressHydrationWarning />
+          <span className="visually-hidden">Cím</span>
+          <input name="address" placeholder="Cím" suppressHydrationWarning />
         </label>
         <label>
-          Megrendelő
-          <input name="client" placeholder="Pl. Kivitely Beruházó Kft." suppressHydrationWarning />
+          <span className="visually-hidden">Megrendelő</span>
+          <input name="client" placeholder="Megrendelő" suppressHydrationWarning />
         </label>
       </div>
 
       <div className="form-footer">
-        {saveState.message ? (
-          <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
-        ) : <span />}
+        <Link className="button ghost" href="/projects">
+          <CloseIcon />
+          Vissza
+        </Link>
         <div className="form-actions">
+          {saveState.message ? (
+            <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
+          ) : null}
           {saveState.status === "saved" && saveState.projectId ? (
             <Link className="button primary" href={`/projects/${saveState.projectId}`}>Megnyitás</Link>
           ) : null}

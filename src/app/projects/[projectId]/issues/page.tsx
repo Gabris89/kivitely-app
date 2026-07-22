@@ -18,7 +18,6 @@ export default async function IssuesPage({ params }: { params: Promise<{ project
       <section className="card panel-large">
         <div className="section-title">
           <h2>Aktív hibák</h2>
-          <span className="pill">szűrés · keresés · státusz</span>
         </div>
         <IssueFilters issues={issues} />
       </section>

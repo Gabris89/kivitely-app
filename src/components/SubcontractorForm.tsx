@@ -2,8 +2,10 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SaveIcon } from "@/components/ActionIcons";
+import { CloseIcon, SaveIcon, TrashIcon } from "@/components/ActionIcons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -24,6 +26,26 @@ type Props = {
 export function SubcontractorForm({ mode, publicId, initial }: Props) {
   const router = useRouter();
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
+  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  async function handleDelete() {
+    if (!publicId) return;
+
+    setConfirmOpen(false);
+    setDeleting(true);
+
+    const response = await fetch(`/api/subcontractors/${publicId}`, { method: "DELETE" }).catch(() => undefined);
+
+    if (!response?.ok) {
+      setDeleting(false);
+      window.alert("A törlés nem sikerült.");
+      return;
+    }
+
+    router.push("/subcontractors");
+    router.refresh();
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,32 +90,59 @@ export function SubcontractorForm({ mode, publicId, initial }: Props) {
     <form className="card form-card" method="post" onSubmit={handleSubmit} suppressHydrationWarning>
       <div className="form-grid">
         <label>
-          Név
-          <input name="name" required defaultValue={initial?.name} placeholder="Pl. Burkoló Kft." suppressHydrationWarning />
+          <span className="visually-hidden">Név</span>
+          <input name="name" required defaultValue={initial?.name} placeholder="Név" suppressHydrationWarning />
         </label>
         <label>
-          Szakma
-          <input name="trade" defaultValue={initial?.trade} placeholder="Pl. Burkolás" suppressHydrationWarning />
+          <span className="visually-hidden">Szakma</span>
+          <input name="trade" defaultValue={initial?.trade} placeholder="Szakma" suppressHydrationWarning />
         </label>
         <label>
-          Kapcsolattartó
-          <input name="contactName" defaultValue={initial?.contactName} placeholder="Pl. Nagy Péter" suppressHydrationWarning />
+          <span className="visually-hidden">Kapcsolattartó</span>
+          <input name="contactName" defaultValue={initial?.contactName} placeholder="Kapcsolattartó" suppressHydrationWarning />
         </label>
         <label>
-          Telefon
-          <input name="phone" defaultValue={initial?.phone} placeholder="Pl. +36 20 444 7788" suppressHydrationWarning />
+          <span className="visually-hidden">Telefon</span>
+          <input name="phone" defaultValue={initial?.phone} placeholder="Telefon" suppressHydrationWarning />
         </label>
       </div>
 
-      <div className="form-footer">
+      <div className="form-footer-stack">
+        <div className="form-footer-row">
+          <Link className="button ghost" href="/subcontractors">
+            <CloseIcon />
+            Vissza
+          </Link>
+          <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
+            <SaveIcon />
+            {saveState.status === "saving" ? "Mentés..." : mode === "create" ? "Létrehozás" : "Mentés"}
+          </button>
+        </div>
+
         {saveState.message ? (
           <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
-        ) : <span />}
-        <button className="button primary" type="submit" disabled={saveState.status === "saving"}>
-          <SaveIcon />
-          {saveState.status === "saving" ? "Mentés..." : mode === "create" ? "Alvállalkozó létrehozása" : "Mentés"}
-        </button>
+        ) : null}
+
+        {mode === "edit" ? (
+          <>
+            <div className="form-footer-divider" />
+            <button className="button danger full-width" type="button" onClick={() => setConfirmOpen(true)} disabled={deleting}>
+              <TrashIcon />
+              {deleting ? "Törlés..." : "Alvállalkozó törlése"}
+            </button>
+          </>
+        ) : null}
       </div>
+
+      {mode === "edit" ? (
+        <ConfirmDialog
+          open={confirmOpen}
+          title="Alvállalkozó törlése"
+          message={`Biztosan törlöd ezt az alvállalkozót: "${initial?.name}"? Ez nem visszavonható.`}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      ) : null}
     </form>
   );
 }
