@@ -29,6 +29,20 @@ const nextActions: Record<TigPackageStatus, { label: string; to: TigPackageStatu
   sent: []
 };
 
+// Színes (Excel-zöld) ikon; inline stílus, hogy a .button svg (currentColor)
+// szabály ne írja felül.
+function ExcelIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 18, height: 18 }}>
+      <rect x="3" y="3" width="18" height="18" rx="4" style={{ fill: "#1D6F42", stroke: "none" }} />
+      <path
+        d="M8.5 8l7 8M15.5 8l-7 8"
+        style={{ stroke: "#ffffff", strokeWidth: 2, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" }}
+      />
+    </svg>
+  );
+}
+
 export function TigWorkspace({
   projectId,
   subcontractors,
@@ -317,6 +331,7 @@ export function TigWorkspace({
                         </button>
                       ))}
                       <a className="button ghost" href={`/api/tig/${encodeURIComponent(pkg.id)}/export/xlsx`}>
+                        <ExcelIcon />
                         Excel
                       </a>
                       {pkg.status === "draft" ? (
