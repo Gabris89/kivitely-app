@@ -43,6 +43,19 @@ function ExcelIcon() {
   );
 }
 
+// Színes (PDF-piros) ikon; inline stílus, hogy a currentColor-os szabály ne írja felül.
+function PdfIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 18, height: 18 }}>
+      <rect x="3" y="3" width="18" height="18" rx="4" style={{ fill: "#D64541", stroke: "none" }} />
+      <path
+        d="M8 9h8M8 12h8M8 15h5"
+        style={{ stroke: "#ffffff", strokeWidth: 1.6, fill: "none", strokeLinecap: "round" }}
+      />
+    </svg>
+  );
+}
+
 export function TigWorkspace({
   projectId,
   subcontractors,
@@ -330,22 +343,36 @@ export function TigWorkspace({
                           {action.label}
                         </button>
                       ))}
-                      <a className="button ghost" href={`/api/tig/${encodeURIComponent(pkg.id)}/export/xlsx`}>
-                        <ExcelIcon />
-                        Excel
-                      </a>
-                      {pkg.status === "draft" ? (
-                        <button
-                          type="button"
-                          className="icon-btn danger tig-delete"
-                          aria-label="Csomag törlése"
-                          title="Törlés"
-                          onClick={() => setConfirmDelete(pkg.id)}
-                          disabled={isBusy}
+                      <div className="tig-export-group">
+                        <a
+                          className="icon-btn"
+                          href={`/api/tig/${encodeURIComponent(pkg.id)}/export/xlsx`}
+                          aria-label="Excel letöltése"
+                          title="Excel letöltése"
                         >
-                          <TrashIcon />
-                        </button>
-                      ) : null}
+                          <ExcelIcon />
+                        </a>
+                        <a
+                          className="icon-btn"
+                          href={`/api/tig/${encodeURIComponent(pkg.id)}/export/pdf`}
+                          aria-label="PDF letöltése"
+                          title="PDF letöltése"
+                        >
+                          <PdfIcon />
+                        </a>
+                        {pkg.status === "draft" ? (
+                          <button
+                            type="button"
+                            className="icon-btn danger tig-delete"
+                            aria-label="Csomag törlése"
+                            title="Törlés"
+                            onClick={() => setConfirmDelete(pkg.id)}
+                            disabled={isBusy}
+                          >
+                            <TrashIcon />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>

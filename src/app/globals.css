@@ -2965,7 +2965,8 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .tig-package-amount { font-size: 20px; letter-spacing: -0.02em; white-space: nowrap; }
 .tig-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tig-actions .button { min-height: 40px; padding: 9px 14px; font-size: 13px; }
-.tig-actions .tig-delete { width: 40px; height: 40px; flex: 0 0 auto; }
+.tig-export-group { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.tig-actions .icon-btn { width: 40px; height: 40px; flex: 0 0 auto; }
 .tig-confirm-text { color: var(--muted); font-size: 13px; }
 
 .tig-status { flex-shrink: 0; border: 1px solid var(--line); }
@@ -2982,10 +2983,10 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .tig-selected-summary { text-align: center; }
   .tig-create-buttons { flex-direction: column-reverse; }
   .tig-create-buttons .button { width: 100%; }
-  /* Csomag-kártya: az összeg és a gombok egymás alá, a gombok teljes szélesen. */
-  .tig-package-bottom { align-items: stretch; }
+  /* Csomag-kártya: az összeg külön sorban, a műveletek alatta; az export-ikonok
+     (Excel/PDF) kompaktak és jobbra igazítva. */
+  .tig-package-bottom { flex-direction: column; align-items: stretch; }
   .tig-actions { width: 100%; }
-  .tig-actions .button { flex: 1 1 auto; }
   .tig-confirm-text { width: 100%; }
   /* Workflow oszlopok mobilon közel képernyőszélesek (a következő kikandikál). */
   .workflow-column { flex-basis: 80vw; max-width: 80vw; }
