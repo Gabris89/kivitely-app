@@ -2320,3 +2320,119 @@ export async function deleteTigPackage(packagePublicId: string): Promise<{ ok: b
   return { ok: !error, error: error ? "Törlés sikertelen." : undefined };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TIG export – részletes csomag-adat a PDF/Excel generáláshoz
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type TigExportPhoto = { type: string; url: string };
+
+export type TigExportIssue = {
+  id: string;
+  title: string;
+  location: string;
+  area: string;
+  trade: string;
+  valueHuf: number;
+  photos: TigExportPhoto[];
+};
+
+export type TigPackageDetail = {
+  id: string;
+  status: TigPackage["status"];
+  subcontractor: { name: string; trade: string; contact: string; phone: string };
+  project: { name: string; address: string; client: string };
+  performanceDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  note?: string;
+  netValueHuf: number;
+  proofCount: number;
+  createdAt: string;
+  issues: TigExportIssue[];
+};
+
+export async function getTigPackageDetail(packagePublicId: string): Promise<TigPackageDetail | null> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("tig_packages")
+    .select(
+      "public_id, status, gross_value_huf, net_value_huf, performance_date, period_start, period_end, note, created_at, subcontractors(name, trade, contact_name, phone), projects(name, address, client), tig_package_issues(issues(public_id, title, location, area, trade, value_huf, issue_evidence(evidence_type, storage_path)))"
+    )
+    .eq("public_id", packagePublicId)
+    .maybeSingle();
+
+  logSupabaseReadError("tig package detail", error);
+  if (error || !data) return null;
+
+  const row = data as unknown as {
+    public_id: string;
+    status: TigPackage["status"];
+    gross_value_huf: number | string | null;
+    net_value_huf: number | string | null;
+    performance_date: string | null;
+    period_start: string | null;
+    period_end: string | null;
+    note: string | null;
+    created_at: string;
+    subcontractors?: { name: string | null; trade: string | null; contact_name: string | null; phone: string | null } | null;
+    projects?: { name: string | null; address: string | null; client: string | null } | null;
+    tig_package_issues?: {
+      issues?: {
+        public_id: string;
+        title: string;
+        location: string | null;
+        area: string | null;
+        trade: string | null;
+        value_huf: number | string | null;
+        issue_evidence?: { evidence_type: string; storage_path: string | null }[] | null;
+      } | null;
+    }[] | null;
+  };
+
+  const issues: TigExportIssue[] = (row.tig_package_issues || [])
+    .map((link) => link.issues)
+    .filter((issue): issue is NonNullable<typeof issue> => Boolean(issue))
+    .map((issue) => {
+      const photos: TigExportPhoto[] = (issue.issue_evidence || [])
+        .map((evidence) => ({ type: evidence.evidence_type, url: getIssueEvidencePublicUrl(evidence.storage_path) }))
+        .filter((photo): photo is TigExportPhoto => Boolean(photo.url));
+      return {
+        id: issue.public_id,
+        title: issue.title,
+        location: issue.location || "",
+        area: issue.area || "",
+        trade: issue.trade || "",
+        valueHuf: numberValue(issue.value_huf),
+        photos
+      };
+    });
+
+  const proofCount = issues.reduce((sum, issue) => sum + issue.photos.length, 0);
+
+  return {
+    id: row.public_id,
+    status: row.status,
+    subcontractor: {
+      name: row.subcontractors?.name || "Nincs megadva",
+      trade: row.subcontractors?.trade || "",
+      contact: row.subcontractors?.contact_name || "",
+      phone: row.subcontractors?.phone || ""
+    },
+    project: {
+      name: row.projects?.name || "",
+      address: row.projects?.address || "",
+      client: row.projects?.client || ""
+    },
+    performanceDate: row.performance_date || undefined,
+    periodStart: row.period_start || undefined,
+    periodEnd: row.period_end || undefined,
+    note: row.note || undefined,
+    netValueHuf: numberValue(row.net_value_huf ?? row.gross_value_huf),
+    proofCount,
+    createdAt: dateOnly(row.created_at),
+    issues
+  };
+}
+

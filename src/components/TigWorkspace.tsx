@@ -316,6 +316,9 @@ export function TigWorkspace({
                           {action.label}
                         </button>
                       ))}
+                      <a className="button ghost" href={`/api/tig/${encodeURIComponent(pkg.id)}/export/xlsx`}>
+                        Excel
+                      </a>
                       {pkg.status === "draft" ? (
                         <button
                           type="button"
