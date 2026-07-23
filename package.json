@@ -10,8 +10,10 @@
     "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.0",
+    "exceljs": "^4.4.0",
     "konva": "^10.3.0",
     "next": "latest",
     "pdfjs-dist": "^6.1.200",
