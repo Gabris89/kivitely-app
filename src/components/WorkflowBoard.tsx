@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Issue, Project } from "@/types";
-import { issueStatusLabels, issueStatusOrder } from "@/lib/workflow";
+import { issueStatusOrder } from "@/lib/workflow";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 
 export function WorkflowBoard({ issues, projects = [] }: { issues: Issue[]; projects?: Project[] }) {
@@ -60,8 +60,6 @@ export function WorkflowBoard({ issues, projects = [] }: { issues: Issue[]; proj
                   </Link>
                 ))}
               </div>
-
-              <p>{issueStatusLabels[status]} állapotú feladatok</p>
             </article>
           );
         })}

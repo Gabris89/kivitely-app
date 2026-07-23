@@ -1787,14 +1787,15 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .status-filter-row strong { font-size: 12px; }
 
 .workflow-board {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(230px, 1fr));
+  display: flex;
+  align-items: flex-start;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 10px;
 }
 .workflow-column {
-  min-height: 560px;
+  flex: 0 0 300px;
+  max-width: 300px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--line);
@@ -2986,4 +2987,6 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .tig-actions { width: 100%; }
   .tig-actions .button { flex: 1 1 auto; }
   .tig-confirm-text { width: 100%; }
+  /* Workflow oszlopok mobilon közel képernyőszélesek (a következő kikandikál). */
+  .workflow-column { flex-basis: 80vw; max-width: 80vw; }
 }
