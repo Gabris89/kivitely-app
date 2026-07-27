@@ -299,6 +299,7 @@ type SupabaseTigPackageRow = {
   created_at: string;
   updated_at: string;
   subcontractors?: { name: string | null } | null;
+  projects?: { public_id: string | null; name: string | null } | null;
   tig_package_issues?: {
     issue_id: string;
     issues?: { public_id: string | null; issue_evidence?: { evidence_type: string }[] | null } | null;
@@ -531,7 +532,11 @@ function mapTigPackage(row: SupabaseTigPackageRow): TigPackage {
 
   return {
     id: row.public_id,
-    projectId: row.project_id,
+    // A publikus projektazonosító (PRJ-xxx), ha a join elérhető – így a csomag
+    // ugyanazon a kulcson köthető projekthez, mint az Issue/BlockerItem.
+    // Fallback a nyers UUID-ra, hogy a mező soha ne legyen üres.
+    projectId: row.projects?.public_id || row.project_id,
+    projectName: row.projects?.name || undefined,
     subcontractor: row.subcontractors?.name || "Nincs megadva",
     status: row.status,
     issueIds: links.map((item) => item.issues?.public_id || item.issue_id),
@@ -1233,18 +1238,24 @@ export function listTigItems(): TigItem[] {
   return mockTigItems;
 }
 
-export async function listTigPackages(projectId: string) {
+// projectId elhagyható: az aggregált ("Minden projekt") dashboardnak az összes
+// projekt csomagjaira szüksége van egyetlen lekérdezésben.
+export async function listTigPackages(projectId?: string) {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return mockTigPackages;
 
-  const projectDbId = await getSupabaseProjectDbId(projectId);
-  if (!projectDbId) return [];
-
-  const { data, error } = await supabase
+  let query = supabase
     .from("tig_packages")
-    .select("*,subcontractors(name),tig_package_issues(issue_id, issues(public_id, issue_evidence(evidence_type)))")
-    .eq("project_id", projectDbId)
+    .select("*,subcontractors(name),projects(public_id,name),tig_package_issues(issue_id, issues(public_id, issue_evidence(evidence_type)))")
     .order("updated_at", { ascending: false });
+
+  if (projectId) {
+    const projectDbId = await getSupabaseProjectDbId(projectId);
+    if (!projectDbId) return [];
+    query = query.eq("project_id", projectDbId);
+  }
+
+  const { data, error } = await query;
 
   logSupabaseReadError("tig_packages", error);
 

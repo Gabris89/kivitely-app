@@ -101,7 +101,9 @@ export type TigPackageStatus = "draft" | "ready_for_review" | "approved" | "sent
 
 export type TigPackage = {
   id: string;
+  /** A projekt publikus azonosítója (PRJ-xxx) – ugyanaz a kulcs, mint az Issue.projectId. */
   projectId: string;
+  projectName?: string;
   subcontractor: string;
   status: TigPackageStatus;
   issueIds: string[];

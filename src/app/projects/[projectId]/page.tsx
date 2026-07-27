@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { getProjectByPublicId } from "@/lib/repository";
+import { getProjectByPublicId, listBlockers, listIssues, listTigPackages } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { ProjectDetailPanel } from "@/components/ProjectDetailPanel";
+import { DashboardView } from "@/components/DashboardView";
+import { buildDashboardData } from "@/lib/dashboard";
 import { ChevronRightIcon } from "@/components/ActionIcons";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +13,17 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
   const project = await getProjectByPublicId(projectId);
 
   if (!project) return null;
+
+  // A projekt "Áttekintés" oldala eddig csak modul-indító linklista volt. Most
+  // ez az oldal a projekt valódi dashboardja; a modul-lista alá kerül (mobilon
+  // továbbra is ez a leggyorsabb belépő). Lásd docs/dashboard-plan.md.
+  const [issues, blockers, tigPackages] = await Promise.all([
+    listIssues(projectId),
+    listBlockers(projectId),
+    listTigPackages(projectId)
+  ]);
+
+  const data = buildDashboardData({ projects: [project], issues, blockers, tigPackages });
 
   const modules = [
     { href: `/projects/${projectId}/issues`, title: "Hibalista", description: "Hibák rögzítése, státuszkövetés, fotós bizonyítás." },
@@ -28,17 +41,21 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
         <HeaderLink href={`/projects/${projectId}/issues/new`} variant="primary">+ Új hiba</HeaderLink>
       </PageHeader>
 
-      <div className="entity-list" aria-label="Modulok">
-        {modules.map((mod) => (
-          <Link key={mod.href} href={mod.href} className="entity-row">
-            <div className="entity-row-main">
-              <strong>{mod.title}</strong>
-              <span>{mod.description}</span>
-            </div>
-            <span className="entity-row-chevron"><ChevronRightIcon /></span>
-          </Link>
-        ))}
-      </div>
+      <DashboardView data={data} scope="project" basePath={`/projects/${projectId}`} />
+
+      <section className="dashboard-section">
+        <div className="entity-list" aria-label="Modulok">
+          {modules.map((mod) => (
+            <Link key={mod.href} href={mod.href} className="entity-row">
+              <div className="entity-row-main">
+                <strong>{mod.title}</strong>
+                <span>{mod.description}</span>
+              </div>
+              <span className="entity-row-chevron"><ChevronRightIcon /></span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <ProjectDetailPanel project={project} />
     </>

@@ -299,6 +299,97 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
 .bar-track { height: 10px; overflow: hidden; background: rgba(255, 255, 255, 0.06); border-radius: 999px; }
 .bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-2)); border-radius: 999px; }
 
+/* ── Aggregált dashboard (docs/dashboard-plan.md) ─────────────────────────
+   Szándékosan a meglévő .card / .bar-* primitívekre épül, nincs mögötte
+   diagram-könyvtár: amit itt látni kell, azt három div megrajzolja. */
+.dashboard-section { margin-top: 16px; }
+.stat-card small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.stat-card strong.stat-danger { color: var(--danger); }
+.stat-card strong.stat-warn { color: var(--warn); }
+/* A pénz-KPI hosszabb szöveg, ezért kisebb és kiemelt hátterű. */
+.stat-card-money { background: linear-gradient(140deg, rgba(72, 213, 151, 0.14), var(--panel) 62%); }
+.stat-card-money strong { font-size: 22px; color: var(--ok); }
+.section-link { flex-shrink: 0; color: var(--brand); font-size: 13px; white-space: nowrap; }
+.section-link:hover { color: var(--brand-hi); }
+
+/* Sáv, ahol a szám mellé érték (Ft) is tartozik. */
+.bar-row-rich { grid-template-columns: 130px 1fr auto; }
+.bar-row-rich strong { display: grid; gap: 2px; justify-items: end; }
+.bar-row-rich strong em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bar-row-rich a { color: inherit; }
+.bar-row-rich a:hover { color: var(--brand-hi); }
+
+.metric-callout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 11px 13px;
+  background: rgba(255, 209, 102, 0.09);
+  border: 1px solid rgba(255, 209, 102, 0.24);
+  border-radius: var(--radius-sm);
+}
+.metric-callout span { color: var(--soft); font-size: 13px; }
+.metric-callout strong { color: var(--warn); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.metric-inline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.metric-inline > div { display: grid; gap: 4px; }
+.metric-inline span { color: var(--muted); font-size: 12px; }
+.metric-inline strong { font-size: 19px; letter-spacing: -0.02em; }
+
+.metric-table { display: grid; }
+.metric-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.metric-row:first-child { padding-top: 0; }
+.metric-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.metric-table-compact .metric-row { padding: 10px 0; }
+.metric-row-main { display: grid; gap: 3px; min-width: 0; flex: 1 1 200px; }
+.metric-row-main strong { font-size: 14px; letter-spacing: -0.02em; }
+.metric-row-main span { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.metric-row-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.metric-chip {
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.metric-chip em {
+  color: var(--text);
+  font-size: 14px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.metric-chip.is-danger { background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.28); }
+.metric-chip.is-danger em { color: var(--danger); }
+.metric-chip.is-money { background: rgba(72, 213, 151, 0.1); border-color: rgba(72, 213, 151, 0.26); }
+.metric-chip.is-money em { color: var(--ok); font-size: 13px; }
+
 .confirm-backdrop {
   position: fixed;
   inset: 0;
@@ -1235,7 +1326,22 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .form-grid, .meta-grid, .photo-grid { grid-template-columns: 1fr; }
   .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-card strong { font-size: 24px; }
+  .stat-card { padding: 14px 15px; }
+  .stat-card-money strong { font-size: 18px; }
   .bar-row { grid-template-columns: 92px 1fr 26px; gap: 8px; }
+  /* A pénzérték nem fér el egy sorban egy telefonon, ezért a sáv alá kerül. */
+  .bar-row-rich {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "label value" "track track";
+    row-gap: 7px;
+  }
+  .bar-row-rich > span { grid-area: label; }
+  .bar-row-rich > .bar-track { grid-area: track; }
+  .bar-row-rich > strong { grid-area: value; }
+  .bar-row-rich strong { grid-auto-flow: column; gap: 7px; align-items: baseline; }
+  .metric-inline { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .metric-inline strong { font-size: 17px; }
+  .metric-chip { padding: 5px 9px; }
   .form-grid input,
   .form-grid select,
   .form-grid textarea {
