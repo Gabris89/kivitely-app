@@ -12,7 +12,15 @@ type SaveState = {
   message: string;
 };
 
-export function ProjectDetailPanel({ project }: { project: Project }) {
+export function ProjectDetailPanel({
+  project,
+  canEdit = true,
+  canDelete = true
+}: {
+  project: Project;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
@@ -46,7 +54,8 @@ export function ProjectDetailPanel({ project }: { project: Project }) {
     }).catch(() => null);
 
     if (!response?.ok) {
-      setSaveState({ status: "error", message: "Mentési hiba: a módosítás nem sikerült." });
+      const json = await response?.json().catch(() => null);
+      setSaveState({ status: "error", message: json?.error || "Mentési hiba: a módosítás nem sikerült." });
       return;
     }
 
@@ -62,8 +71,9 @@ export function ProjectDetailPanel({ project }: { project: Project }) {
     const response = await fetch(`/api/projects/${project.publicId}`, { method: "DELETE" }).catch(() => undefined);
 
     if (!response?.ok) {
+      const json = await response?.json().catch(() => null);
       setDeleting(false);
-      window.alert("A törlés nem sikerült.");
+      setSaveState({ status: "error", message: json?.error || "A törlés nem sikerült." });
       return;
     }
 
@@ -78,25 +88,29 @@ export function ProjectDetailPanel({ project }: { project: Project }) {
           <h2>Projekt adatai</h2>
         </div>
         <div className="section-title-actions">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Törlés"
-            title="Törlés"
-            disabled={deleting}
-            onClick={() => setConfirmOpen(true)}
-          >
-            <TrashIcon />
-          </button>
-          <button
-            type="button"
-            className={`edit-toggle-btn${isEditing ? " active" : ""}`}
-            aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
-            aria-expanded={isEditing}
-            onClick={() => setIsEditing((current) => !current)}
-          >
-            <PencilIcon />
-          </button>
+          {canDelete ? (
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Törlés"
+              title="Törlés"
+              disabled={deleting}
+              onClick={() => setConfirmOpen(true)}
+            >
+              <TrashIcon />
+            </button>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className={`edit-toggle-btn${isEditing ? " active" : ""}`}
+              aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
+              aria-expanded={isEditing}
+              onClick={() => setIsEditing((current) => !current)}
+            >
+              <PencilIcon />
+            </button>
+          ) : null}
         </div>
       </div>
 

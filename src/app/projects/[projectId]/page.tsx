@@ -18,13 +18,16 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
   // A projekt "Áttekintés" oldala eddig csak modul-indító linklista volt. Most
   // ez az oldal a projekt valódi dashboardja; a modul-lista alá kerül (mobilon
   // továbbra is ez a leggyorsabb belépő). Lásd docs/dashboard-plan.md.
-  const [issues, blockers, tigPackages, canViewMoney, canCreateIssue] = await Promise.all([
-    listIssues(projectId),
-    listBlockers(projectId),
-    listTigPackages(projectId),
-    hasPermission("money.view"),
-    hasPermission("issue.create")
-  ]);
+  const [issues, blockers, tigPackages, canViewMoney, canCreateIssue, canEditProject, canDeleteProject] =
+    await Promise.all([
+      listIssues(projectId),
+      listBlockers(projectId),
+      listTigPackages(projectId),
+      hasPermission("money.view"),
+      hasPermission("issue.create"),
+      hasPermission("project.update"),
+      hasPermission("project.delete")
+    ]);
 
   const data = buildDashboardData({ projects: [project], issues, blockers, tigPackages });
 
@@ -64,7 +67,7 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
         </div>
       </section>
 
-      <ProjectDetailPanel project={project} />
+      <ProjectDetailPanel project={project} canEdit={canEditProject} canDelete={canDeleteProject} />
     </>
   );
 }
