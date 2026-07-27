@@ -51,10 +51,14 @@ function getFileExtension(fileName?: string) {
 
 export function DocumentFilters({
   documents,
-  canDelete = true
+  canDelete = true,
+  canMeasure = true,
+  canDeleteMeasurement = true
 }: {
   documents: ProjectDocument[];
   canDelete?: boolean;
+  canMeasure?: boolean;
+  canDeleteMeasurement?: boolean;
 }) {
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState<Filter>("all");
@@ -142,7 +146,11 @@ export function DocumentFilters({
 
               <div className="document-row-action">
                 {document.url ? (
-                  <ProjectDocumentViewer doc={document} />
+                  <ProjectDocumentViewer
+                    doc={document}
+                    canMeasure={canMeasure}
+                    canDeleteMeasurement={canDeleteMeasurement}
+                  />
                 ) : (
                   <span className="document-row-missing">{document.storagePath ? "Nincs Storage URL" : "Nincs fájl"}</span>
                 )}

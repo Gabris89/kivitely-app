@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 
 export default async function DocumentsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [documents, canUpload, canDelete] = await Promise.all([
+  const [documents, canUpload, canDelete, canMeasure, canDeleteMeasurement] = await Promise.all([
     listProjectDocuments(projectId),
     hasPermission("document.create"),
-    hasPermission("document.delete")
+    hasPermission("document.delete"),
+    hasPermission("measurement.create"),
+    hasPermission("measurement.delete")
   ]);
 
   return (
@@ -27,7 +29,12 @@ export default async function DocumentsPage({ params }: { params: Promise<{ proj
 
       {canUpload ? <ProjectDocumentUploadForm projectId={projectId} /> : null}
 
-      <DocumentFilters documents={documents} canDelete={canDelete} />
+      <DocumentFilters
+        documents={documents}
+        canDelete={canDelete}
+        canMeasure={canMeasure}
+        canDeleteMeasurement={canDeleteMeasurement}
+      />
     </>
   );
 }

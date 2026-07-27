@@ -8,6 +8,10 @@ import type { ProjectDocument } from "@/types";
 
 type Props = {
   doc: ProjectDocument;
+  /** measurement.create jog - a merooeszkoz szerkeszto gombjait vezerli. */
+  canMeasure?: boolean;
+  /** measurement.delete jog. */
+  canDeleteMeasurement?: boolean;
 };
 
 const ZOOM_STEP = 0.5;
@@ -40,7 +44,7 @@ function ZoomOutIcon() {
   );
 }
 
-export function ProjectDocumentViewer({ doc }: Props) {
+export function ProjectDocumentViewer({ doc, canMeasure = true, canDeleteMeasurement = true }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [measureMode, setMeasureMode] = useState(false);
@@ -167,7 +171,12 @@ export function ProjectDocumentViewer({ doc }: Props) {
 
                 <div className="document-viewer-stage">
                   {measureMode ? (
-                    <PlanMeasurementTool doc={doc} onClose={() => setMeasureMode(false)} />
+                    <PlanMeasurementTool
+                      doc={doc}
+                      onClose={() => setMeasureMode(false)}
+                      canMeasure={canMeasure}
+                      canDeleteMeasurement={canDeleteMeasurement}
+                    />
                   ) : isImage ? (
                     <div className="document-viewer-image-scroll">
                       <div className="document-viewer-image-inner" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}>

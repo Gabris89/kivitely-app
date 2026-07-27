@@ -25,6 +25,10 @@ type StagePointerEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 type Props = {
   doc: ProjectDocument;
   onClose: () => void;
+  /** measurement.create/update/calibrate jog - nelkule csak a mentett meresek lathatok. */
+  canMeasure?: boolean;
+  /** measurement.delete jog - jog nelkul a kuka ikon nem jelenik meg. */
+  canDeleteMeasurement?: boolean;
 };
 
 type Mode = "idle" | "calibrate-pick" | "calibrate-input" | "measure";
@@ -69,7 +73,7 @@ function formatTimestamp(value: string) {
   return `${year}. ${month}. ${day}. ${hour}:${minute}`;
 }
 
-export function PlanMeasurementTool({ doc, onClose }: Props) {
+export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDeleteMeasurement = true }: Props) {
   const url = doc.url;
   const isImage = (doc.mimeType || "").startsWith("image/");
   const isPdf = doc.mimeType === "application/pdf";
@@ -613,35 +617,37 @@ export function PlanMeasurementTool({ doc, onClose }: Props) {
   return (
     <div className="measure-tool">
       <div className="measure-toolbar">
-        <div className="measure-toolbar-group">
-          <button type="button" className="button ghost" onClick={() => { resetDrawing(); setMode("calibrate-pick"); }}>
-            Kalibrálás {metersPerUnit ? "(újra)" : ""}
-          </button>
-          <select
-            value={measurementType}
-            onChange={(event) => setMeasurementType(event.target.value as PlanMeasurementType)}
-            disabled={mode === "measure"}
-            suppressHydrationWarning
-          >
-            <option value="area">Terület (m²)</option>
-            <option value="length">Hossz (m)</option>
-          </select>
-          {mode !== "measure" ? (
-            <button
-              type="button"
-              className="button primary"
-              disabled={!metersPerUnit}
-              onClick={() => { setDrawPoints([]); setMode("measure"); }}
-              title={!metersPerUnit ? "Előbb kalibrálj" : ""}
+        {canMeasure ? (
+          <div className="measure-toolbar-group">
+            <button type="button" className="button ghost" onClick={() => { resetDrawing(); setMode("calibrate-pick"); }}>
+              Kalibrálás {metersPerUnit ? "(újra)" : ""}
+            </button>
+            <select
+              value={measurementType}
+              onChange={(event) => setMeasurementType(event.target.value as PlanMeasurementType)}
+              disabled={mode === "measure"}
+              suppressHydrationWarning
             >
-              Mérés indítása
-            </button>
-          ) : (
-            <button type="button" className="button ghost" onClick={resetDrawing}>
-              Mégse
-            </button>
-          )}
-        </div>
+              <option value="area">Terület (m²)</option>
+              <option value="length">Hossz (m)</option>
+            </select>
+            {mode !== "measure" ? (
+              <button
+                type="button"
+                className="button primary"
+                disabled={!metersPerUnit}
+                onClick={() => { setDrawPoints([]); setMode("measure"); }}
+                title={!metersPerUnit ? "Előbb kalibrálj" : ""}
+              >
+                Mérés indítása
+              </button>
+            ) : (
+              <button type="button" className="button ghost" onClick={resetDrawing}>
+                Mégse
+              </button>
+            )}
+          </div>
+        ) : null}
 
         {isPdf && numPages > 1 ? (
           <div className="measure-toolbar-group">
@@ -842,12 +848,16 @@ export function PlanMeasurementTool({ doc, onClose }: Props) {
                   </small>
                   {measurement.note ? <p className="measure-note">{measurement.note}</p> : null}
                 </div>
-                <button type="button" className="measure-undo" onClick={() => startEditMeasurement(measurement)}>
-                  Szerkesztés
-                </button>
-                <button type="button" className="document-row-delete" onClick={() => deleteMeasurement(measurement.id)} aria-label="Mérés törlése">
-                  ×
-                </button>
+                {canMeasure ? (
+                  <button type="button" className="measure-undo" onClick={() => startEditMeasurement(measurement)}>
+                    Szerkesztés
+                  </button>
+                ) : null}
+                {canDeleteMeasurement ? (
+                  <button type="button" className="document-row-delete" onClick={() => deleteMeasurement(measurement.id)} aria-label="Mérés törlése">
+                    ×
+                  </button>
+                ) : null}
               </div>
             ))}
           </>
