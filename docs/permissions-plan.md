@@ -93,15 +93,72 @@ ne csináljanak `profiles`-alkérdést soronként. Amíg egyetlen RLS-szabály s
 használja, a hook csak plusz mozgó alkatrész (és stale-claim kockázat), ezért a
 4. lépcső részeként jön.
 
-## 2. lépcső – szerep szerinti tiltás az appban
+## 2. lépcső – szerep szerinti tiltás az appban (kész: 2026-07-27)
 
-- Szerveroldali ellenőrzés az API route-okban (nem csak elrejtett gomb – az
-  elrejtett gomb nem védelem).
-- A dashboard pénzügyi blokkjai szerepfüggő változatot kapnak (alvállalkozó a
-  saját számait látja, a többiekét nem).
-- Írási műveletek (hiba/akadály létrehozás, TIG csomag, dokumentum-feltöltés,
-  törlés) szerephez kötése.
-- Elutasított művelet esetén értelmes hibaüzenet.
+Új fájlok: `src/lib/permissions.ts` (tiszta mátrix, kliensből is importálható)
+és `src/lib/permissions.server.ts` (szerveroldali ellenőrzés), valamint
+`src/components/AccessDenied.tsx`.
+
+### Két védelmi réteg
+
+1. **API route eleje** – `checkPermission(action)` azonnali 403-at ad vissza
+   magyar üzenettel. Ez adja a jó felhasználói élményt.
+2. **`repository.ts` írás-függvények eleje** – `requirePermission(action)`
+   dob. Ez a tényleges védelem: mind a 24 írás-függvény ezen megy át, így egy
+   később hozzáadott route sem tudja véletlenül kihagyni az ellenőrzést.
+
+Az elrejtett gomb sehol nem helyettesíti ezt – a UI-oldali `can(role, action)`
+csak azt éri el, hogy ne kínáljunk fel olyat, ami úgyis elbukna.
+
+### A mátrix (`permissions.ts`)
+
+| Művelet | admin | projektvezető | építésvezető | alvállalkozó | megtekintő |
+| --- | --- | --- | --- | --- | --- |
+| projekt létrehozás/módosítás | ✔ | ✔ | – | – | – |
+| **projekt törlés** | ✔ | – | – | – | – |
+| hiba létrehozás | ✔ | ✔ | ✔ | – | – |
+| hiba módosítás (állapotléptetés) | ✔ | ✔ | ✔ | ✔ | – |
+| hiba törlés | ✔ | ✔ | – | – | – |
+| fénykép/bizonyíték feltöltés | ✔ | ✔ | ✔ | ✔ | – |
+| akadály bejelentés | ✔ | ✔ | ✔ | ✔ | – |
+| akadály módosítás | ✔ | ✔ | ✔ | – | – |
+| dokumentum feltöltés | ✔ | ✔ | ✔ | – | – |
+| mérés / kalibrálás | ✔ | ✔ | ✔ | – | – |
+| alvállalkozó törzsadat | ✔ | ✔ | – | – | – |
+| TIG csomag | ✔ | ✔ | – | – | – |
+| **pénzügyi értékek (`money.view`)** | ✔ | ✔ | – | – | – |
+
+Törlés általában admin + projektvezető; a projekt törlése viszont admin-only,
+mert az az egész hibalistát viszi.
+
+### Pénzügyi adatok
+
+A `money.view` jog nélkül a dashboardon a Ft-összegek helyére darabszám kerül
+(a „Leigazolatlan érték" kártya „Leigazolatlan tétel"-re vált, a TIG sávok
+darabszám szerint skálázódnak, az alvállalkozói pénz-chip eltűnik) – a layout
+nem esik szét. A TIG modult egyben zárjuk le, mert végig pénzügyi adatot mutat.
+
+### Az elutasított állapotváltás
+
+Eddig a `workflow.ts` által tiltott állapotváltás **némán** visszaesett a régi
+állapotra, és a felhasználó „Hiba frissítve" üzenetet látott. Most a
+`repository.ts` `ForbiddenError`-t dob konkrét szöveggel (melyik állapotból
+melyikbe, milyen szerepkörrel), a route 403-ként adja vissza, az
+`IssueDetailPanel` pedig a szerver üzenetét írja ki az általános helyett.
+
+### Demo mód
+
+Ha nincs Supabase konfigurálva (`isAuthConfigured() === false`), az ellenőrzés
+nem fut: nincs valódi identitás és nincs valódi adat sem, csak a mock. Ez
+környezeti változó szerinti döntés, nem futásidejű hibából adódó visszaesés.
+
+### Ami tudatosan maradt a 3. lépcsőre
+
+- Az alvállalkozó **bármelyik** hibát szerkesztheti, nem csak a sajátját. A
+  tulajdonosi szűrés a `project_members` hatókörrel együtt jön.
+- A `TigWorkspace`, `PlanMeasurementTool`, `EvidencePhotoGallery` és
+  `SubcontractorForm` belső törlés-gombjai még nincsenek elrejtve; a szerver
+  viszont már elutasítja őket értelmes üzenettel.
 
 ## 3. lépcső – projekt-hatókör (`project_members`)
 

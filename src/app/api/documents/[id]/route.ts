@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteProjectDocumentRecord } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("document.delete");
+  if (denied) return denied;
+
   const { id } = await params;
 
   if (!id) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSubcontractorRecord, listSubcontractors } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await checkPermission("subcontractor.create");
+  if (denied) return denied;
+
   const body = await request.json().catch(() => null);
 
   if (!body?.name) {

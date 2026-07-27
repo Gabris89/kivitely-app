@@ -2,6 +2,7 @@ import { listProjects, listIssues, listBlockers, listTigPackages } from "@/lib/r
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardView } from "@/components/DashboardView";
 import { buildDashboardData } from "@/lib/dashboard";
+import { hasPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,12 @@ export const dynamic = "force-dynamic";
 // route: a navigációs brief pont azt jelölte problémának, hogy a "dashboard"
 // szó több különböző dolgot takar az appban. Lásd docs/dashboard-plan.md.
 export default async function DashboardPage() {
-  const [projects, issues, blockers, tigPackages] = await Promise.all([
+  const [projects, issues, blockers, tigPackages, canViewMoney] = await Promise.all([
     listProjects(),
     listIssues(),
     listBlockers(),
-    listTigPackages()
+    listTigPackages(),
+    hasPermission("money.view")
   ]);
 
   const data = buildDashboardData({ projects, issues, blockers, tigPackages });
@@ -21,7 +23,7 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader title="Áttekintés" subtitle="Gyors kép az összes projektről." />
-      <DashboardView data={data} scope="global" />
+      <DashboardView data={data} scope="global" canViewMoney={canViewMoney} />
     </>
   );
 }

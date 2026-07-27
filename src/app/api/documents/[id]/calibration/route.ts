@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPlanCalibration, savePlanCalibration } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -8,6 +9,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("measurement.calibrate");
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const metersPerUnit = Number(body?.metersPerUnit);

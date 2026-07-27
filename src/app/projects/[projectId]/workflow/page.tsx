@@ -3,18 +3,21 @@ import { listIssues } from "@/lib/repository";
 import { issueStatusLabels, issueStatusOrder } from "@/lib/workflow";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
+import { hasPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkflowPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const issues = await listIssues(projectId);
+  const [issues, canCreate] = await Promise.all([listIssues(projectId), hasPermission("issue.create")]);
 
   return (
     <>
       <PageHeader title="Workflow tábla" subtitle="A hibalista Kanban nézete: innen látszik, hol akad el a kivitelezési folyamat.">
         <Link href={`/projects/${projectId}/issues`} className="button ghost">Lista nézet</Link>
-        <Link href={`/projects/${projectId}/issues/new`} className="button primary">+ Új hiba</Link>
+        {canCreate ? (
+          <Link href={`/projects/${projectId}/issues/new`} className="button primary">+ Új hiba</Link>
+        ) : null}
       </PageHeader>
 
       <section className="workflow-board">

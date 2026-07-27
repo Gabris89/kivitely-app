@@ -2,16 +2,17 @@ import Link from "next/link";
 import { listProjects } from "@/lib/repository";
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { ChevronRightIcon } from "@/components/ActionIcons";
+import { hasPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const projects = await listProjects();
+  const [projects, canCreate] = await Promise.all([listProjects(), hasPermission("project.create")]);
 
   return (
     <>
       <PageHeader title="Projektek" subtitle="Válassz egy projektet, vagy hozz létre újat.">
-        <HeaderLink href="/projects/new" variant="primary">+ Új projekt</HeaderLink>
+        {canCreate ? <HeaderLink href="/projects/new" variant="primary">+ Új projekt</HeaderLink> : null}
       </PageHeader>
 
       {projects.length ? (

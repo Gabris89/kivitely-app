@@ -7,6 +7,7 @@ import type { EvidencePhoto, Issue, Subcontractor, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { getNextStatuses, issueStatusLabels } from "@/lib/workflow";
+import { can } from "@/lib/permissions";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionIcons";
 import { EvidenceMetadataControls } from "@/components/EvidenceMetadataControls";
@@ -40,6 +41,10 @@ export function IssueDetailPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const tigReadiness = getIssueTigReadiness(issue, photos);
   const nextStatuses = getNextStatuses(issue, role);
+  // Ugyanaz a matrix dont, mint a szerveren - a gomb el sem jelenik meg,
+  // ha a szerep ugysem tudna hasznalni.
+  const canEdit = can(role, "issue.update");
+  const canDelete = can(role, "issue.delete");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,7 +78,13 @@ export function IssueDetailPanel({
     }).catch(() => null);
 
     if (!response?.ok) {
-      setSaveState({ status: "error", message: "Mentési hiba: a módosítás nem sikerült." });
+      // A szerver ertheto magyar uzenetet kuld 403-nal (pl. tiltott
+      // allapotvaltas) - ezt mutatjuk, ne az altalanos szoveget.
+      const json = await response?.json().catch(() => null);
+      setSaveState({
+        status: "error",
+        message: json?.error || "Mentési hiba: a módosítás nem sikerült."
+      });
       return;
     }
 
@@ -90,7 +101,8 @@ export function IssueDetailPanel({
 
     if (!response?.ok) {
       setDeleting(false);
-      window.alert("A törlés nem sikerült.");
+      const json = await response?.json().catch(() => null);
+      window.alert(json?.error || "A törlés nem sikerült.");
       return;
     }
 
@@ -106,25 +118,29 @@ export function IssueDetailPanel({
           <StatusBadge status={issue.status} />
         </div>
         <div className="section-title-actions">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Törlés"
-            title="Törlés"
-            disabled={deleting}
-            onClick={() => setConfirmOpen(true)}
-          >
-            <TrashIcon />
-          </button>
-          <button
-            type="button"
-            className={`edit-toggle-btn${isEditing ? " active" : ""}`}
-            aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
-            aria-expanded={isEditing}
-            onClick={() => setIsEditing((current) => !current)}
-          >
-            <PencilIcon />
-          </button>
+          {canDelete ? (
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Törlés"
+              title="Törlés"
+              disabled={deleting}
+              onClick={() => setConfirmOpen(true)}
+            >
+              <TrashIcon />
+            </button>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className={`edit-toggle-btn${isEditing ? " active" : ""}`}
+              aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
+              aria-expanded={isEditing}
+              onClick={() => setIsEditing((current) => !current)}
+            >
+              <PencilIcon />
+            </button>
+          ) : null}
         </div>
       </div>
 

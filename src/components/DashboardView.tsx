@@ -7,6 +7,12 @@ type Props = {
   scope: "global" | "project";
   /** Projekt-scope-ban a linkek elé kerülő prefix (pl. /projects/PRJ-001). */
   basePath?: string;
+  /**
+   * Pénzügyi értékek megjelenítése. Csak admin és projektvezető kapja meg
+   * (lásd permissions.ts / "money.view"). Ha false, a Ft-összegek helyére
+   * darabszám kerül, hogy a layout ne essen szét.
+   */
+  canViewMoney?: boolean;
 };
 
 function percent(value: number, max: number) {
@@ -19,11 +25,12 @@ function formatDays(value: number | null) {
   return `${String(value).replace(".", ",")} nap`;
 }
 
-export function DashboardView({ data, scope, basePath = "" }: Props) {
+export function DashboardView({ data, scope, basePath = "", canViewMoney = false }: Props) {
   const { kpi, tig, subcontractors, issuesByStatus, blockers, projects } = data;
 
   const maxStatusCount = Math.max(1, ...issuesByStatus.map((row) => row.count));
   const maxTigValue = Math.max(1, ...tig.rows.map((row) => row.valueHuf || 0));
+  const maxTigCount = Math.max(1, ...tig.rows.map((row) => row.count));
   const maxProjectOpen = Math.max(1, ...projects.map((row) => row.openIssues));
 
   const issuesHref = scope === "project" ? `${basePath}/issues` : "/issues";
@@ -47,11 +54,19 @@ export function DashboardView({ data, scope, basePath = "" }: Props) {
         </div>
         {/* Ez az a szám, ami miatt a vezető megnyitja az appot: elvégzett,
             bizonyított munka, amiért még nem járt le a pénz. */}
-        <div className="card stat-card stat-card-money">
-          <span>Leigazolatlan érték</span>
-          <strong>{formatHuf(kpi.uncertifiedValueHuf)}</strong>
-          <small>TIG-ready, még nincs jóváhagyott csomagban</small>
-        </div>
+        {canViewMoney ? (
+          <div className="card stat-card stat-card-money">
+            <span>Leigazolatlan érték</span>
+            <strong>{formatHuf(kpi.uncertifiedValueHuf)}</strong>
+            <small>TIG-ready, még nincs jóváhagyott csomagban</small>
+          </div>
+        ) : (
+          <div className="card stat-card">
+            <span>Leigazolatlan tétel</span>
+            <strong>{tig.unpackagedCount}</strong>
+            <small>TIG-ready, még nincs jóváhagyott csomagban</small>
+          </div>
+        )}
       </section>
 
       <section className="dashboard-charts">
@@ -71,11 +86,18 @@ export function DashboardView({ data, scope, basePath = "" }: Props) {
                 <div className="bar-row bar-row-rich" key={row.key}>
                   <span>{row.label}</span>
                   <div className="bar-track">
-                    <div className="bar-fill" style={{ width: `${percent(row.valueHuf || 0, maxTigValue)}%` }} />
+                    <div
+                      className="bar-fill"
+                      style={{
+                        width: canViewMoney
+                          ? `${percent(row.valueHuf || 0, maxTigValue)}%`
+                          : `${percent(row.count, maxTigCount)}%`
+                      }}
+                    />
                   </div>
                   <strong>
                     {row.count} db
-                    <em>{formatHuf(row.valueHuf || 0)}</em>
+                    {canViewMoney ? <em>{formatHuf(row.valueHuf || 0)}</em> : null}
                   </strong>
                 </div>
               ))}
@@ -87,7 +109,8 @@ export function DashboardView({ data, scope, basePath = "" }: Props) {
           <div className="metric-callout">
             <span>Csomagba nem tett, TIG-ready tétel</span>
             <strong>
-              {tig.unpackagedCount} db · {formatHuf(tig.unpackagedValueHuf)}
+              {tig.unpackagedCount} db
+              {canViewMoney ? ` · ${formatHuf(tig.unpackagedValueHuf)}` : null}
             </strong>
           </div>
         </div>
@@ -141,9 +164,11 @@ export function DashboardView({ data, scope, basePath = "" }: Props) {
                     <span className={row.overdueIssues > 0 ? "metric-chip is-danger" : "metric-chip"}>
                       <em>{row.overdueIssues}</em>lejárt
                     </span>
-                    <span className="metric-chip is-money">
-                      <em>{formatHuf(row.uncertifiedValueHuf)}</em>leigazolatlan
-                    </span>
+                    {canViewMoney ? (
+                      <span className="metric-chip is-money">
+                        <em>{formatHuf(row.uncertifiedValueHuf)}</em>leigazolatlan
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -223,7 +248,8 @@ export function DashboardView({ data, scope, basePath = "" }: Props) {
                     <strong>
                       {row.openIssues} nyitott
                       <em>
-                        {row.overdueIssues} lejárt · {formatHuf(row.uncertifiedValueHuf)}
+                        {row.overdueIssues} lejárt
+                        {canViewMoney ? ` · ${formatHuf(row.uncertifiedValueHuf)}` : null}
                       </em>
                     </strong>
                   </div>

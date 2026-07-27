@@ -7,6 +7,7 @@ import {
   type TigMetaInput
 } from "@/lib/repository";
 import type { TigPackageStatus } from "@/types";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,9 @@ const VALID_STATUSES: TigPackageStatus[] = ["draft", "ready_for_review", "approv
 
 // Egy TIG csomag módosítása: állapotváltás, tétel-lista csere, vagy metaadat.
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ packageId: string }> }) {
+  const denied = await checkPermission("tig.update");
+  if (denied) return denied;
+
   const { packageId } = await params;
   const body = await request.json().catch(() => null);
 
@@ -54,6 +58,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ packageId: string }> }) {
+  const denied = await checkPermission("tig.delete");
+  if (denied) return denied;
+
   const { packageId } = await params;
   const result = await deleteTigPackage(packageId);
   return NextResponse.json(result.ok ? { ok: true } : { error: result.error }, { status: result.ok ? 200 : 400 });

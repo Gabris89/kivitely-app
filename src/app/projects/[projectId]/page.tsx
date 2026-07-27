@@ -4,6 +4,7 @@ import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { ProjectDetailPanel } from "@/components/ProjectDetailPanel";
 import { DashboardView } from "@/components/DashboardView";
 import { buildDashboardData } from "@/lib/dashboard";
+import { hasPermission } from "@/lib/permissions.server";
 import { ChevronRightIcon } from "@/components/ActionIcons";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +18,12 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
   // A projekt "Áttekintés" oldala eddig csak modul-indító linklista volt. Most
   // ez az oldal a projekt valódi dashboardja; a modul-lista alá kerül (mobilon
   // továbbra is ez a leggyorsabb belépő). Lásd docs/dashboard-plan.md.
-  const [issues, blockers, tigPackages] = await Promise.all([
+  const [issues, blockers, tigPackages, canViewMoney, canCreateIssue] = await Promise.all([
     listIssues(projectId),
     listBlockers(projectId),
-    listTigPackages(projectId)
+    listTigPackages(projectId),
+    hasPermission("money.view"),
+    hasPermission("issue.create")
   ]);
 
   const data = buildDashboardData({ projects: [project], issues, blockers, tigPackages });
@@ -30,7 +33,9 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
     { href: `/projects/${projectId}/blockers`, title: "Akadálylista", description: "Munkát lassító akadályok áttekintése." },
     { href: `/projects/${projectId}/documents`, title: "Dokumentumok", description: "Tervek és projektdokumentumok." },
     { href: `/projects/${projectId}/work-logs`, title: "Teljesítménynapló", description: "Terepi munkarögzítés naplója." },
-    { href: `/projects/${projectId}/tig`, title: "TIG csomag", description: "Teljesítésigazolási csomagok összeállítása." },
+    ...(canViewMoney
+      ? [{ href: `/projects/${projectId}/tig`, title: "TIG csomag", description: "Teljesítésigazolási csomagok összeállítása." }]
+      : []),
     { href: `/projects/${projectId}/workflow`, title: "Workflow tábla", description: "Hibák állapot szerinti áttekintése." },
     { href: "/subcontractors", title: "Alvállalkozók", description: "Alvállalkozói teljesítmény és terhelés." }
   ];
@@ -38,10 +43,12 @@ export default async function ProjectDashboardPage({ params }: { params: Promise
   return (
     <>
       <PageHeader title={project.name} subtitle={`${project.phase} · ${project.address}`}>
-        <HeaderLink href={`/projects/${projectId}/issues/new`} variant="primary">+ Új hiba</HeaderLink>
+        {canCreateIssue ? (
+          <HeaderLink href={`/projects/${projectId}/issues/new`} variant="primary">+ Új hiba</HeaderLink>
+        ) : null}
       </PageHeader>
 
-      <DashboardView data={data} scope="project" basePath={`/projects/${projectId}`} />
+      <DashboardView data={data} scope="project" basePath={`/projects/${projectId}`} canViewMoney={canViewMoney} />
 
       <section className="dashboard-section">
         <div className="entity-list" aria-label="Modulok">

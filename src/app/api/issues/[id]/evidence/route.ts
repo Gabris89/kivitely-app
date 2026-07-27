@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createIssueEvidenceRecord, deleteIssueEvidenceRecord, getIssue } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 const allowedEvidenceTypes = ["before_photo", "after_photo"] as const;
 type AllowedEvidenceType = (typeof allowedEvidenceTypes)[number];
@@ -38,6 +39,9 @@ async function parseEvidenceRequest(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("evidence.create");
+  if (denied) return denied;
+
   const { id } = await params;
   const { evidenceType, label, file } = await parseEvidenceRequest(request);
 
@@ -68,6 +72,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("evidence.delete");
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const evidenceId = typeof body?.evidenceId === "string" ? body.evidenceId : "";

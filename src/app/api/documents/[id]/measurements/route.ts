@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPlanMeasurementRecord, deletePlanMeasurementRecord, listPlanMeasurements, updatePlanMeasurementRecord } from "@/lib/repository";
 import type { PlanMeasurementPoint, PlanMeasurementType } from "@/types";
+import { checkPermission } from "@/lib/permissions.server";
 
 const allowedMeasurementTypes = ["area", "length"] as const;
 type AllowedMeasurementType = (typeof allowedMeasurementTypes)[number];
@@ -37,6 +38,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("measurement.create");
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -77,6 +81,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function PATCH(request: NextRequest) {
+  const denied = await checkPermission("measurement.update");
+  if (denied) return denied;
+
   const body = await request.json().catch(() => null);
   const measurementId = typeof body?.measurementId === "string" ? body.measurementId : "";
   const points: unknown = body?.points;
@@ -112,6 +119,9 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const denied = await checkPermission("measurement.delete");
+  if (denied) return denied;
+
   const body = await request.json().catch(() => null);
   const measurementId = typeof body?.measurementId === "string" ? body.measurementId : "";
 

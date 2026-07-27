@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteProjectRecord, updateProjectRecord } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const denied = await checkPermission("project.update");
+  if (denied) return denied;
+
   const { projectId } = await params;
   const body = await request.json().catch(() => null);
 
@@ -27,6 +31,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const denied = await checkPermission("project.delete");
+  if (denied) return denied;
+
   const { projectId } = await params;
   const result = await deleteProjectRecord(projectId);
 

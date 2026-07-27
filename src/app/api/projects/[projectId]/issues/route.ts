@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createIssueRecord, listIssues } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const denied = await checkPermission("issue.create");
+  if (denied) return denied;
+
   const { projectId } = await params;
   const body = await request.json().catch(() => null);
 

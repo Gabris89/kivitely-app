@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createProjectDocumentRecord, listProjectDocuments } from "@/lib/repository";
 import type { ProjectDocumentVisibility } from "@/types";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const denied = await checkPermission("document.create");
+  if (denied) return denied;
+
   const { projectId } = await params;
   const contentType = request.headers.get("content-type") || "";
 

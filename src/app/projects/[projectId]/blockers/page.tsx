@@ -1,12 +1,13 @@
 import { HeaderLink, PageHeader } from "@/components/PageHeader";
 import { listBlockers } from "@/lib/repository";
 import { BlockerFilters } from "@/components/BlockerFilters";
+import { hasPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
 export default async function BlockersPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const blockers = await listBlockers(projectId);
+  const [blockers, canCreate] = await Promise.all([listBlockers(projectId), hasPermission("blocker.create")]);
 
   return (
     <>
@@ -14,7 +15,9 @@ export default async function BlockersPage({ params }: { params: Promise<{ proje
         title="Akadálylista"
         subtitle="Munkát lassító akadályok, kereséssel és státusz szerinti szűréssel."
       >
-        <HeaderLink href={`/projects/${projectId}/blockers/new`} variant="primary">+ Új akadály</HeaderLink>
+        {canCreate ? (
+          <HeaderLink href={`/projects/${projectId}/blockers/new`} variant="primary">+ Új akadály</HeaderLink>
+        ) : null}
       </PageHeader>
 
       <section className="card panel-large">

@@ -98,6 +98,27 @@ This file tracks important project steps that moved the MVP baseline forward. Re
   profile now yields `viewer`, not `project_manager`. The permissive default
   survives only in Supabase-less demo mode. `profiles.is_active = false` now
   acts as an immediate off switch.
+- Permissions step 2: role-based restriction in the app. New `src/lib/permissions.ts`
+  holds a single action-to-roles matrix (24 write actions plus `money.view`) and is
+  deliberately dependency-free so client components can import it; `src/lib/permissions.server.ts`
+  adds the server-side checks. Two layers: every API write handler starts with
+  `checkPermission()` (returns a 403 with a Hungarian message), and every one of the
+  24 write functions in `repository.ts` starts with `requirePermission()` (throws).
+  The second layer is the real guard - all DB writes funnel through it, so a future
+  route cannot silently skip authorization.
+- Project deletion is admin-only; other deletions are admin + project manager.
+  Subcontractors may upload evidence and report blockers but cannot create issues or
+  upload documents. Money (`money.view`) is admin + project manager only: without it
+  the dashboard shows counts instead of Ft amounts and the TIG module is closed
+  entirely, since every TIG view is financial.
+- A workflow-rejected status move no longer fails silently. `repository.ts` throws a
+  `ForbiddenError` naming the source status, target status and role; the route maps it
+  to 403 and `IssueDetailPanel` displays the server message instead of the generic
+  "Mentési hiba" text.
+- Write affordances the current role lacks are hidden rather than disabled, and the
+  matching `/new` pages plus the TIG page render an `AccessDenied` notice for direct
+  URL access. Known gap left for step 3: a subcontractor may still edit any issue, not
+  only their own - ownership scoping arrives with `project_members`.
 
 ## Review checklist
 

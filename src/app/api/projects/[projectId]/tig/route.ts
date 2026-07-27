@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTigPackage } from "@/lib/repository";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
 // TIG csomag létrehozása egy projekthez.
 export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const denied = await checkPermission("tig.create");
+  if (denied) return denied;
+
   const { projectId } = await params;
   const body = await request.json().catch(() => null);
 

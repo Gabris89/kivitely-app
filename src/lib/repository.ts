@@ -13,6 +13,8 @@ import {
 import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
 import { getCurrentWorkflowRole } from "@/lib/currentUser";
+import { workflowRoleLabels } from "@/lib/permissions";
+import { ForbiddenError, requirePermission } from "@/lib/permissions.server";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getServerSupabaseClient, isAuthConfigured } from "@/lib/supabase/server";
 
@@ -804,6 +806,7 @@ async function createSupabaseProject(input: CreateProjectInput) {
 }
 
 export async function createProjectRecord(input: CreateProjectInput): Promise<CreateProjectResult> {
+  await requirePermission("project.create");
   const supabaseProject = await createSupabaseProject(input);
 
   if (supabaseProject) {
@@ -842,6 +845,7 @@ async function updateSupabaseProject(publicId: string, input: UpdateProjectInput
 }
 
 export async function updateProjectRecord(publicId: string, input: UpdateProjectInput): Promise<UpdateProjectResult> {
+  await requirePermission("project.update");
   const updated = await updateSupabaseProject(publicId, input);
 
   if (updated) {
@@ -866,6 +870,7 @@ async function deleteSupabaseProject(publicId: string) {
 }
 
 export async function deleteProjectRecord(publicId: string): Promise<DeleteProjectResult> {
+  await requirePermission("project.delete");
   const supabaseDeleted = await deleteSupabaseProject(publicId);
 
   if (supabaseDeleted) {
@@ -957,6 +962,7 @@ async function createSupabaseIssueEvidence(issueId: string, input: CreateIssueEv
 }
 
 export async function createIssueEvidenceRecord(issueId: string, input: CreateIssueEvidenceInput): Promise<CreateIssueEvidenceResult> {
+  await requirePermission("evidence.create");
   const supabaseEvidence = await createSupabaseIssueEvidence(issueId, input);
 
   if (supabaseEvidence) {
@@ -1012,6 +1018,7 @@ async function deleteSupabaseIssueEvidence(issueId: string, evidenceId: string) 
 }
 
 export async function deleteIssueEvidenceRecord(issueId: string, evidenceId: string): Promise<DeleteIssueEvidenceResult> {
+  await requirePermission("evidence.delete");
   const supabaseDeleted = await deleteSupabaseIssueEvidence(issueId, evidenceId);
 
   if (supabaseDeleted) {
@@ -1145,6 +1152,7 @@ async function createSupabaseSubcontractor(input: CreateSubcontractorInput) {
 }
 
 export async function createSubcontractorRecord(input: CreateSubcontractorInput): Promise<CreateSubcontractorResult> {
+  await requirePermission("subcontractor.create");
   const supabaseSubcontractor = await createSupabaseSubcontractor(input);
 
   if (supabaseSubcontractor) {
@@ -1183,6 +1191,7 @@ async function updateSupabaseSubcontractor(publicId: string, input: UpdateSubcon
 }
 
 export async function updateSubcontractorRecord(publicId: string, input: UpdateSubcontractorInput): Promise<UpdateSubcontractorResult> {
+  await requirePermission("subcontractor.update");
   const updated = await updateSupabaseSubcontractor(publicId, input);
 
   if (updated) {
@@ -1213,6 +1222,7 @@ async function deleteSupabaseSubcontractor(publicId: string) {
 }
 
 export async function deleteSubcontractorRecord(publicId: string): Promise<DeleteSubcontractorResult> {
+  await requirePermission("subcontractor.delete");
   const supabaseDeleted = await deleteSupabaseSubcontractor(publicId);
 
   if (supabaseDeleted) {
@@ -1410,6 +1420,7 @@ async function createSupabaseProjectDocument(input: CreateProjectDocumentInput) 
 }
 
 export async function createProjectDocumentRecord(input: CreateProjectDocumentInput): Promise<CreateProjectDocumentResult> {
+  await requirePermission("document.create");
   const projectData = (await getProjectByPublicId(input.projectId)) || mockProject;
   const supabaseDocument = await createSupabaseProjectDocument(input);
 
@@ -1456,6 +1467,7 @@ async function deleteSupabaseProjectDocument(documentId: string) {
 }
 
 export async function deleteProjectDocumentRecord(documentId: string): Promise<DeleteProjectDocumentResult> {
+  await requirePermission("document.delete");
   const supabaseDeleted = await deleteSupabaseProjectDocument(documentId);
 
   if (supabaseDeleted) {
@@ -1496,6 +1508,7 @@ export async function listPlanMeasurements(documentId: string): Promise<PlanMeas
 }
 
 export async function createPlanMeasurementRecord(input: CreatePlanMeasurementInput): Promise<CreatePlanMeasurementResult> {
+  await requirePermission("measurement.create");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { measurement: null, mode: "mock" };
 
@@ -1520,6 +1533,7 @@ export async function createPlanMeasurementRecord(input: CreatePlanMeasurementIn
 }
 
 export async function deletePlanMeasurementRecord(measurementId: string): Promise<DeletePlanMeasurementResult> {
+  await requirePermission("measurement.delete");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, mode: "mock" };
 
@@ -1531,6 +1545,7 @@ export async function deletePlanMeasurementRecord(measurementId: string): Promis
 }
 
 export async function updatePlanMeasurementRecord(input: UpdatePlanMeasurementInput): Promise<CreatePlanMeasurementResult> {
+  await requirePermission("measurement.update");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { measurement: null, mode: "mock" };
 
@@ -1569,6 +1584,7 @@ export async function getPlanCalibration(documentId: string): Promise<number | n
 }
 
 export async function savePlanCalibration(documentId: string, metersPerUnit: number): Promise<SavePlanCalibrationResult> {
+  await requirePermission("measurement.calibrate");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, mode: "mock" };
 
@@ -1688,6 +1704,7 @@ async function updateSupabaseBlocker(publicId: string, input: UpdateBlockerInput
 }
 
 export async function updateBlockerRecord(publicId: string, input: UpdateBlockerInput): Promise<UpdateBlockerResult> {
+  await requirePermission("blocker.update");
   const updated = await updateSupabaseBlocker(publicId, input);
 
   if (updated) {
@@ -1712,6 +1729,7 @@ async function deleteSupabaseBlocker(publicId: string) {
 }
 
 export async function deleteBlockerRecord(publicId: string): Promise<DeleteBlockerResult> {
+  await requirePermission("blocker.delete");
   const supabaseDeleted = await deleteSupabaseBlocker(publicId);
 
   if (supabaseDeleted) {
@@ -1855,6 +1873,7 @@ async function createSupabaseBlocker(input: CreateBlockerInput): Promise<Blocker
 }
 
 export async function createBlockerRecord(input: CreateBlockerInput): Promise<CreateBlockerResult> {
+  await requirePermission("blocker.create");
   const supabaseBlocker = await createSupabaseBlocker(input);
 
   if (supabaseBlocker) {
@@ -1943,6 +1962,7 @@ export function createIssue(input: CreateIssueInput): Issue {
 }
 
 export async function createIssueRecord(input: CreateIssueInput): Promise<CreateIssueResult> {
+  await requirePermission("issue.create");
   const supabaseIssue = await createSupabaseIssue(input);
 
   if (supabaseIssue) {
@@ -1998,8 +2018,20 @@ async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): P
   // Az állapotmozgatást a BEJELENTKEZETT felhasználó szerepe engedélyezi, nem a
   // korábbi hardkódolt "project_manager". Lásd docs/permissions-plan.md.
   const actorRole = await getCurrentWorkflowRole();
-  const targetStatus =
-    input.status && canMoveIssue(currentIssue, input.status, actorRole) ? input.status : currentIssue.status;
+  const wantsStatusChange = Boolean(input.status) && input.status !== currentIssue.status;
+
+  // Korabban a tiltott allapotvaltas NEMAN visszaesett a regi allapotra, es a
+  // felhasznalo "Hiba frissitve" uzenetet latott. Most ertheto hibat dobunk,
+  // amit a route 403-kent ad vissza, a UI pedig kiir.
+  if (wantsStatusChange && !canMoveIssue(currentIssue, input.status as IssueStatus, actorRole)) {
+    throw new ForbiddenError(
+      `A(z) „${issueStatusLabels[currentIssue.status]}” állapotból nem léptethető „${
+        issueStatusLabels[input.status as IssueStatus]
+      }” állapotba ${workflowRoleLabels[actorRole]} szerepkörrel.`
+    );
+  }
+
+  const targetStatus = wantsStatusChange ? (input.status as IssueStatus) : currentIssue.status;
 
   const { data, error } = await supabase
     .from("issues")
@@ -2033,6 +2065,7 @@ async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): P
 }
 
 export async function updateIssueRecord(publicId: string, input: UpdateIssueInput): Promise<UpdateIssueResult> {
+  await requirePermission("issue.update");
   const updated = await updateSupabaseIssue(publicId, input);
 
   if (updated) {
@@ -2057,6 +2090,7 @@ async function deleteSupabaseIssue(publicId: string) {
 }
 
 export async function deleteIssueRecord(publicId: string): Promise<DeleteIssueResult> {
+  await requirePermission("issue.delete");
   const supabaseDeleted = await deleteSupabaseIssue(publicId);
 
   if (supabaseDeleted) {
@@ -2193,6 +2227,7 @@ export async function listTigCandidateIssues(projectId: string, subcontractorPub
 }
 
 export async function createTigPackage(input: CreateTigPackageInput): Promise<TigWriteResult> {
+  await requirePermission("tig.create");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
 
@@ -2239,6 +2274,7 @@ export async function createTigPackage(input: CreateTigPackageInput): Promise<Ti
 }
 
 export async function setTigPackageIssues(packagePublicId: string, issuePublicIds: string[]): Promise<TigWriteResult> {
+  await requirePermission("tig.update");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
 
@@ -2267,6 +2303,7 @@ export async function setTigPackageIssues(packagePublicId: string, issuePublicId
 }
 
 export async function updateTigPackageMeta(packagePublicId: string, meta: TigMetaInput): Promise<TigWriteResult> {
+  await requirePermission("tig.update");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { package: null, ok: false, error: "Nincs adatbázis-kapcsolat." };
 
@@ -2324,6 +2361,7 @@ export async function moveTigPackageStatus(packagePublicId: string, nextStatus: 
 }
 
 export async function deleteTigPackage(packagePublicId: string): Promise<{ ok: boolean; error?: string }> {
+  await requirePermission("tig.delete");
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, error: "Nincs adatbázis-kapcsolat." };
 

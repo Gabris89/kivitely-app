@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteBlockerRecord, updateBlockerRecord } from "@/lib/repository";
 import type { BlockerSeverity, BlockerStatus } from "@/types";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ const allowedSeverities: BlockerSeverity[] = ["low", "normal", "high", "critical
 const allowedStatuses: BlockerStatus[] = ["open", "in_progress", "waiting_external", "resolved", "closed", "cancelled"];
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("blocker.update");
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -34,6 +38,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("blocker.delete");
+  if (denied) return denied;
+
   const { id } = await params;
   const result = await deleteBlockerRecord(id);
 

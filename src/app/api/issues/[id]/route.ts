@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteIssueRecord, getIssue, getIssueEvents, getIssueEvidence, updateIssueRecord } from "@/lib/repository";
+import { checkPermission, permissionErrorResponse } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("issue.update");
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -26,19 +30,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Hiányzó kötelező mező: title, location, subcontractor, dueDate" }, { status: 400 });
   }
 
-  const result = await updateIssueRecord(id, {
-    title: String(body.title),
-    description: body.description ? String(body.description) : undefined,
-    location: String(body.location),
-    area: body.area ? String(body.area) : undefined,
-    trade: body.trade ? String(body.trade) : undefined,
-    subcontractor: String(body.subcontractor),
-    assignee: body.assignee ? String(body.assignee) : undefined,
-    dueDate: String(body.dueDate),
-    priority: body.priority,
-    valueHuf: body.valueHuf ? Number(body.valueHuf) : undefined,
-    status: body.status
-  });
+  // A szerep atment a matrixon, de a workflow.ts meg tilthatja a konkret
+  // allapotvaltast - az ForbiddenError-kent jon vissza, ertheto uzenettel.
+  let result;
+  try {
+    result = await updateIssueRecord(id, {
+      title: String(body.title),
+      description: body.description ? String(body.description) : undefined,
+      location: String(body.location),
+      area: body.area ? String(body.area) : undefined,
+      trade: body.trade ? String(body.trade) : undefined,
+      subcontractor: String(body.subcontractor),
+      assignee: body.assignee ? String(body.assignee) : undefined,
+      dueDate: String(body.dueDate),
+      priority: body.priority,
+      valueHuf: body.valueHuf ? Number(body.valueHuf) : undefined,
+      status: body.status
+    });
+  } catch (error) {
+    const forbidden = permissionErrorResponse(error);
+    if (forbidden) return forbidden;
+    throw error;
+  }
 
   if (!result.issue) {
     return NextResponse.json({ error: "A mentés nem sikerült.", mode: result.mode }, { status: 500 });
@@ -48,6 +61,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await checkPermission("issue.delete");
+  if (denied) return denied;
+
   const { id } = await params;
   const result = await deleteIssueRecord(id);
 
