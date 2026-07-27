@@ -303,6 +303,12 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
    Szándékosan a meglévő .card / .bar-* primitívekre épül, nincs mögötte
    diagram-könyvtár: amit itt látni kell, azt három div megrajzolja. */
 .dashboard-section { margin-top: 16px; }
+/* Az egymás alatti, önálló felső szintű panelek között ugyanakkora köz
+   legyen, mint a dashboard blokkok között – enélkül a "Projekt adatai"
+   kártya összeért a felette lévő modul-listával. */
+.dashboard-section + .card,
+.entity-list + .card,
+.dashboard-charts + .card { margin-top: 16px; }
 .stat-card small { color: var(--muted); font-size: 11px; line-height: 1.35; }
 .stat-card strong.stat-danger { color: var(--danger); }
 .stat-card strong.stat-warn { color: var(--warn); }
