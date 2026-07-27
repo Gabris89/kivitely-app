@@ -25,6 +25,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   // dísz – ez a visszajelzés arról, hogy az app tényleg felismeri a szerepet
   // (a workflow-szabályok mostantól erre futnak). Lásd docs/permissions-plan.md.
   const user = await getCurrentUser();
+  // Érvényes = van profiles sor ÉS nincs letiltva. Bármelyik hiányzik, a
+  // badge figyelmeztet, a workflow pedig viewer jogokra esik vissza.
+  const hasValidProfile = Boolean(user?.role && user.isActive);
+  const roleLabel = !user?.role
+    ? "Nincs profil"
+    : user.isActive
+      ? appRoleLabels[user.role]
+      : `${appRoleLabels[user.role]} · letiltva`;
 
   return (
     <html lang="hu" suppressHydrationWarning>
@@ -34,8 +42,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             user
               ? {
                   displayName: user.displayName,
-                  roleLabel: user.role ? appRoleLabels[user.role] : "Nincs profil",
-                  hasProfile: Boolean(user.role)
+                  roleLabel,
+                  hasProfile: hasValidProfile
                 }
               : null
           }

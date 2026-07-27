@@ -87,6 +87,18 @@ This file tracks important project steps that moved the MVP baseline forward. Re
 - Started the permissions work, step 1 of 4: identity. Migration `20260727090000_profiles_auth_link.sql` links `auth.users` to `profiles` (email backfill + profile creation for existing accounts as `admin`, i.e. recording today's state rather than granting anything new), adds an `authenticated`-only column grant so a user can read their own role, and adds an `on auth.users` trigger so new accounts get a `viewer` profile (least privilege).
 - Removed the hardcoded `"project_manager"` actor role. `src/lib/currentUser.ts` is now the single place that resolves who is signed in and in which role; the server-side status move (`repository.ts` → `canMoveIssue`) and the issue detail status dropdown both run on the real role, and the signed-in name/role is shown at the bottom of the menu. No permission is taken away in this step — restriction is steps 2-4, see `docs/permissions-plan.md`.
 
+- Hardened the profiles/Auth link (migration 20260727140000): revoked the
+  over-broad column grants that let any signed-in user read every profile's
+  email and role, replaced with a `security definer` `current_user_profile()`
+  returning only the caller's own row; made the signup trigger unable to block
+  registration (fallback display name chain, exception handler, empty
+  search_path); added the missing foreign key on `profiles.auth_user_id` with
+  `on delete set null` so work history survives account deletion.
+- Switched the app-side role fallback to fail-closed: signed in without a valid
+  profile now yields `viewer`, not `project_manager`. The permissive default
+  survives only in Supabase-less demo mode. `profiles.is_active = false` now
+  acts as an immediate off switch.
+
 ## Review checklist
 
 - Keep this file current after commits that change architecture, persistence, deployment, or product direction.

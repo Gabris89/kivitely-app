@@ -238,7 +238,7 @@ export function AppShell({ children, user }: { children: ReactNode; user?: Curre
         </nav>
 
         {user ? (
-          <div className="sidebar-user" title={user.hasProfile ? undefined : "Nincs profil-sor ehhez a fiókhoz"}>
+          <div className="sidebar-user" title={user.hasProfile ? undefined : "Nincs érvényes profil ehhez a fiókhoz – csak megtekintői jogok"}>
             <span className="sidebar-user-avatar" aria-hidden="true">{user.displayName.slice(0, 1).toUpperCase()}</span>
             <span className="sidebar-user-text">
               <strong>{user.displayName}</strong>

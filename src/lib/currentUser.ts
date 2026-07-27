@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { AppRole, UserRole } from "@/types";
-import { getServerSupabaseClient } from "@/lib/supabase/server";
+import { getServerSupabaseClient, isAuthConfigured } from "@/lib/supabase/server";
 
 // ── "Ki vagyok én" ─────────────────────────────────────────────────────────
 // A jogosultsági munka 1. lépcsője (docs/permissions-plan.md). Ez a modul az
@@ -40,20 +40,31 @@ export const appRoleLabels: Record<AppRole, string> = {
   viewer: "Megtekintő"
 };
 
-// Ha nincs profiles sor (vagy nincs Supabase / nincs bejelentkezés: demo-mód),
-// a korábbi viselkedést tartjuk meg. Szándékosan NEM "viewer": ez a lépcső nem
-// vehet el jogot senkitől, különben egy hiányzó profiles sor kizárná a saját
-// felhasználóinkat a működésből. A 20260727090000 migráció minden létező
-// Auth-felhasználóhoz létrehozza a profilt, tehát ez éles úton nem fut le.
-export const FALLBACK_WORKFLOW_ROLE: UserRole = "project_manager";
+/**
+ * Fail-closed alapállás: ha van Auth, de a felhasználóhoz nem tartozik érvényes
+ * profil (nincs sor, letiltott fiók, vagy nem sikerült lekérdezni), akkor a
+ * LEGSZŰKEBB jogot kapja, nem a legtágabbat. Egy hiányzó jogosultsági adat
+ * soha nem eredményezhet több jogot – ez a "secure by default" alapszabály.
+ */
+export const NO_PROFILE_WORKFLOW_ROLE: UserRole = "viewer";
+
+/**
+ * Supabase nélküli demo/mock mód: nincs bejelentkezés és nincs védendő valódi
+ * adat sem, ilyenkor az app maradjon végigkattinthatóan használható.
+ * FIGYELEM: ez kizárólag akkor él, ha nincs Supabase konfigurálva
+ * (isAuthConfigured() === false). Élesben soha nem fut le.
+ */
+export const DEMO_WORKFLOW_ROLE: UserRole = "project_manager";
 
 export type CurrentUser = {
   authUserId: string;
   email: string;
   profileId: string | null;
   displayName: string;
-  /** null, ha nincs hozzá profiles sor (lásd FALLBACK_WORKFLOW_ROLE). */
+  /** null, ha nincs hozzá profiles sor. */
   role: AppRole | null;
+  /** false: letiltott fiók (profiles.is_active). A workflow-ban viewer-ként viselkedik. */
+  isActive: boolean;
   workflowRole: UserRole;
 };
 
@@ -61,6 +72,8 @@ type ProfileRow = {
   id: string;
   display_name: string | null;
   role: AppRole | null;
+  is_active: boolean | null;
+  email: string | null;
 };
 
 /**
@@ -76,30 +89,40 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const authUser = data?.user;
   if (error || !authUser) return null;
 
-  // maybeSingle: nincs profil -> null, nem hiba. A select hibázhat is (pl. ha a
-  // 20260727090000 migráció még nem futott le), ezt is profil nélküli esetként
-  // kezeljük, hogy az app soha ne álljon meg egy hiányzó jogosultság miatt.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id,display_name,role")
-    .eq("auth_user_id", authUser.id)
-    .maybeSingle();
+  // A saját profilt egy security definer függvényen keresztül kérjük el
+  // (20260727140000 migráció), nem közvetlen tábla-lekérdezéssel. Így a
+  // profiles táblán MÁSOK szerepe/e-mailje olvashatatlan maradhat: a függvény
+  // definíció szerint csak a hívó saját sorát adja vissza.
+  const { data: rows, error: profileError } = await supabase.rpc("current_user_profile");
 
-  const row = (profile as ProfileRow | null) || null;
+  if (profileError) {
+    // Nem dobunk: a hiányzó jogosultsági adat nem állíthatja meg az appot.
+    // A fail-closed fallback miatt ilyenkor a legszűkebb jogot kapja.
+    console.error("current_user_profile() sikertelen:", profileError.message);
+  }
+
+  const row = (Array.isArray(rows) ? (rows[0] as ProfileRow | undefined) : undefined) || null;
+  const isActive = row ? row.is_active !== false : false;
   const role = row?.role || null;
 
   return {
     authUserId: authUser.id,
-    email: authUser.email || "",
+    email: row?.email || authUser.email || "",
     profileId: row?.id || null,
     displayName: row?.display_name || authUser.email?.split("@")[0] || "Ismeretlen felhasználó",
     role,
-    workflowRole: role ? workflowRoleByAppRole[role] : FALLBACK_WORKFLOW_ROLE
+    isActive,
+    // Letiltott fiók = nincs érvényes szerep. Ez az "azonnali kikapcsoló"
+    // gomb: elég a profiles.is_active-ot false-ra állítani.
+    workflowRole: role && isActive ? workflowRoleByAppRole[role] : NO_PROFILE_WORKFLOW_ROLE
   };
 });
 
 /** A hibák állapotmozgatásához használt tényleges szerep. */
 export async function getCurrentWorkflowRole(): Promise<UserRole> {
   const user = await getCurrentUser();
-  return user?.workflowRole || FALLBACK_WORKFLOW_ROLE;
+  if (user) return user.workflowRole;
+  // Nincs bejelentkezett felhasználó. Ha van Auth konfigurálva, ez tényleges
+  // hiányzó azonosság -> fail-closed. Ha nincs, akkor demo-mód.
+  return isAuthConfigured() ? NO_PROFILE_WORKFLOW_ROLE : DEMO_WORKFLOW_ROLE;
 }

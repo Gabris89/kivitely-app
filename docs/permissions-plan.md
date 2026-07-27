@@ -50,14 +50,48 @@ Azonosság, korlátozás nélkül.
 - A menü alján látszik a bejelentkezett név és a szerep – ez a visszajelzés
   arról, hogy az app tényleg felismeri a szerepet.
 
-Mit NEM csinál ez a lépcső: nem vesz el jogot senkitől, nem szűkíti a
-láthatóságot, nem nyúl az RLS-hez. Ha valamiért nincs `profiles` sor, a
-`FALLBACK_WORKFLOW_ROLE = "project_manager"` a korábbi viselkedést tartja meg –
-szándékosan nem `viewer`, mert egy hiányzó sor nem zárhatja ki a saját
-felhasználóinkat.
+Mit NEM csinál ez a lépcső: nem szűkíti a láthatóságot és nem nyúl az RLS-hez.
 
 Nyitott apróság: ha egy szerep nem léphetne az adott állapotba, a mentés ma
 csendben a régi állapotot tartja meg. A 2. lépcsőben ez látható hibaüzenet lesz.
+
+### 1b. lépcső – megkeményítés (kész: 2026-07-27)
+
+Migráció: `supabase/migrations/20260727140000_profiles_auth_hardening.sql`.
+A 20260727090000 utólagos átnézése három eltérést talált a Supabase/Postgres
+ajánlott gyakorlatától:
+
+- **Túl sok oszlopjog.** A `role`/`email`/`company_name`/`trade` oszlopokra adott
+  `select` jog a `profiles` már meglévő, mindenkit olvashatóvá tevő
+  sor-policy-jével együtt azt jelentette, hogy bármely bejelentkezett
+  felhasználó kiolvashatja az összes többi felhasználó e-mail címét és
+  szerepét. Visszavonva. A saját profil elérése mostantól a
+  `public.current_user_profile()` `security definer` függvényen keresztül megy,
+  ami definíció szerint csak a hívó saját sorát adja vissza.
+- **A trigger megbuktathatta a regisztrációt.** A Supabase dokumentáció külön
+  figyelmeztet erre. Ha nincs e-mail (telefonos vagy egyes OAuth belépések), a
+  `display_name not null` miatt a trigger hibázott volna, és a hiba a signup
+  tranzakciót is elbuktatta volna. Most van fallback lánc és `exception`
+  kezelő: a profil hibája soha nem blokkolja a belépést, csak `warning`-ot ír a
+  logba. A `search_path` `''`-ra szigorítva (Supabase mostani ajánlása).
+- **Hiányzott a foreign key.** A `profiles.auth_user_id` sima uuid volt. Most
+  `references auth.users(id) on delete set null` – szándékosan nem `cascade`,
+  mert a profilra hivatkozik a `work_logs`, `blocker_list`,
+  `project_documents`, `plan_measurements` és a `project_members`: egy fiók
+  törlésénél a munka történetének meg kell maradnia, csak a belépés szűnik meg.
+
+Az app oldalán ezzel együtt a fallback **fail-closed** lett: bejelentkezve, de
+érvényes profil nélkül a felhasználó `viewer` jogokat kap, nem
+`project_manager`-t. A permisszív alapállás kizárólag a Supabase nélküli
+demo-módra maradt meg (`DEMO_WORKFLOW_ROLE`). A `profiles.is_active = false`
+mostantól azonnali kikapcsoló gomb: a fiók viewer-re esik vissza, és a menüben
+"letiltva" jelzéssel látszik.
+
+Tudatosan elhalasztva: a **JWT custom claims** (Custom Access Token Auth Hook).
+A Supabase RBAC-ajánlása azért teszi a szerepet a tokenbe, hogy az RLS-szabályok
+ne csináljanak `profiles`-alkérdést soronként. Amíg egyetlen RLS-szabály sem
+használja, a hook csak plusz mozgó alkatrész (és stale-claim kockázat), ezért a
+4. lépcső részeként jön.
 
 ## 2. lépcső – szerep szerinti tiltás az appban
 
@@ -81,6 +115,8 @@ csendben a régi állapotot tartja meg. A 2. lépcsőben ez látható hibaüzene
   közvetlenül a REST API-t hívja valaki.
 - Táblánkénti policy-k a `visibility-rls-plan.md` "Recommended RLS policy order"
   szakasza szerint, plusz a Storage bucketek átgondolása (ma publikus olvasás).
+- Custom Access Token Auth Hook: a szerep bekerül a JWT-be, hogy a policy-k ne
+  soronként kérdezzék le a `profiles` táblát (lásd 1b. lépcső).
 - **Ennek készen kell lennie az első külsős fiók előtt.**
 
 ## Sorrend és költség
