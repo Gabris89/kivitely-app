@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getIssue, getIssueEvents, getIssueEvidence, listSubcontractors } from "@/lib/repository";
+import { getCurrentWorkflowRole } from "@/lib/currentUser";
 import { formatDate } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { PageHeader } from "@/components/PageHeader";
@@ -15,10 +16,11 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ pr
 
   if (!issue) notFound();
 
-  const [photos, events, subcontractors] = await Promise.all([
+  const [photos, events, subcontractors, role] = await Promise.all([
     getIssueEvidence(issue.id),
     getIssueEvents(issue.id),
-    listSubcontractors()
+    listSubcontractors(),
+    getCurrentWorkflowRole()
   ]);
   const tigReadiness = getIssueTigReadiness(issue, photos);
 
@@ -32,7 +34,7 @@ export default async function IssueDetailPage({ params }: { params: Promise<{ pr
       </PageHeader>
 
       <section className="detail-grid">
-        <IssueDetailPanel projectId={projectId} issue={issue} photos={photos} subcontractors={subcontractors} />
+        <IssueDetailPanel projectId={projectId} issue={issue} photos={photos} subcontractors={subcontractors} role={role} />
 
         <aside className="side-stack">
           <EvidenceChecklist issue={issue} photos={photos} />

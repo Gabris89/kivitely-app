@@ -9,7 +9,17 @@ export type IssueStatus =
   | "tig_ready"
   | "closed";
 export type Priority = "low" | "normal" | "high" | "critical";
+/** A workflow-szabályokhoz használt szűkített szerepkészlet (lib/workflow.ts). */
 export type UserRole = "admin" | "project_manager" | "site_manager" | "subcontractor" | "viewer";
+/** A DB app_role enumja (supabase/migrations/20260710213835_profiles_project_members_baseline.sql). */
+export type AppRole =
+  | "admin"
+  | "employer"
+  | "project_manager"
+  | "site_manager"
+  | "worker"
+  | "subcontractor"
+  | "viewer";
 export type EvidenceType = "before_photo" | "after_photo" | "document" | "comment" | "signature";
 
 export type Project = {

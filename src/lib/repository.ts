@@ -12,6 +12,7 @@ import {
 } from "@/data/mock";
 import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
+import { getCurrentWorkflowRole } from "@/lib/currentUser";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getServerSupabaseClient, isAuthConfigured } from "@/lib/supabase/server";
 
@@ -1994,7 +1995,11 @@ async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): P
   logSupabaseReadError("subcontractors for issue update", subcontractorError);
 
   const subcontractor = subcontractors?.find((item) => item.name === input.subcontractor) || null;
-  const targetStatus = input.status && canMoveIssue(currentIssue, input.status) ? input.status : currentIssue.status;
+  // Az állapotmozgatást a BEJELENTKEZETT felhasználó szerepe engedélyezi, nem a
+  // korábbi hardkódolt "project_manager". Lásd docs/permissions-plan.md.
+  const actorRole = await getCurrentWorkflowRole();
+  const targetStatus =
+    input.status && canMoveIssue(currentIssue, input.status, actorRole) ? input.status : currentIssue.status;
 
   const { data, error } = await supabase
     .from("issues")

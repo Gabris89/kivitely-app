@@ -81,6 +81,12 @@ This file tracks important project steps that moved the MVP baseline forward. Re
 - Replaced letter-badge nav icons (single-letter abbreviations like "D", "H", "T") with a small hand-drawn SVG icon set (`NavIcons.tsx`), matching the existing inline-SVG convention already used for the document-delete icon (24x24 viewbox, stroke-based, no new dependency). Covers sidebar, bottom nav, and mobile overflow sheet.
 - Flattened the mobile overflow sheet: removed the Munka/Dokumentáció/Admin section subheadings (only present on mobile, desktop sidebar keeps them) in favor of one continuous list with a single divider between project-specific and global items; renamed "Menü" to "Több" with a dot-grid icon so the last bottom-nav slot reads as a peer tab rather than a distinct hamburger control. User feedback: the nav structure difference between project/global context still doesn't fully feel resolved — flagged as an open thread to revisit, not considered done.
 
+## 2026-07-27
+
+- Added an aggregated dashboard to both existing "Áttekintés" pages (global `/` and `/projects/[projectId]`) instead of a new `/dashboard` route, deliberately avoiding another meaning for the already-overloaded "dashboard" term. New pure aggregation module `src/lib/dashboard.ts` (no I/O, testable) plus `src/components/DashboardView.tsx`; no new npm dependency and no migration. Headline metric is "leigazolatlan érték": tig-ready work not yet in an approved/sent TIG package. See `docs/dashboard-plan.md`.
+- Started the permissions work, step 1 of 4: identity. Migration `20260727090000_profiles_auth_link.sql` links `auth.users` to `profiles` (email backfill + profile creation for existing accounts as `admin`, i.e. recording today's state rather than granting anything new), adds an `authenticated`-only column grant so a user can read their own role, and adds an `on auth.users` trigger so new accounts get a `viewer` profile (least privilege).
+- Removed the hardcoded `"project_manager"` actor role. `src/lib/currentUser.ts` is now the single place that resolves who is signed in and in which role; the server-side status move (`repository.ts` → `canMoveIssue`) and the issue detail status dropdown both run on the real role, and the signed-in name/role is shown at the bottom of the menu. No permission is taken away in this step — restriction is steps 2-4, see `docs/permissions-plan.md`.
+
 ## Review checklist
 
 - Keep this file current after commits that change architecture, persistence, deployment, or product direction.

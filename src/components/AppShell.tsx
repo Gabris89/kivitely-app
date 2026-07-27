@@ -124,7 +124,15 @@ function isBottomNavActive(pathname: string, href: string, isMenuOpen: boolean) 
   return isActive(pathname, href);
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+/** A bejelentkezett felhasználó megjelenítéshez kigyűjtött adata (a szerver
+    adja át, lásd app/layout.tsx). */
+type CurrentUserBadge = {
+  displayName: string;
+  roleLabel: string;
+  hasProfile: boolean;
+};
+
+export function AppShell({ children, user }: { children: ReactNode; user?: CurrentUserBadge | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -229,6 +237,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
+        {user ? (
+          <div className="sidebar-user" title={user.hasProfile ? undefined : "Nincs profil-sor ehhez a fiókhoz"}>
+            <span className="sidebar-user-avatar" aria-hidden="true">{user.displayName.slice(0, 1).toUpperCase()}</span>
+            <span className="sidebar-user-text">
+              <strong>{user.displayName}</strong>
+              <small className={user.hasProfile ? undefined : "is-warn"}>{user.roleLabel}</small>
+            </span>
+          </div>
+        ) : null}
+
         <form action={signOut} className="sidebar-logout" suppressHydrationWarning>
           <button type="submit" className="button ghost">
             <NavIcon name="logout" />
@@ -268,6 +286,19 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ))}
               </div>
             ))}
+
+            {user ? (
+              <div className="mobile-menu-group">
+                <div className="mobile-menu-divider" />
+                <div className="sidebar-user">
+                  <span className="sidebar-user-avatar" aria-hidden="true">{user.displayName.slice(0, 1).toUpperCase()}</span>
+                  <span className="sidebar-user-text">
+                    <strong>{user.displayName}</strong>
+                    <small className={user.hasProfile ? undefined : "is-warn"}>{user.roleLabel}</small>
+                  </span>
+                </div>
+              </div>
+            ) : null}
 
             <form action={signOut} className="mobile-menu-section" suppressHydrationWarning>
               <button type="submit" className="button ghost">

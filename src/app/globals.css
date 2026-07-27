@@ -2858,6 +2858,41 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   border: 1px solid var(--line);
   border-radius: 14px;
 }
+/* Bejelentkezett felhasználó + szerep a menü alján. Nem dísz: ez a
+   visszajelzés arról, hogy az app milyen szerepben ismer minket – a
+   workflow-szabályok erre futnak. Lásd docs/permissions-plan.md. */
+.sidebar-user {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.sidebar-user-avatar {
+  display: grid;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #06121f;
+  background: linear-gradient(140deg, var(--brand), var(--brand-2));
+  border-radius: 50%;
+  place-items: center;
+}
+.sidebar-user-text { display: grid; gap: 2px; min-width: 0; }
+.sidebar-user-text strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-user-text small { color: var(--muted); font-size: 11px; }
+.sidebar-user-text small.is-warn { color: var(--warn); }
+
 .sidebar-logout {
   margin-top: 12px;
 }

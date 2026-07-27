@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { EvidencePhoto, Issue, Subcontractor } from "@/types";
+import type { EvidencePhoto, Issue, Subcontractor, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
 import { getNextStatuses, issueStatusLabels } from "@/lib/workflow";
@@ -22,12 +22,16 @@ export function IssueDetailPanel({
   projectId,
   issue,
   photos,
-  subcontractors
+  subcontractors,
+  role
 }: {
   projectId: string;
   issue: Issue;
   photos: EvidencePhoto[];
   subcontractors: Subcontractor[];
+  /** A bejelentkezett felhasználó szerepe – ez dönti el, milyen állapotba
+      léptethető a hiba. A szerver ugyanezt ellenőrzi mentéskor. */
+  role: UserRole;
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -35,7 +39,7 @@ export function IssueDetailPanel({
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const tigReadiness = getIssueTigReadiness(issue, photos);
-  const nextStatuses = getNextStatuses(issue, "project_manager");
+  const nextStatuses = getNextStatuses(issue, role);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
