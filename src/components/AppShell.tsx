@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
+import { can } from "@/lib/permissions";
+import type { UserRole } from "@/types";
 import { NavIcon, type NavIconName } from "@/components/NavIcons";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 
@@ -34,7 +36,17 @@ function getProjectId(pathname: string): string | null {
 // Nincs többé "Hibalista" vs "Összes hiba" duplikáció, és nincs külön "Admin"
 // szekció – a "Minden projekt" scope adja az összesített nézetet.
 
-function workItems(projectId: string | null): NavItem[] {
+// A "gyors letrehozas" menupont ahhoz igazodik, amit a szerep tenylegesen
+// megtehet: aki nem hozhat letre hibat, annak fel sem ajanljuk (az oldal
+// ugyis tiltast mutatna). Az alvallalkozo sajat akciója az akadaly-bejelentes.
+function quickCreateItem(projectId: string, role: UserRole): NavItem | null {
+  const base = `/projects/${projectId}`;
+  if (can(role, "issue.create")) return { href: `${base}/issues/new`, label: "Új hiba", icon: "add" };
+  if (can(role, "blocker.create")) return { href: `${base}/blockers/new`, label: "Új akadály", icon: "add" };
+  return null;
+}
+
+function workItems(projectId: string | null, role: UserRole): NavItem[] {
   const base = projectId ? `/projects/${projectId}` : "";
   const items: NavItem[] = [
     { href: projectId ? base : "/", label: "Áttekintés", icon: "dashboard" },
@@ -43,7 +55,8 @@ function workItems(projectId: string | null): NavItem[] {
     { href: projectId ? `${base}/workflow` : "/workflow", label: "Workflow tábla", icon: "workflow" }
   ];
   if (projectId) {
-    items.push({ href: `${base}/issues/new`, label: "Új hiba", icon: "add" });
+    const quickCreate = quickCreateItem(projectId, role);
+    if (quickCreate) items.push(quickCreate);
   }
   return items;
 }
@@ -63,8 +76,8 @@ const masterDataItems: NavItem[] = [
 ];
 
 // Desktop sidebar – minden modul egy helyen, csoportosítva.
-function buildNavSections(projectId: string | null): NavSection[] {
-  const sections: NavSection[] = [{ title: "Munka", items: workItems(projectId) }];
+function buildNavSections(projectId: string | null, role: UserRole): NavSection[] {
+  const sections: NavSection[] = [{ title: "Munka", items: workItems(projectId, role) }];
   if (projectId) {
     sections.push({ title: "Projekt dokumentáció", items: projectDocItems(projectId) });
   }
@@ -77,14 +90,20 @@ function buildNavSections(projectId: string | null): NavSection[] {
 // középső "gyors létrehozás" akció a nézőponthoz igazodik: projektben új hiba
 // (a napi legfontosabb művelet), összesített nézetben új projekt. A Workflow és
 // az Akadályok a "Több" drawerbe kerül.
-function buildBottomNav(projectId: string | null): NavItem[] {
+function buildBottomNav(projectId: string | null, role: UserRole): NavItem[] {
   const base = projectId ? `/projects/${projectId}` : "";
+  // A harmadik hely mindig ki van toltve (a savban fix 4 slot van): ha a
+  // szerep semmit sem hozhat letre, navigacios pont kerul ide helyette.
+  const third: NavItem = projectId
+    ? quickCreateItem(projectId, role) || { href: `${base}/blockers`, label: "Akadályok", icon: "blockers" }
+    : can(role, "project.create")
+      ? { href: "/projects/new", label: "Új projekt", icon: "add" }
+      : { href: "/blockers", label: "Akadályok", icon: "blockers" };
+
   return [
     { href: projectId ? base : "/", label: "Áttekintés", icon: "dashboard" },
     { href: projectId ? `${base}/issues` : "/issues", label: "Hibák", icon: "issues" },
-    projectId
-      ? { href: `${base}/issues/new`, label: "Új hiba", icon: "add" }
-      : { href: "/projects/new", label: "Új projekt", icon: "add" }
+    third
   ];
 }
 
@@ -132,7 +151,17 @@ type CurrentUserBadge = {
   hasProfile: boolean;
 };
 
-export function AppShell({ children, user }: { children: ReactNode; user?: CurrentUserBadge | null }) {
+export function AppShell({
+  children,
+  user,
+  role = "viewer"
+}: {
+  children: ReactNode;
+  user?: CurrentUserBadge | null;
+  /** A bejelentkezett felhasznalo szerepe (a szerver adja at, lasd
+      app/layout.tsx). Fail-closed: ismeretlen szerep = viewer. */
+  role?: UserRole;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -140,9 +169,10 @@ export function AppShell({ children, user }: { children: ReactNode; user?: Curre
   const [pendingMenuHref, setPendingMenuHref] = useState<string | null>(null);
   const activePathname = hasHydrated ? pathname : "";
   const projectId = getProjectId(activePathname);
-  const navSections = buildNavSections(projectId);
-  const bottomNav = buildBottomNav(projectId);
+  const navSections = buildNavSections(projectId, role);
+  const bottomNav = buildBottomNav(projectId, role);
   const drawerSections = buildDrawerSections(projectId);
+  const canCreateProject = can(role, "project.create");
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -219,7 +249,7 @@ export function AppShell({ children, user }: { children: ReactNode; user?: Curre
           </span>
         </Link>
 
-        <ProjectSwitcher currentProjectId={projectId} />
+        <ProjectSwitcher currentProjectId={projectId} canCreateProject={canCreateProject} />
 
         <nav className="nav-list" aria-label="Fő navigáció">
           {navSections.map((section) => (
@@ -256,7 +286,7 @@ export function AppShell({ children, user }: { children: ReactNode; user?: Curre
       </aside>
 
       <header className="mobile-topbar">
-        <ProjectSwitcher currentProjectId={projectId} />
+        <ProjectSwitcher currentProjectId={projectId} canCreateProject={canCreateProject} />
       </header>
 
       <main className="content">{children}</main>

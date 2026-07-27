@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/AppShell";
-import { appRoleLabels, getCurrentUser } from "@/lib/currentUser";
+import { appRoleLabels, getCurrentUser, getCurrentWorkflowRole } from "@/lib/currentUser";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,6 +25,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   // dísz – ez a visszajelzés arról, hogy az app tényleg felismeri a szerepet
   // (a workflow-szabályok mostantól erre futnak). Lásd docs/permissions-plan.md.
   const user = await getCurrentUser();
+  // A menu gyors-letrehozas pontjai ugyanabbol a matrixbol dolgoznak, mint a
+  // szerver: amit a szerep nem tehet meg, azt fel sem kinaljuk.
+  const workflowRole = await getCurrentWorkflowRole();
   // Érvényes = van profiles sor ÉS nincs letiltva. Bármelyik hiányzik, a
   // badge figyelmeztet, a workflow pedig viewer jogokra esik vissza.
   const hasValidProfile = Boolean(user?.role && user.isActive);
@@ -38,6 +41,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="hu" suppressHydrationWarning>
       <body>
         <AppShell
+          role={workflowRole}
           user={
             user
               ? {

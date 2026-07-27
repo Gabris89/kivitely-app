@@ -3,8 +3,9 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BlockerItem } from "@/types";
+import type { BlockerItem, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
+import { can } from "@/lib/permissions";
 import { blockerStatusLabels, blockerStatusOrder, getBlockerWorkflowHint } from "@/lib/blockerWorkflow";
 import { BlockerStatusBadge, PriorityBadge } from "@/components/StatusBadge";
 import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionIcons";
@@ -15,12 +16,27 @@ type SaveState = {
   message: string;
 };
 
-export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; blocker: BlockerItem }) {
+export function BlockerDetailPanel({
+  projectId,
+  blocker,
+  role
+}: {
+  projectId: string;
+  blocker: BlockerItem;
+  /** A bejelentkezett felhasznalo szerepe. Az alvallalkozo bejelenthet
+      akadalyt, de nem modosithatja es nem torolheti - a szerver ugyanezt
+      ellenorzi (blocker.update / blocker.delete). */
+  role: UserRole;
+}) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Ugyanaz a matrix dont, mint a szerveren - a gomb el sem jelenik meg,
+  // ha a szerep ugysem tudna hasznalni.
+  const canEdit = can(role, "blocker.update");
+  const canDelete = can(role, "blocker.delete");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,7 +68,8 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
     }).catch(() => null);
 
     if (!response?.ok) {
-      setSaveState({ status: "error", message: "Mentési hiba: a módosítás nem sikerült." });
+      const json = await response?.json().catch(() => null);
+      setSaveState({ status: "error", message: json?.error || "Mentési hiba: a módosítás nem sikerült." });
       return;
     }
 
@@ -68,8 +85,9 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
     const response = await fetch(`/api/projects/${projectId}/blockers/${blocker.publicId}`, { method: "DELETE" }).catch(() => undefined);
 
     if (!response?.ok) {
+      const json = await response?.json().catch(() => null);
       setDeleting(false);
-      window.alert("A törlés nem sikerült.");
+      setSaveState({ status: "error", message: json?.error || "A törlés nem sikerült." });
       return;
     }
 
@@ -85,25 +103,29 @@ export function BlockerDetailPanel({ projectId, blocker }: { projectId: string; 
           <BlockerStatusBadge status={blocker.status} />
         </div>
         <div className="section-title-actions">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Törlés"
-            title="Törlés"
-            disabled={deleting}
-            onClick={() => setConfirmOpen(true)}
-          >
-            <TrashIcon />
-          </button>
-          <button
-            type="button"
-            className={`edit-toggle-btn${isEditing ? " active" : ""}`}
-            aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
-            aria-expanded={isEditing}
-            onClick={() => setIsEditing((current) => !current)}
-          >
-            <PencilIcon />
-          </button>
+          {canDelete ? (
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Törlés"
+              title="Törlés"
+              disabled={deleting}
+              onClick={() => setConfirmOpen(true)}
+            >
+              <TrashIcon />
+            </button>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className={`edit-toggle-btn${isEditing ? " active" : ""}`}
+              aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
+              aria-expanded={isEditing}
+              onClick={() => setIsEditing((current) => !current)}
+            >
+              <PencilIcon />
+            </button>
+          ) : null}
         </div>
       </div>
 

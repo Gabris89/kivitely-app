@@ -20,7 +20,14 @@ function CaretIcon() {
 // Fejléc projektváltó (scope-választó). Mindig látható; a jelenlegi nézőpontot
 // mutatja, és bárhonnan enged váltani projektet vagy a "Minden projekt"
 // nézetre – a menüstruktúra nem változik, csak az adat, amin dolgozunk.
-export function ProjectSwitcher({ currentProjectId }: { currentProjectId: string | null }) {
+export function ProjectSwitcher({
+  currentProjectId,
+  canCreateProject = true
+}: {
+  currentProjectId: string | null;
+  /** project.create jog - jog nelkul az "Új projekt" link nem jelenik meg. */
+  canCreateProject?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -154,12 +161,14 @@ export function ProjectSwitcher({ currentProjectId }: { currentProjectId: string
             {filtered.length === 0 ? <p className="project-switcher-empty">Nincs találat.</p> : null}
           </div>
 
-          <Link href="/projects/new" className="project-switcher-new" onClick={() => setOpen(false)}>
-            <span className="nav-icon">
-              <NavIcon name="add" />
-            </span>
-            Új projekt
-          </Link>
+          {canCreateProject ? (
+            <Link href="/projects/new" className="project-switcher-new" onClick={() => setOpen(false)}>
+              <span className="nav-icon">
+                <NavIcon name="add" />
+              </span>
+              Új projekt
+            </Link>
+          ) : null}
         </div>
       ) : null}
     </div>

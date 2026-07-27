@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlockerByPublicId } from "@/lib/repository";
+import { getCurrentWorkflowRole } from "@/lib/currentUser";
 import { PageHeader } from "@/components/PageHeader";
 import { BlockerDetailPanel } from "@/components/BlockerDetailPanel";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BlockerDetailPage({ params }: { params: Promise<{ projectId: string; id: string }> }) {
   const { projectId, id } = await params;
-  const blocker = await getBlockerByPublicId(id);
+  const [blocker, role] = await Promise.all([getBlockerByPublicId(id), getCurrentWorkflowRole()]);
 
   if (!blocker) notFound();
 
@@ -18,7 +19,7 @@ export default async function BlockerDetailPage({ params }: { params: Promise<{ 
         <Link className="button ghost" href={`/projects/${projectId}/blockers`}>Vissza</Link>
       </PageHeader>
 
-      <BlockerDetailPanel projectId={projectId} blocker={blocker} />
+      <BlockerDetailPanel projectId={projectId} blocker={blocker} role={role} />
     </>
   );
 }
