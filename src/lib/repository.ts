@@ -12,9 +12,9 @@ import {
 } from "@/data/mock";
 import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
-import { getCurrentWorkflowRole } from "@/lib/currentUser";
-import { workflowRoleLabels } from "@/lib/permissions";
-import { ForbiddenError, requirePermission } from "@/lib/permissions.server";
+import { getCurrentUser, getCurrentWorkflowRole } from "@/lib/currentUser";
+import { canEditBlocker, workflowRoleLabels } from "@/lib/permissions";
+import { ForbiddenError, PermissionError, hasPermission, requirePermission } from "@/lib/permissions.server";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getServerSupabaseClient, isAuthConfigured } from "@/lib/supabase/server";
 
@@ -1703,9 +1703,36 @@ async function updateSupabaseBlocker(publicId: string, input: UpdateBlockerInput
   return mapBlocker(withRelations);
 }
 
+/**
+ * Ket ut vezet ide:
+ *   1. blocker.update jog (SITE_TEAM felfele) -> minden mezo modosithato;
+ *   2. a bejelento sajat, meg Nyitott akadalya -> CSAK a leiro mezok.
+ *
+ * A 2. esetben az allapotot, a felelost es a megoldas-jegyzetet itt irjuk
+ * vissza a meglevo ertekre, fuggetlenul attol, mit kuldott a kliens. Igy egy
+ * kezzel osszerakott keres sem tud allapotot leptetni a matrix megkerulesevel.
+ */
+async function authorizeBlockerUpdate(publicId: string, input: UpdateBlockerInput): Promise<UpdateBlockerInput> {
+  if (await hasPermission("blocker.update")) return input;
+
+  const role = await getCurrentWorkflowRole();
+  const [user, existing] = await Promise.all([getCurrentUser(), getBlockerByPublicId(publicId)]);
+
+  if (!existing || !canEditBlocker(role, existing, user?.profileId)) {
+    throw new PermissionError("blocker.update", role);
+  }
+
+  return {
+    ...input,
+    status: existing.status,
+    responsibleName: existing.responsibleName === "Nincs megadva" ? undefined : existing.responsibleName,
+    resolutionNote: existing.resolutionNote
+  };
+}
+
 export async function updateBlockerRecord(publicId: string, input: UpdateBlockerInput): Promise<UpdateBlockerResult> {
-  await requirePermission("blocker.update");
-  const updated = await updateSupabaseBlocker(publicId, input);
+  const effectiveInput = await authorizeBlockerUpdate(publicId, input);
+  const updated = await updateSupabaseBlocker(publicId, effectiveInput);
 
   if (updated) {
     return { blocker: updated, mode: "supabase" };

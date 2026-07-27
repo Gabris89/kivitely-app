@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteBlockerRecord, updateBlockerRecord } from "@/lib/repository";
 import type { BlockerSeverity, BlockerStatus } from "@/types";
-import { checkPermission } from "@/lib/permissions.server";
+import { checkPermission, permissionErrorResponse } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +9,10 @@ const allowedSeverities: BlockerSeverity[] = ["low", "normal", "high", "critical
 const allowedStatuses: BlockerStatus[] = ["open", "in_progress", "waiting_external", "resolved", "closed", "cancelled"];
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await checkPermission("blocker.update");
-  if (denied) return denied;
-
+  // Itt szandekosan NINCS elozetes checkPermission: a blocker.update jog
+  // mellett a bejelento sajat, meg Nyitott akadalya is atmehet. A dontest
+  // (es a mezok szukiteset) a repository authorizeBlockerUpdate vegzi, a
+  // tiltas onnan ForbiddenError-kent jon vissza.
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -19,16 +20,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Hiányzó kötelező mező: title, description, status" }, { status: 400 });
   }
 
-  const result = await updateBlockerRecord(id, {
-    title: String(body.title),
-    description: String(body.description),
-    trade: body.trade ? String(body.trade) : undefined,
-    area: body.area ? String(body.area) : undefined,
-    severity: allowedSeverities.includes(body.severity) ? body.severity : "normal",
-    status: body.status,
-    resolutionNote: body.resolutionNote ? String(body.resolutionNote) : undefined,
-    responsibleName: body.responsibleName ? String(body.responsibleName) : undefined
-  });
+  let result;
+  try {
+    result = await updateBlockerRecord(id, {
+      title: String(body.title),
+      description: String(body.description),
+      trade: body.trade ? String(body.trade) : undefined,
+      area: body.area ? String(body.area) : undefined,
+      severity: allowedSeverities.includes(body.severity) ? body.severity : "normal",
+      status: body.status,
+      resolutionNote: body.resolutionNote ? String(body.resolutionNote) : undefined,
+      responsibleName: body.responsibleName ? String(body.responsibleName) : undefined
+    });
+  } catch (error) {
+    const forbidden = permissionErrorResponse(error);
+    if (forbidden) return forbidden;
+    throw error;
+  }
 
   if (!result.blocker) {
     return NextResponse.json({ error: "A mentés nem sikerült.", mode: result.mode }, { status: 500 });

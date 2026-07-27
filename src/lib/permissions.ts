@@ -91,6 +91,37 @@ export const permissionMatrix: Record<PermissionAction, UserRole[]> = {
   "money.view": MANAGEMENT
 };
 
+/**
+ * Sajat, meg NYITOTT akadaly javitasa - a matrix egyetlen tulajdonosi
+ * kivetele.
+ *
+ * Miert kell: az akadalyt az alvallalkozo jelenti be (blocker.create), de
+ * modositani mar nem tudja (blocker.update = SITE_TEAM). Egy elgepeles
+ * javitasa a bejelentes utan viszont nem naplohamisitas - amig senki nem
+ * dolgozott meg ra (status = "open"), a bejelento javithatja a SAJAT
+ * akadalyat. Amint barki elmozditja Nyitottrol, az ablak bezarul.
+ *
+ * FONTOS: ez csak a leiro mezokre vonatkozik. Az allapotot, a felelost es a
+ * megoldas-jegyzetet a szerver akkor is felulirja a meglevo ertekkel
+ * (lasd repository.ts / authorizeBlockerUpdate) - azok vezetoi dontesek.
+ */
+export type OwnBlockerContext = {
+  createdByProfileId?: string | null;
+  status: string;
+};
+
+export function canEditBlocker(
+  role: UserRole,
+  blocker: OwnBlockerContext,
+  currentProfileId?: string | null
+): boolean {
+  if (can(role, "blocker.update")) return true;
+  if (!can(role, "blocker.create")) return false;
+  if (!currentProfileId || !blocker.createdByProfileId) return false;
+  if (blocker.status !== "open") return false;
+  return blocker.createdByProfileId === currentProfileId;
+}
+
 export const workflowRoleLabels: Record<UserRole, string> = {
   admin: "Adminisztrátor",
   project_manager: "Projektvezető",

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BlockerItem, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
-import { can } from "@/lib/permissions";
+import { can, canEditBlocker } from "@/lib/permissions";
 import { blockerStatusLabels, blockerStatusOrder, getBlockerWorkflowHint } from "@/lib/blockerWorkflow";
 import { BlockerStatusBadge, PriorityBadge } from "@/components/StatusBadge";
 import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionIcons";
@@ -19,14 +19,18 @@ type SaveState = {
 export function BlockerDetailPanel({
   projectId,
   blocker,
-  role
+  role,
+  currentProfileId = null
 }: {
   projectId: string;
   blocker: BlockerItem;
-  /** A bejelentkezett felhasznalo szerepe. Az alvallalkozo bejelenthet
-      akadalyt, de nem modosithatja es nem torolheti - a szerver ugyanezt
-      ellenorzi (blocker.update / blocker.delete). */
+  /** A bejelentkezett felhasznalo szerepe. Teljes szerkesztes (allapot,
+      felelos, megoldas-jegyzet) csak blocker.update joggal. Az alvallalkozo
+      a sajat, meg Nyitott akadalyanak a leiro mezoit javithatja - a szerver
+      ugyanezt ellenorzi (authorizeBlockerUpdate). */
   role: UserRole;
+  /** A bejelentkezett felhasznalo profil-azonositoja a tulajdonos-teszthez. */
+  currentProfileId?: string | null;
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -35,7 +39,10 @@ export function BlockerDetailPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Ugyanaz a matrix dont, mint a szerveren - a gomb el sem jelenik meg,
   // ha a szerep ugysem tudna hasznalni.
-  const canEdit = can(role, "blocker.update");
+  // canEditWorkflowFields: a vezetoi dontesek (allapot, felelos, megoldas).
+  // canEdit: ezen felul a bejelento sajat, meg Nyitott akadalya is javithato.
+  const canEditWorkflowFields = can(role, "blocker.update");
+  const canEdit = canEditBlocker(role, blocker, currentProfileId);
   const canDelete = can(role, "blocker.delete");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -49,9 +56,14 @@ export function BlockerDetailPanel({
       trade: String(formData.get("trade") || ""),
       area: String(formData.get("area") || ""),
       severity: String(formData.get("severity") || "normal"),
-      status: String(formData.get("status") || blocker.status),
-      resolutionNote: String(formData.get("resolutionNote") || ""),
-      responsibleName: String(formData.get("responsibleName") || "")
+      // A rejtett (vezetoi) mezoket nem uritjuk ki: ha nincs a formban,
+      // a jelenlegi ertek megy vissza. A szerver ugyanezt ujra kikenyszeriti.
+      status: String(formData.get("status") ?? blocker.status),
+      resolutionNote: String(formData.get("resolutionNote") ?? blocker.resolutionNote ?? ""),
+      responsibleName: String(
+        formData.get("responsibleName") ??
+          (blocker.responsibleName === "Nincs megadva" ? "" : blocker.responsibleName)
+      )
     };
 
     if (!payload.title.trim() || !payload.description.trim()) {
@@ -163,19 +175,27 @@ export function BlockerDetailPanel({
         </>
       ) : (
         <form className="detail-edit-form" onSubmit={handleSubmit} suppressHydrationWarning>
+          {!canEditWorkflowFields ? (
+            <p className="inline-note">
+              Saját bejelentés javítása: a leírást, szakágat, területet és súlyosságot módosíthatod,
+              amíg az akadály Nyitott állapotban van. Az állapotot és a felelőst a projektvezetés állítja be.
+            </p>
+          ) : null}
           <div className="form-grid">
             <label>
               <span className="visually-hidden">Cím</span>
               <input name="title" required defaultValue={blocker.title} placeholder="Cím" />
             </label>
-            <label>
-              Állapot
-              <select name="status" defaultValue={blocker.status}>
-                {blockerStatusOrder.map((status) => (
-                  <option key={status} value={status}>{blockerStatusLabels[status]}</option>
-                ))}
-              </select>
-            </label>
+            {canEditWorkflowFields ? (
+              <label>
+                Állapot
+                <select name="status" defaultValue={blocker.status}>
+                  {blockerStatusOrder.map((status) => (
+                    <option key={status} value={status}>{blockerStatusLabels[status]}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label>
               Súlyosság
               <select name="severity" defaultValue={blocker.severity}>
@@ -193,22 +213,26 @@ export function BlockerDetailPanel({
               <span className="visually-hidden">Terület</span>
               <input name="area" defaultValue={blocker.area} placeholder="Terület" />
             </label>
-            <label>
-              <span className="visually-hidden">Felelős neve</span>
-              <input
-                name="responsibleName"
-                defaultValue={blocker.responsibleName === "Nincs megadva" ? "" : blocker.responsibleName}
-                placeholder="Felelős neve"
-              />
-            </label>
+            {canEditWorkflowFields ? (
+              <label>
+                <span className="visually-hidden">Felelős neve</span>
+                <input
+                  name="responsibleName"
+                  defaultValue={blocker.responsibleName === "Nincs megadva" ? "" : blocker.responsibleName}
+                  placeholder="Felelős neve"
+                />
+              </label>
+            ) : null}
             <label className="full">
               <span className="visually-hidden">Leírás</span>
               <textarea name="description" required defaultValue={blocker.description} placeholder="Írd le röviden, mi akadályozza a munkát és mire van szükség a folytatáshoz." />
             </label>
-            <label className="full">
-              <span className="visually-hidden">Megoldás / lezárás megjegyzése</span>
-              <textarea name="resolutionNote" defaultValue={blocker.resolutionNote} placeholder="Megoldás / lezárás megjegyzése" />
-            </label>
+            {canEditWorkflowFields ? (
+              <label className="full">
+                <span className="visually-hidden">Megoldás / lezárás megjegyzése</span>
+                <textarea name="resolutionNote" defaultValue={blocker.resolutionNote} placeholder="Megoldás / lezárás megjegyzése" />
+              </label>
+            ) : null}
           </div>
 
           <div className="form-footer">
