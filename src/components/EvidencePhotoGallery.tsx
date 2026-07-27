@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type PointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { EvidencePhoto, Issue } from "@/types";
 
@@ -418,40 +419,48 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
 
       {message ? <div className="inline-note photo-gallery-note">{message}</div> : null}
 
-      {selectedPhoto && selectedIndex !== null ? (
-        <div className="evidence-viewer-backdrop" role="presentation" onClick={closePreview}>
-          <DesktopEvidenceViewer
-            photo={selectedPhoto}
-            photos={galleryPhotos}
-            selectedIndex={selectedIndex}
-            hasPrevious={hasPrevious}
-            hasNext={hasNext}
-            deletingId={deletingId}
-            onClose={closePreview}
-            onChangePhoto={changePhoto}
-            onDelete={deletePhoto}
-            onPointerDown={handlePreviewPointerDown}
-            onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
-            onPointerCancel={() => setSwipeStart(null)}
-            onPointerMove={handlePreviewPointerMove}
-          />
-          <MobileEvidenceViewer
-            photo={selectedPhoto}
-            photos={galleryPhotos}
-            selectedIndex={selectedIndex}
-            hasPrevious={hasPrevious}
-            hasNext={hasNext}
-            deletingId={deletingId}
-            onClose={closePreview}
-            onChangePhoto={changePhoto}
-            onDelete={deletePhoto}
-            onPointerDown={handlePreviewPointerDown}
-            onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
-            onPointerCancel={() => setSwipeStart(null)}
-            onPointerMove={handlePreviewPointerMove}
-          />
-        </div>
-      ) : null}
+      {selectedPhoto && selectedIndex !== null
+        ? createPortal(
+            // Portal to <body>: same reason as ProjectDocumentViewer/ConfirmDialog -
+            // this gallery is rendered inside a .card panel (issue detail), and
+            // .card's backdrop-filter gives this fixed-position backdrop a new
+            // containing block, trapping it inside the card instead of covering
+            // the screen if left as a plain nested element.
+            <div className="evidence-viewer-backdrop" role="presentation" onClick={closePreview}>
+              <DesktopEvidenceViewer
+                photo={selectedPhoto}
+                photos={galleryPhotos}
+                selectedIndex={selectedIndex}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                deletingId={deletingId}
+                onClose={closePreview}
+                onChangePhoto={changePhoto}
+                onDelete={deletePhoto}
+                onPointerDown={handlePreviewPointerDown}
+                onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
+                onPointerCancel={() => setSwipeStart(null)}
+                onPointerMove={handlePreviewPointerMove}
+              />
+              <MobileEvidenceViewer
+                photo={selectedPhoto}
+                photos={galleryPhotos}
+                selectedIndex={selectedIndex}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                deletingId={deletingId}
+                onClose={closePreview}
+                onChangePhoto={changePhoto}
+                onDelete={deletePhoto}
+                onPointerDown={handlePreviewPointerDown}
+                onPointerUp={(event) => handlePointerUp(event.clientX, event.clientY)}
+                onPointerCancel={() => setSwipeStart(null)}
+                onPointerMove={handlePreviewPointerMove}
+              />
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

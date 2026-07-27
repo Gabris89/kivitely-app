@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { PdfCanvasViewer } from "@/components/PdfCanvasViewer";
 import { PlanMeasurementTool } from "@/components/PlanMeasurementTool";
 import type { ProjectDocument } from "@/types";
@@ -106,73 +107,88 @@ export function ProjectDocumentViewer({ doc }: Props) {
         Fájl megnyitása
       </button>
 
-      {isOpen ? (
-        <div
-          className={measureMode ? "document-viewer-backdrop document-viewer-backdrop-full" : "document-viewer-backdrop"}
-          role="presentation"
-          onClick={() => setIsOpen(false)}
-        >
-          <div
-            className={measureMode ? "document-viewer document-viewer-full" : "document-viewer"}
-            role="dialog"
-            aria-modal="true"
-            aria-label={doc.title}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {!measureMode ? (
-              <div className="document-viewer-head">
-                <div className="document-viewer-meta">
-                  <strong>{doc.title}</strong>
-                  {doc.fileName ? <span>{doc.fileName}</span> : null}
-                </div>
+      {isOpen
+        ? createPortal(
+            // Rendered straight into <body> instead of in place: a fixed-position
+            // overlay is only positioned against the viewport if none of its
+            // ancestors set a transform/filter/backdrop-filter/contain, which
+            // establishes a new containing block for it instead (CSS spec, not a
+            // bug) - and .card (used all over this app for panels/lists) sets
+            // backdrop-filter. Left in place, this modal would render pinned
+            // inside whatever .card happens to be its nearest such ancestor
+            // instead of covering the screen - exactly the "doesn't open in a
+            // separate window" symptom reported from the documents list, and a
+            // main suspect for the measurement tool crashing right after (its
+            // canvas sizing math reads the container's real viewport-relative
+            // dimensions, which would be nonsense while trapped like that).
+            <div
+              className={measureMode ? "document-viewer-backdrop document-viewer-backdrop-full" : "document-viewer-backdrop"}
+              role="presentation"
+              onClick={() => setIsOpen(false)}
+            >
+              <div
+                className={measureMode ? "document-viewer document-viewer-full" : "document-viewer"}
+                role="dialog"
+                aria-modal="true"
+                aria-label={doc.title}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {!measureMode ? (
+                  <div className="document-viewer-head">
+                    <div className="document-viewer-meta">
+                      <strong>{doc.title}</strong>
+                      {doc.fileName ? <span>{doc.fileName}</span> : null}
+                    </div>
 
-                <div className="document-viewer-head-actions">
-                  {isImage ? (
-                    <>
-                      <button type="button" className="document-viewer-zoom" onClick={zoomOut} disabled={zoom <= MIN_ZOOM} aria-label="Kicsinyítés">
-                        <ZoomOutIcon />
+                    <div className="document-viewer-head-actions">
+                      {isImage ? (
+                        <>
+                          <button type="button" className="document-viewer-zoom" onClick={zoomOut} disabled={zoom <= MIN_ZOOM} aria-label="Kicsinyítés">
+                            <ZoomOutIcon />
+                          </button>
+                          <span className="document-viewer-zoom-level">{Math.round(zoom * 100)}%</span>
+                          <button type="button" className="document-viewer-zoom" onClick={zoomIn} disabled={zoom >= MAX_ZOOM} aria-label="Nagyítás">
+                            <ZoomInIcon />
+                          </button>
+                        </>
+                      ) : null}
+                      <button type="button" className="button ghost" onClick={() => setMeasureMode(true)}>
+                        Mérés
                       </button>
-                      <span className="document-viewer-zoom-level">{Math.round(zoom * 100)}%</span>
-                      <button type="button" className="document-viewer-zoom" onClick={zoomIn} disabled={zoom >= MAX_ZOOM} aria-label="Nagyítás">
-                        <ZoomInIcon />
+                      <a className="document-viewer-external" href={url} target="_blank" rel="noreferrer">
+                        Böngészőben
+                      </a>
+                      <button type="button" className="document-viewer-close" onClick={() => setIsOpen(false)} aria-label="Bezárás">
+                        <CloseIcon />
                       </button>
-                    </>
-                  ) : null}
-                  <button type="button" className="button ghost" onClick={() => setMeasureMode(true)}>
-                    Mérés
-                  </button>
-                  <a className="document-viewer-external" href={url} target="_blank" rel="noreferrer">
-                    Böngészőben
-                  </a>
-                  <button type="button" className="document-viewer-close" onClick={() => setIsOpen(false)} aria-label="Bezárás">
-                    <CloseIcon />
-                  </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="document-viewer-stage">
+                  {measureMode ? (
+                    <PlanMeasurementTool doc={doc} onClose={() => setMeasureMode(false)} />
+                  ) : isImage ? (
+                    <div className="document-viewer-image-scroll">
+                      <div className="document-viewer-image-inner" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}>
+                        <img
+                          src={url}
+                          alt={doc.title}
+                          className="document-viewer-image"
+                          onClick={toggleZoomOnClick}
+                          style={{ cursor: zoom > MIN_ZOOM ? "zoom-out" : "zoom-in" }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <PdfCanvasViewer url={url} title={doc.title} />
+                  )}
                 </div>
               </div>
-            ) : null}
-
-            <div className="document-viewer-stage">
-              {measureMode ? (
-                <PlanMeasurementTool doc={doc} onClose={() => setMeasureMode(false)} />
-              ) : isImage ? (
-                <div className="document-viewer-image-scroll">
-                  <div className="document-viewer-image-inner" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}>
-                    <img
-                      src={url}
-                      alt={doc.title}
-                      className="document-viewer-image"
-                      onClick={toggleZoomOnClick}
-                      style={{ cursor: zoom > MIN_ZOOM ? "zoom-out" : "zoom-in" }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <PdfCanvasViewer url={url} title={doc.title} />
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

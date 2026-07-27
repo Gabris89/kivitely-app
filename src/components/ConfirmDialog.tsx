@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CloseIcon, TrashIcon } from "@/components/ActionIcons";
 
 type Props = {
@@ -15,7 +16,13 @@ type Props = {
 export function ConfirmDialog({ open, title, message, confirmLabel = "Törlés", onConfirm, onCancel }: Props) {
   if (!open) return null;
 
-  return (
+  // Portal to <body>: this dialog is used from inside .card panels all over
+  // the app (issue/blocker/document/subcontractor delete confirmations), and
+  // .card sets backdrop-filter, which - like transform/filter/contain -
+  // gives its descendants a new containing block. Left un-ported, this
+  // fixed-position backdrop would render pinned inside whichever .card
+  // happens to be its nearest ancestor instead of covering the viewport.
+  return createPortal(
     <div className="confirm-backdrop" role="presentation" onClick={onCancel}>
       <div
         className="card confirm-dialog"
@@ -37,6 +44,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = "Törlés",
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
