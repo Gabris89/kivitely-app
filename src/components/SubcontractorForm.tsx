@@ -21,9 +21,11 @@ type Props = {
     contactName: string;
     phone: string;
   };
+  /** subcontractor.delete jog - jog nelkul a torles gomb nem jelenik meg. */
+  canDelete?: boolean;
 };
 
-export function SubcontractorForm({ mode, publicId, initial }: Props) {
+export function SubcontractorForm({ mode, publicId, initial, canDelete = true }: Props) {
   const router = useRouter();
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
   const [deleting, setDeleting] = useState(false);
@@ -123,7 +125,7 @@ export function SubcontractorForm({ mode, publicId, initial }: Props) {
           <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
         ) : null}
 
-        {mode === "edit" ? (
+        {mode === "edit" && canDelete ? (
           <>
             <div className="form-footer-divider" />
             <button className="button danger full-width" type="button" onClick={() => setConfirmOpen(true)} disabled={deleting}>

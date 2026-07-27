@@ -257,7 +257,7 @@ export function IssueDetailPanel({
 
       <h2 className="block-heading">Fotók</h2>
       <EvidenceMetadataControls issueId={issue.id} />
-      <EvidencePhotoGallery issue={issue} photos={photos} />
+      <EvidencePhotoGallery issue={issue} photos={photos} canDelete={can(role, "evidence.delete")} />
 
       <ConfirmDialog
         open={confirmOpen}

@@ -8,6 +8,8 @@ import type { EvidencePhoto, Issue } from "@/types";
 type Props = {
   issue: Issue;
   photos: EvidencePhoto[];
+  /** evidence.delete jog - jog nelkul a kuka ikonok nem jelennek meg. */
+  canDelete?: boolean;
 };
 
 type SwipeStart = {
@@ -22,6 +24,7 @@ type ViewerProps = {
   hasPrevious: boolean;
   hasNext: boolean;
   deletingId: string | null;
+  canDelete: boolean;
   onClose: () => void;
   onChangePhoto: (direction: -1 | 1) => void;
   onDelete: (photo: EvidencePhoto) => void;
@@ -183,18 +186,20 @@ function DesktopEvidenceViewer(props: ViewerProps) {
         variant="desktop"
       />
 
-      <div className="evidence-viewer-actions">
-        <button
-          className="evidence-viewer-delete"
-          type="button"
-          disabled={props.deletingId === props.photo.id}
-          onClick={() => props.onDelete(props.photo)}
-          aria-label="Kép törlése"
-          title="Kép törlése"
-        >
-          {props.deletingId === props.photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
-        </button>
-      </div>
+      {props.canDelete ? (
+        <div className="evidence-viewer-actions">
+          <button
+            className="evidence-viewer-delete"
+            type="button"
+            disabled={props.deletingId === props.photo.id}
+            onClick={() => props.onDelete(props.photo)}
+            aria-label="Kép törlése"
+            title="Kép törlése"
+          >
+            {props.deletingId === props.photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -227,23 +232,25 @@ function MobileEvidenceViewer(props: ViewerProps) {
         variant="mobile"
       />
 
-      <div className="evidence-mobile-actions">
-        <button
-          className="evidence-viewer-delete"
-          type="button"
-          disabled={props.deletingId === props.photo.id}
-          onClick={() => props.onDelete(props.photo)}
-          aria-label="Kép törlése"
-          title="Kép törlése"
-        >
-          {props.deletingId === props.photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
-        </button>
-      </div>
+      {props.canDelete ? (
+        <div className="evidence-mobile-actions">
+          <button
+            className="evidence-viewer-delete"
+            type="button"
+            disabled={props.deletingId === props.photo.id}
+            onClick={() => props.onDelete(props.photo)}
+            aria-label="Kép törlése"
+            title="Kép törlése"
+          >
+            {props.deletingId === props.photo.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-export function EvidencePhotoGallery({ issue, photos }: Props) {
+export function EvidencePhotoGallery({ issue, photos, canDelete = true }: Props) {
   const router = useRouter();
   const galleryPhotos = photos.filter((photo) => photo.url);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -401,7 +408,7 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
             <div className="photo-card-caption">
               <small>{getPhotoKindLabel(photo)}{photo.uploadedAt ? ` · ${formatPhotoTimestamp(photo.uploadedAt)}` : ""}</small>
             </div>
-            {photo.url ? (
+            {photo.url && canDelete ? (
               <button className="photo-card-delete" type="button" disabled={deletingId === photo.id} onClick={(event) => {
                 event.stopPropagation();
                 deletePhoto(photo);
@@ -434,6 +441,7 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
                 hasPrevious={hasPrevious}
                 hasNext={hasNext}
                 deletingId={deletingId}
+                canDelete={canDelete}
                 onClose={closePreview}
                 onChangePhoto={changePhoto}
                 onDelete={deletePhoto}
@@ -449,6 +457,7 @@ export function EvidencePhotoGallery({ issue, photos }: Props) {
                 hasPrevious={hasPrevious}
                 hasNext={hasNext}
                 deletingId={deletingId}
+                canDelete={canDelete}
                 onClose={closePreview}
                 onChangePhoto={changePhoto}
                 onDelete={deletePhoto}

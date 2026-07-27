@@ -49,7 +49,13 @@ function getFileExtension(fileName?: string) {
   return extension && extension !== fileName ? extension.toUpperCase() : null;
 }
 
-export function DocumentFilters({ documents }: { documents: ProjectDocument[] }) {
+export function DocumentFilters({
+  documents,
+  canDelete = true
+}: {
+  documents: ProjectDocument[];
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -140,16 +146,18 @@ export function DocumentFilters({ documents }: { documents: ProjectDocument[] })
                 ) : (
                   <span className="document-row-missing">{document.storagePath ? "Nincs Storage URL" : "Nincs fájl"}</span>
                 )}
-                <button
-                  type="button"
-                  className="document-row-delete"
-                  disabled={deletingId === document.id}
-                  onClick={() => setPendingDelete(document)}
-                  aria-label="Dokumentum törlése"
-                  title="Dokumentum törlése"
-                >
-                  {deletingId === document.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
-                </button>
+                {canDelete ? (
+                  <button
+                    type="button"
+                    className="document-row-delete"
+                    disabled={deletingId === document.id}
+                    onClick={() => setPendingDelete(document)}
+                    aria-label="Dokumentum törlése"
+                    title="Dokumentum törlése"
+                  >
+                    {deletingId === document.id ? <span aria-hidden="true">...</span> : <TrashIcon />}
+                  </button>
+                ) : null}
               </div>
             </div>
           );

@@ -2,23 +2,32 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProjectDocumentUploadForm } from "@/components/ProjectDocumentUploadForm";
 import { DocumentFilters } from "@/components/DocumentFilters";
 import { listProjectDocuments } from "@/lib/repository";
+import { hasPermission } from "@/lib/permissions.server";
 
 export const dynamic = "force-dynamic";
 
 export default async function DocumentsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const documents = await listProjectDocuments(projectId);
+  const [documents, canUpload, canDelete] = await Promise.all([
+    listProjectDocuments(projectId),
+    hasPermission("document.create"),
+    hasPermission("document.delete")
+  ]);
 
   return (
     <>
       <PageHeader
         title="Dokumentumok"
-        subtitle="Projekt szintű tervek és dokumentumok feltöltése, megnyitása és áttekintése."
+        subtitle={
+          canUpload
+            ? "Projekt szintű tervek és dokumentumok feltöltése, megnyitása és áttekintése."
+            : "Projekt szintű tervek és dokumentumok megnyitása és áttekintése."
+        }
       />
 
-      <ProjectDocumentUploadForm projectId={projectId} />
+      {canUpload ? <ProjectDocumentUploadForm projectId={projectId} /> : null}
 
-      <DocumentFilters documents={documents} />
+      <DocumentFilters documents={documents} canDelete={canDelete} />
     </>
   );
 }
