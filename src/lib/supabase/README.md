@@ -12,6 +12,7 @@ Current scope:
 - evidence metadata can insert `before_photo` and `after_photo` rows into `issue_evidence`
 - issue evidence images can upload to the public MVP `issue-evidence` Storage bucket, store their `storage_path`, preview in-app and be deleted through a controlled API path
 - `profiles` and `project_members` are prepared as a schema baseline for later Auth/RLS visibility work
+- `profiles.subcontractor_id` links a login to a subcontractor company, and `issues.created_by` now has a real foreign key to `profiles` and is populated on insert; together they make "own issue" expressible for later ownership scoping
 - `work_logs` is prepared as a schema baseline for later teljesitmenynaplo support
 - `blocker_list` supports active blocker reads and controlled blocker creation under narrow MVP RLS policies
 - `project_documents` supports project-level document and architectural plan metadata reads plus controlled Storage-backed uploads
@@ -46,7 +47,27 @@ Run the migrations in order before testing reads from a hosted Supabase project:
 17. `supabase/migrations/20260713124124_project_documents_read_grant.sql`
 18. `supabase/migrations/20260717103000_project_documents_storage_policy.sql`
 19. `supabase/migrations/20260717120000_project_documents_select_policy.sql`
-20. `supabase/seed.sql`
+20. `supabase/migrations/20260720090000_project_documents_delete_policy.sql`
+21. `supabase/migrations/20260721090000_plan_measurements_baseline.sql`
+22. `supabase/migrations/20260721100000_plan_measurements_note.sql`
+23. `supabase/migrations/20260721110000_plan_measurements_update_policy.sql`
+24. `supabase/migrations/20260721120000_project_update_delete_policy.sql`
+25. `supabase/migrations/20260722090000_plan_calibrations_baseline.sql`
+26. `supabase/migrations/20260722100000_project_insert_grant.sql`
+27. `supabase/migrations/20260722110000_project_public_id.sql`
+28. `supabase/migrations/20260723090000_issue_public_id_prefix_rename.sql`
+29. `supabase/migrations/20260723100000_blocker_list_public_id.sql`
+30. `supabase/migrations/20260723110000_subcontractors_public_id.sql`
+31. `supabase/migrations/20260723120000_subcontractors_write_grant.sql`
+32. `supabase/migrations/20260723130000_project_insert_policy.sql`
+33. `supabase/migrations/20260724090000_blocker_list_update_delete_policy.sql`
+34. `supabase/migrations/20260724100000_issue_update_delete_policy.sql`
+35. `supabase/migrations/20260724110000_revoke_anon_write_access.sql`
+36. `supabase/migrations/20260724120000_tig_package_write.sql`
+37. `supabase/migrations/20260727090000_profiles_auth_link.sql`
+38. `supabase/migrations/20260727140000_profiles_auth_hardening.sql`
+39. `supabase/migrations/20260728090000_profiles_subcontractor_link.sql`
+40. `supabase/seed.sql`
 
 Local development values can live in `.env.local`, which is ignored by git:
 

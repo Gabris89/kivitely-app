@@ -63,6 +63,13 @@ export type CurrentUser = {
   displayName: string;
   /** null, ha nincs hozzá profiles sor. */
   role: AppRole | null;
+  /**
+   * Melyik alvállalkozó céghez tartozik ez a belépés (`profiles.subcontractor_id`).
+   * Ez dönti el, hogy egy hiba a „sajátja”-e: `issues.subcontractor_id` egyezés.
+   * `null` esetén egyetlen hiba sem számít sajátnak – ez a fail-closed alapállás,
+   * nem hiányzó adat miatti kivétel.
+   */
+  subcontractorId: string | null;
   /** false: letiltott fiók (profiles.is_active). A workflow-ban viewer-ként viselkedik. */
   isActive: boolean;
   workflowRole: UserRole;
@@ -74,6 +81,7 @@ type ProfileRow = {
   role: AppRole | null;
   is_active: boolean | null;
   email: string | null;
+  subcontractor_id: string | null;
 };
 
 /**
@@ -111,6 +119,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     profileId: row?.id || null,
     displayName: row?.display_name || authUser.email?.split("@")[0] || "Ismeretlen felhasználó",
     role,
+    subcontractorId: row?.subcontractor_id || null,
     isActive,
     // Letiltott fiók = nincs érvényes szerep. Ez az "azonnali kikapcsoló"
     // gomb: elég a profiles.is_active-ot false-ra állítani.
