@@ -3207,6 +3207,11 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .wf-branch.active strong { color: var(--danger); }
 .wf-next-note { margin: 0; font-size: 0.76rem; color: var(--muted); }
 .wf-next-note strong { color: var(--soft); font-weight: 600; }
+/* Visszalepesi cel: sargas gyuru, hogy ne keveredjen az elorehaladassal. */
+.wf-step.back .wf-node { background: #2a2213; border-color: rgba(255, 209, 102, 0.55); color: var(--warn); }
+.wf-step.back .wf-label { color: var(--warn); }
+.wf-next-note.back { color: rgba(255, 209, 102, 0.85); }
+.wf-next-note.back strong { color: var(--warn); }
 
 @media (max-width: 720px) {
   /* Mobilon a sin allo: a cimkek kiferjenek a pontok mellett. */

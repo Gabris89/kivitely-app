@@ -3,10 +3,10 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { EvidencePhoto, Issue, Subcontractor, UserRole } from "@/types";
+import type { EvidencePhoto, Issue, IssueStatus, Subcontractor, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
 import { getIssueTigReadiness } from "@/lib/issueMetrics";
-import { getNextStatuses, issueStatusLabels } from "@/lib/workflow";
+import { getNextStatuses, isBackwardTransition, issueStatusLabels } from "@/lib/workflow";
 import { can } from "@/lib/permissions";
 import { PriorityBadge, StatusBadge } from "@/components/StatusBadge";
 import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionIcons";
@@ -40,12 +40,17 @@ export function IssueDetailPanel({
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", message: "" });
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<IssueStatus>(issue.status);
   const tigReadiness = getIssueTigReadiness(issue, photos);
   const nextStatuses = getNextStatuses(issue, role);
   // Ugyanaz a matrix dont, mint a szerveren - a gomb el sem jelenik meg,
   // ha a szerep ugysem tudna hasznalni.
   const canEdit = can(role, "issue.update");
   const canDelete = can(role, "issue.delete");
+  // Visszalepeshez (pl. Elfogadva -> Visszadobva) indok kell. A szerver
+  // ugyanezt kikenyszeriti; ez csak azert van itt, hogy a mezo idoben
+  // megjelenjen, es ne mentes utan derüljön ki, hogy hianyzik.
+  const needsStatusNote = isBackwardTransition(issue.status, selectedStatus);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,11 +67,17 @@ export function IssueDetailPanel({
       assignee: String(formData.get("assignee") || ""),
       dueDate: String(formData.get("dueDate") || ""),
       valueHuf: Number(formData.get("valueHuf") || 0),
-      status: String(formData.get("status") || issue.status)
+      status: String(formData.get("status") || issue.status),
+      statusNote: String(formData.get("statusNote") || "")
     };
 
     if (!payload.title.trim() || !payload.location.trim() || !payload.subcontractor.trim() || !payload.dueDate) {
       setSaveState({ status: "error", message: "Kötelező mezők hiányoznak." });
+      return;
+    }
+
+    if (isBackwardTransition(issue.status, payload.status as IssueStatus) && !payload.statusNote.trim()) {
+      setSaveState({ status: "error", message: "Visszaléptetéshez indokot kell írni." });
       return;
     }
 
@@ -137,7 +148,10 @@ export function IssueDetailPanel({
               className={`edit-toggle-btn${isEditing ? " active" : ""}`}
               aria-label={isEditing ? "Szerkesztés bezárása" : "Szerkesztés"}
               aria-expanded={isEditing}
-              onClick={() => setIsEditing((current) => !current)}
+              onClick={() => {
+                setSelectedStatus(issue.status);
+                setIsEditing((current) => !current);
+              }}
             >
               <PencilIcon />
             </button>
@@ -190,13 +204,31 @@ export function IssueDetailPanel({
             </label>
             <label>
               Állapot
-              <select name="status" defaultValue={issue.status}>
+              <select
+                name="status"
+                defaultValue={issue.status}
+                onChange={(event) => setSelectedStatus(event.target.value as IssueStatus)}
+              >
                 <option value={issue.status}>{issueStatusLabels[issue.status]} (jelenlegi)</option>
                 {nextStatuses.map((status) => (
-                  <option key={status} value={status}>{issueStatusLabels[status]}</option>
+                  <option key={status} value={status}>
+                    {`${issueStatusLabels[status]}${
+                      isBackwardTransition(issue.status, status) ? " (visszaléptetés)" : ""
+                    }`}
+                  </option>
                 ))}
               </select>
             </label>
+            {needsStatusNote ? (
+              <label className="full">
+                Visszaléptetés indoka
+                <textarea
+                  name="statusNote"
+                  required
+                  placeholder="Miért kerül vissza? Pl. a közös bejáráson a műszaki ellenőr elutasította."
+                />
+              </label>
+            ) : null}
             <label>
               <span className="visually-hidden">Helyszín</span>
               <input name="location" required defaultValue={issue.location} placeholder="Helyszín" />
@@ -245,7 +277,14 @@ export function IssueDetailPanel({
               <span className={saveState.status === "error" ? "error-message" : "success-message"}>{saveState.message}</span>
             ) : <span />}
             <div className="form-actions">
-              <button className="button ghost" type="button" onClick={() => setIsEditing(false)}>
+              <button
+                className="button ghost"
+                type="button"
+                onClick={() => {
+                  setSelectedStatus(issue.status);
+                  setIsEditing(false);
+                }}
+              >
                 <CloseIcon />
                 Mégse
               </button>

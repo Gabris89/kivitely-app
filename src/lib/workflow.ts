@@ -44,9 +44,41 @@ const rolePermissions: Record<UserRole, IssueStatus[]> = {
   viewer: []
 };
 
+type BackwardStep = { to: IssueStatus; roles: UserRole[] };
+
+const BACKWARD_MANAGEMENT: UserRole[] = ["admin", "project_manager"];
+const BACKWARD_EXECUTORS: UserRole[] = ["admin", "project_manager", "site_manager", "subcontractor"];
+
+/** Visszalepesek. Szandekosan NEM a `transitions` tablaban vannak: ezek nem a
+    folyamat elorehaladasat jelentik, sajat jogosultsagi listat kapnak (a
+    `rolePermissions` cel-allapot alapu, igy nem tudna megkulonboztetni, hogy
+    honnan dobjak vissza a hibat), es indok nelkul nem hajthatok vegre. */
+const backwardTransitions: Partial<Record<IssueStatus, BackwardStep[]>> = {
+  // "Megsem vagyok kesz": a keszre jelento sajat maga vonhatja vissza, igy nem
+  // kell megvarnia egy visszadobast, ami ot minositene.
+  ready_for_review: [{ to: "in_progress", roles: BACKWARD_EXECUTORS }],
+  // Elfogadas visszavonasa: kint kiderult, hogy megsem jo, vagy a muszaki
+  // ellenor a kozos bejarason elutasitja. Vezetoi dontes.
+  accepted: [{ to: "rejected", roles: BACKWARD_MANAGEMENT }],
+  // TIG-jeloles visszavonasa, ha a tetel megis kikerul a csomagbol.
+  tig_ready: [{ to: "accepted", roles: BACKWARD_MANAGEMENT }]
+};
+
+/** Igaz, ha ez a lepes visszafele mutat - ilyenkor kotelezo az indok. A kliens
+    es a szerver is ezt hasznalja, hogy a ket oldal ne csusszon szet. */
+export function isBackwardTransition(from: IssueStatus, to: IssueStatus) {
+  return (backwardTransitions[from] || []).some((step) => step.to === to);
+}
+
 export function getAllowedStatusTransitions(issue: Issue, role: UserRole = "project_manager") {
   const allowed = new Set(rolePermissions[role]);
-  return transitions[issue.status].filter((status) => allowed.has(status));
+  const forward = transitions[issue.status].filter((status) => allowed.has(status));
+  const backward = (backwardTransitions[issue.status] || [])
+    .filter((step) => step.roles.includes(role))
+    .map((step) => step.to)
+    .filter((status) => !forward.includes(status));
+
+  return [...forward, ...backward];
 }
 
 export function getNextStatuses(issue: Issue, role: UserRole = "project_manager") {

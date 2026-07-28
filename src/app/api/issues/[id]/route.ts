@@ -45,7 +45,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       dueDate: String(body.dueDate),
       priority: body.priority,
       valueHuf: body.valueHuf ? Number(body.valueHuf) : undefined,
-      status: body.status
+      status: body.status,
+      statusNote: body.statusNote ? String(body.statusNote) : undefined
     });
   } catch (error) {
     const forbidden = permissionErrorResponse(error);

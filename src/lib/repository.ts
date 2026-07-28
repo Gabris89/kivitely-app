@@ -11,7 +11,7 @@ import {
   workLogs as mockWorkLogs
 } from "@/data/mock";
 import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
-import { canMoveIssue, issueStatusLabels } from "@/lib/workflow";
+import { canMoveIssue, isBackwardTransition, issueStatusLabels } from "@/lib/workflow";
 import { getCurrentUser, getCurrentWorkflowRole } from "@/lib/currentUser";
 import { canEditBlocker, workflowRoleLabels } from "@/lib/permissions";
 import { ForbiddenError, PermissionError, hasPermission, requirePermission } from "@/lib/permissions.server";
@@ -79,6 +79,9 @@ export type UpdateIssueInput = {
   priority?: Priority;
   valueHuf?: number;
   status?: IssueStatus;
+  /** Visszalepesnel (isBackwardTransition) kotelezo indok. Az idovonalra kerul,
+      hogy ne csak az latszodjon, hogy valaki visszavont, hanem az is, miert. */
+  statusNote?: string;
 };
 
 export type UpdateIssueResult = {
@@ -2005,9 +2008,17 @@ export async function createIssueRecord(input: CreateIssueInput): Promise<Create
   };
 }
 
-async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, targetStatus: IssueStatus) {
+async function createSupabaseStatusEvent(
+  issue: Issue,
+  issueDbId: string,
+  targetStatus: IssueStatus,
+  statusNote = ""
+) {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return false;
+
+  const backward = isBackwardTransition(issue.status, targetStatus);
+  const trail = `${issueStatusLabels[issue.status]} → ${issueStatusLabels[targetStatus]}`;
 
   const { error } = await supabase
     .from("issue_events")
@@ -2016,8 +2027,8 @@ async function createSupabaseStatusEvent(issue: Issue, issueDbId: string, target
       event_type: "status_changed",
       from_status: issue.status,
       to_status: targetStatus,
-      title: "Státuszváltás rögzítve",
-      description: `${issueStatusLabels[issue.status]} → ${issueStatusLabels[targetStatus]}`
+      title: backward ? "Visszaléptetés rögzítve" : "Státuszváltás rögzítve",
+      description: statusNote ? `${trail} – indok: ${statusNote}` : trail
     });
 
   logSupabaseWriteError("issue status event", error);
@@ -2058,6 +2069,18 @@ async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): P
     );
   }
 
+  // Visszalepes indok nelkul nem mehet at: enelkul az idovonal csak annyit
+  // rogzitene, hogy "valaki visszavonta", azt nem, hogy miert.
+  const statusNote = (input.statusNote || "").trim();
+
+  if (wantsStatusChange && isBackwardTransition(currentIssue.status, input.status as IssueStatus) && !statusNote) {
+    throw new ForbiddenError(
+      `A(z) „${issueStatusLabels[currentIssue.status]}” → „${
+        issueStatusLabels[input.status as IssueStatus]
+      }” visszaléptetéshez indokot kell megadni.`
+    );
+  }
+
   const targetStatus = wantsStatusChange ? (input.status as IssueStatus) : currentIssue.status;
 
   const { data, error } = await supabase
@@ -2085,7 +2108,7 @@ async function updateSupabaseIssue(publicId: string, input: UpdateIssueInput): P
   if (error || !data) return null;
 
   if (targetStatus !== currentIssue.status) {
-    await createSupabaseStatusEvent(currentIssue, issueDbId, targetStatus);
+    await createSupabaseStatusEvent(currentIssue, issueDbId, targetStatus, statusNote);
   }
 
   return mapIssue(data as SupabaseIssueRow);

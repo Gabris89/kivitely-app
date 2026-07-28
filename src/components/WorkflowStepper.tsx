@@ -1,5 +1,5 @@
 import type { IssueStatus } from "@/types";
-import { issueStatusLabels } from "@/lib/workflow";
+import { isBackwardTransition, issueStatusLabels } from "@/lib/workflow";
 
 /** A fo utvonal, ahogy egy hiba normalis esetben vegigmegy a folyamaton.
     A "rejected" szandekosan nincs benne: az nem egy kesobbi lepes, hanem
@@ -27,7 +27,9 @@ export function WorkflowStepper({
   nextStatuses = []
 }: {
   status: IssueStatus;
-  /** A jelenlegi szereppel elerheto kovetkezo allapotok (getNextStatuses). */
+  /** A jelenlegi szereppel elerheto kovetkezo allapotok (getNextStatuses).
+      Ebben mar a visszalepesek is benne vannak, ezert kulon jeloljuk azokat,
+      amelyek a sinen visszafele mutatnak. */
   nextStatuses?: IssueStatus[];
 }) {
   const currentIndex = mainPath.indexOf(status);
@@ -36,6 +38,10 @@ export function WorkflowStepper({
   const onBranch = currentIndex === -1;
   const branchVisible = onBranch || nextStatuses.includes(branchStatus);
   const nextSet = new Set(nextStatuses);
+  // Ugyanaz a forras dont, mint a szerveren: ami visszalepes, ahhoz indok kell.
+  const backwardTargets = nextStatuses.filter((next) => isBackwardTransition(status, next));
+  const backwardSet = new Set(backwardTargets);
+  const forwardTargets = nextStatuses.filter((next) => !backwardSet.has(next));
 
   return (
     <div className="wf-track">
@@ -43,7 +49,14 @@ export function WorkflowStepper({
         {mainPath.map((step, index) => {
           const isCurrent = !onBranch && index === currentIndex;
           const isDone = !onBranch && index < currentIndex;
-          const className = ["wf-step", isDone ? "done" : "", isCurrent ? "current" : "", !isCurrent && nextSet.has(step) ? "next" : ""]
+          const isTarget = !isCurrent && nextSet.has(step);
+          const className = [
+            "wf-step",
+            isDone ? "done" : "",
+            isCurrent ? "current" : "",
+            isTarget && backwardSet.has(step) ? "back" : "",
+            isTarget && !backwardSet.has(step) ? "next" : ""
+          ]
             .filter(Boolean)
             .join(" ");
 
@@ -69,17 +82,26 @@ export function WorkflowStepper({
         </p>
       ) : null}
 
-      {nextStatuses.length > 0 ? (
+      {forwardTargets.length > 0 ? (
         <p className="wf-next-note">
-          Innen léphet tovább: <strong>{nextStatuses.map((next) => issueStatusLabels[next]).join(", ")}</strong>
+          Innen léphet tovább: <strong>{forwardTargets.map((next) => issueStatusLabels[next]).join(", ")}</strong>
         </p>
-      ) : (
+      ) : null}
+
+      {backwardTargets.length > 0 ? (
+        <p className="wf-next-note back">
+          Visszaléptethető: <strong>{backwardTargets.map((next) => issueStatusLabels[next]).join(", ")}</strong> – ehhez
+          indokot kell írni, és bekerül az idővonalba.
+        </p>
+      ) : null}
+
+      {nextStatuses.length === 0 ? (
         <p className="wf-next-note">
           {status === "closed"
             ? "Lezárva – nincs további terepi lépés ezen a hibán."
             : "Ebből az állapotból a jelenlegi szereped nem tud tovább léptetni."}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
