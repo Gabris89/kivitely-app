@@ -17,6 +17,7 @@ import { canEditBlocker, workflowRoleLabels } from "@/lib/permissions";
 import { ForbiddenError, PermissionError, hasPermission, requirePermission } from "@/lib/permissions.server";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getServerSupabaseClient, isAuthConfigured } from "@/lib/supabase/server";
+import { getVisibilityScope, isEmptyScope, scopeAllowsProject } from "@/lib/visibility";
 
 export type CreateProjectInput = {
   name: string;
@@ -672,15 +673,27 @@ async function listSupabaseIssues(projectId?: string) {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
+  // 3. lepcso: a bejelentkezett felhasznalo latasi kore (src/lib/visibility.ts).
+  const scope = await getVisibilityScope();
+  if (isEmptyScope(scope)) return [];
+
   let query = supabase
     .from("issues")
     .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
     .order("updated_at", { ascending: false });
 
   if (projectId) {
+    // getSupabaseProjectDbId hatokor-tudatos: a koron kivuli projektre null.
     const projectDbId = await getSupabaseProjectDbId(projectId);
     if (!projectDbId) return [];
     query = query.eq("project_id", projectDbId);
+  } else if (scope.projectIds) {
+    query = query.in("project_id", scope.projectIds);
+  }
+
+  // Alvallalkozo: a sajat projektjein belul is CSAK a sajat cege hibai.
+  if (scope.subcontractorId) {
+    query = query.eq("subcontractor_id", scope.subcontractorId);
   }
 
   const { data, error } = await query;
@@ -698,28 +711,55 @@ async function getSupabaseIssueDbId(publicId: string) {
 
   const { data, error } = await supabase
     .from("issues")
-    .select("id")
+    .select("id,project_id,subcontractor_id")
     .eq("public_id", publicId)
     .maybeSingle();
 
   logSupabaseReadError("issue id lookup", error);
 
-  return error ? null : data?.id || null;
+  if (error || !data) return null;
+
+  // Masodik fojtopont, a projekt-oldali parja (getSupabaseProjectDbId). Minden
+  // egy hibara mutato muvelet - fotok, esemenynaplo, modositas, torles - ezen
+  // keresztul jut el a HIB-xxx azonositotol a DB id-ig. Ha itt szurunk, akkor
+  // az "amit nem latsz, azt nem is irhatod" szabaly a REST API-n at is all,
+  // nem csak a felületen: a kozvetlen PATCH /api/issues/HIB-xxx sem megy at.
+  const row = data as { id: string; project_id: string | null; subcontractor_id: string | null };
+  const scope = await getVisibilityScope();
+
+  if (!scope.unrestricted) {
+    if (!row.project_id || !scopeAllowsProject(scope, row.project_id)) return null;
+    if (scope.subcontractorId && row.subcontractor_id !== scope.subcontractorId) return null;
+  }
+
+  return row.id;
 }
 
 export async function listProjects() {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return [mockProject];
 
-  const { data, error } = await supabase
+  const scope = await getVisibilityScope();
+  if (isEmptyScope(scope)) return [];
+
+  let query = supabase
     .from("projects")
     .select("*")
     .order("created_at", { ascending: true });
 
+  if (scope.projectIds) {
+    query = query.in("id", scope.projectIds);
+  }
+
+  const { data, error } = await query;
+
   logSupabaseReadError("projects list", error);
 
   const rows = data as SupabaseProjectRow[] | null;
-  if (error || !rows?.length) return [mockProject];
+  // Korabban itt ures eredmeny eseten a mock projekt jott vissza. Hatokorrel ez
+  // szivargas lenne: aki egyetlen projektnek sem tagja, kapna egy projektet -
+  // es a projektvalto is felajanlana. Ures halmaz maradjon ures.
+  if (error || !rows?.length) return [];
   return rows.map(mapProject);
 }
 
@@ -735,7 +775,13 @@ export async function getProjectByPublicId(publicId: string) {
 
   logSupabaseReadError("project by public id", error);
 
-  return !error && data ? mapProject(data as SupabaseProjectRow) : null;
+  if (error || !data) return null;
+
+  // A kozvetlen URL-lel (/projects/PRJ-004) se lehessen bekukkantani egy olyan
+  // projektbe, aminek nem vagyok tagja: itt null -> az oldal 404/AccessDenied.
+  const row = data as SupabaseProjectRow;
+  const scope = await getVisibilityScope();
+  return scopeAllowsProject(scope, row.id) ? mapProject(row) : null;
 }
 
 async function getSupabaseProjectDbId(publicId: string) {
@@ -750,7 +796,15 @@ async function getSupabaseProjectDbId(publicId: string) {
 
   logSupabaseReadError("project id lookup", error);
 
-  return error ? null : data?.id || null;
+  const projectDbId: string | null = error ? null : (data?.id as string | undefined) || null;
+  if (!projectDbId) return null;
+
+  // Egyetlen fojtopont: minden projektre szukitett lekerdezes (hibak, TIG,
+  // teljesitmenynaplo, dokumentumok, akadalyok, TIG-jeloltek) ezen keresztul
+  // forditja a PRJ-xxx azonositot DB id-ve. Ha itt szurunk, mindegyik egyszerre
+  // lesz hatokor-helyes, es nem marad kifelejtett lista.
+  const scope = await getVisibilityScope();
+  return scopeAllowsProject(scope, projectDbId) ? projectDbId : null;
 }
 
 function nextPublicProjectId(publicIds: string[]) {
@@ -1064,11 +1118,14 @@ export async function getIssueEvents(issueId: string) {
 export async function listSubcontractors() {
   const supabase = await getServerSupabaseClient();
   const issues = await listIssues();
+  const scope = supabase ? await getVisibilityScope() : null;
+  // Alvallalkozo csak a SAJAT ceget latja a listan. A darabszamok amugy is a
+  // mar leszukitett hiba-halmazbol jonnek, de a cegnevek listaja onmagaban is
+  // uzleti informacio (ki dolgozik a megrendelonek).
   const result = supabase
-    ? await supabase
-        .from("subcontractors")
-        .select("*")
-        .order("name", { ascending: true })
+    ? await (scope?.subcontractorId
+        ? supabase.from("subcontractors").select("*").eq("id", scope.subcontractorId).order("name", { ascending: true })
+        : supabase.from("subcontractors").select("*").order("name", { ascending: true }))
     : null;
   const rows = result?.data as SupabaseSubcontractorRow[] | null | undefined;
 
@@ -1258,6 +1315,9 @@ export async function listTigPackages(projectId?: string) {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return mockTigPackages;
 
+  const scope = await getVisibilityScope();
+  if (isEmptyScope(scope)) return [];
+
   let query = supabase
     .from("tig_packages")
     .select("*,subcontractors(name),projects(public_id,name),tig_package_issues(issue_id, issues(public_id, issue_evidence(evidence_type)))")
@@ -1267,6 +1327,13 @@ export async function listTigPackages(projectId?: string) {
     const projectDbId = await getSupabaseProjectDbId(projectId);
     if (!projectDbId) return [];
     query = query.eq("project_id", projectDbId);
+  } else if (scope.projectIds) {
+    query = query.in("project_id", scope.projectIds);
+  }
+
+  // A TIG csomag penzugyi dokumentum: alvallalkozo csak a sajatjat lathatja.
+  if (scope.subcontractorId) {
+    query = query.eq("subcontractor_id", scope.subcontractorId);
   }
 
   const { data, error } = await query;
@@ -1630,12 +1697,17 @@ export async function listBlockers(projectId?: string) {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return mockBlockerItems;
 
+  const scope = await getVisibilityScope();
+  if (isEmptyScope(scope)) return [];
+
   let query = supabase.from("blocker_list").select("*").order("created_at", { ascending: false });
 
   if (projectId) {
     const projectDbId = await getSupabaseProjectDbId(projectId);
     if (!projectDbId) return [];
     query = query.eq("project_id", projectDbId);
+  } else if (scope.projectIds) {
+    query = query.in("project_id", scope.projectIds);
   }
 
   const { data, error } = await query;
@@ -1938,6 +2010,10 @@ async function createSupabaseIssue(input: CreateIssueInput) {
 
   const subcontractor = subcontractors?.find((item) => item.name === input.subcontractor) || subcontractors?.[0] || null;
   const publicId = nextPublicIssueId((existingIssues || []).map((issue) => issue.public_id));
+  // Ki vette fel a hibat. Az oszlop a kezdetek ota letezik, de eddig ures maradt,
+  // igy meg az sem latszott, ki rogzitette. A 20260728090000 migracio teszi ra a
+  // hivatkozast a profiles tablara.
+  const currentUser = await getCurrentUser();
 
   const { data, error } = await supabase
     .from("issues")
@@ -1954,7 +2030,8 @@ async function createSupabaseIssue(input: CreateIssueInput) {
       due_date: input.dueDate,
       status: "open",
       priority: normalizePriority(input.priority),
-      value_huf: input.valueHuf || 0
+      value_huf: input.valueHuf || 0,
+      created_by: currentUser?.profileId || null
     })
     .select("*,subcontractors(name),issue_evidence(evidence_type),projects(name,public_id)")
     .single();

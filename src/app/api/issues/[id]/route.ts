@@ -24,6 +24,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (denied) return denied;
 
   const { id } = await params;
+
+  // Hatokor-ellenorzes a szerkesztes elott (3. lepcso). A getIssue mar szukitett
+  // halmazbol dolgozik, ezert ami nem lathato, arra 404-et adunk - ugyanazt,
+  // mint egy nem letezo azonositora. Igy a valasz nem arulja el, hogy a hiba
+  // letezik-e egyaltalan. A repository is vedve van (getSupabaseIssueDbId), ez
+  // itt a helyes HTTP statusz kedveert van.
+  const existing = await getIssue(id);
+  if (!existing) {
+    return NextResponse.json({ error: "Issue not found" }, { status: 404 });
+  }
+
   const body = await request.json().catch(() => null);
 
   if (!body?.title || !body?.location || !body?.subcontractor || !body?.dueDate) {
@@ -66,6 +77,14 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   if (denied) return denied;
 
   const { id } = await params;
+
+  // Ugyanaz, mint a PATCH-nel: amit nem latsz, azt nem is torolheted, es a
+  // valasz nem arulja el a letezeset.
+  const existing = await getIssue(id);
+  if (!existing) {
+    return NextResponse.json({ error: "Issue not found" }, { status: 404 });
+  }
+
   const result = await deleteIssueRecord(id);
 
   if (!result.ok) {
