@@ -13,6 +13,7 @@ import { SaveIcon, CloseIcon, PencilIcon, TrashIcon } from "@/components/ActionI
 import { EvidenceMetadataControls } from "@/components/EvidenceMetadataControls";
 import { EvidencePhotoGallery } from "@/components/EvidencePhotoGallery";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { WorkflowStepper } from "@/components/WorkflowStepper";
 
 type SaveState = {
   status: "idle" | "saving" | "saved" | "error";
@@ -143,6 +144,8 @@ export function IssueDetailPanel({
           ) : null}
         </div>
       </div>
+
+      <WorkflowStepper status={issue.status} nextStatuses={nextStatuses} />
 
       {!isEditing ? (
         <>

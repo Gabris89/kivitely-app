@@ -3138,3 +3138,83 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   /* Workflow oszlopok mobilon közel képernyőszélesek (a következő kikandikál). */
   .workflow-column { flex-basis: 80vw; max-width: 80vw; }
 }
+
+/* ---------- Workflow sin: a hiba allapotanak utvonala (csak megjelenites) ---------- */
+.wf-track { display: grid; gap: 10px; margin: 4px 0 20px; }
+.wf-rail { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
+.wf-step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+/* A kotovonal mindig az elozo lepes fele nyul vissza, igy a "kesz" allapot
+   szine automatikusan atszinezi a mogotte levo szakaszt is. */
+.wf-step + .wf-step::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--line);
+  z-index: 0;
+}
+.wf-step.done + .wf-step::before { background: rgba(72, 213, 151, 0.5); }
+.wf-node {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  /* Atlatszatlan hatter, kulonben a kotovonal atlatszik a jelolesen. */
+  background: #101b2e;
+  border: 1px solid var(--line-strong);
+}
+.wf-label { font-size: 0.72rem; line-height: 1.25; color: var(--muted); }
+.wf-step.done .wf-node { background: #0e2620; border-color: rgba(72, 213, 151, 0.55); color: var(--ok); }
+.wf-step.done .wf-label { color: var(--soft); }
+.wf-step.next .wf-node { border-color: rgba(90, 209, 245, 0.45); color: var(--soft); }
+.wf-step.current .wf-node {
+  background: var(--brand);
+  border-color: var(--brand-hi);
+  color: var(--brand-ink);
+  box-shadow: 0 0 0 4px rgba(90, 209, 245, 0.18);
+  transform: scale(1.1);
+}
+.wf-step.current .wf-label { color: var(--text); font-weight: 600; }
+.wf-branch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.wf-branch .wf-node { width: 26px; height: 26px; font-size: 0.72rem; }
+.wf-branch strong { color: var(--soft); font-weight: 600; }
+.wf-branch.active .wf-node { background: #2a1113; border-color: rgba(255, 107, 107, 0.55); color: var(--danger); }
+.wf-branch.active strong { color: var(--danger); }
+.wf-next-note { margin: 0; font-size: 0.76rem; color: var(--muted); }
+.wf-next-note strong { color: var(--soft); font-weight: 600; }
+
+@media (max-width: 720px) {
+  /* Mobilon a sin allo: a cimkek kiferjenek a pontok mellett. */
+  .wf-rail { flex-direction: column; align-items: stretch; gap: 12px; }
+  .wf-step { flex-direction: row; align-items: center; gap: 12px; text-align: left; }
+  .wf-step + .wf-step::before { top: -12px; right: auto; left: 15px; width: 2px; height: 12px; }
+  .wf-label { font-size: 0.8rem; }
+  .wf-step.current .wf-node { transform: none; }
+  /* Tobb soros mellekag-szoveg mellett a jelolo a felso sorhoz igazodjon. */
+  .wf-branch { align-items: flex-start; }
+}
