@@ -1,6 +1,9 @@
 -- Kivitely read-only smoke test seed.
 -- Run after supabase/migrations/20260706210901_initial_kivitely_schema.sql.
 -- This file is intentionally small and idempotent so it can be re-run during manual testing.
+-- The public_id values (PRJ-/ALV-/AKA-/HIB-) are fixed here on purpose: the columns became
+-- not null in the 20260722110000, 20260723100000 and 20260723110000 migrations, and a seed
+-- without them fails on a from-scratch database.
 
 insert into projects (
   id,
@@ -9,6 +12,7 @@ insert into projects (
   client,
   phase,
   progress,
+  public_id,
   created_at,
   updated_at
 ) values (
@@ -18,6 +22,7 @@ insert into projects (
   'Duna Invest Zrt.',
   'Belso befejezo munkak',
   68,
+  'PRJ-001',
   '2026-07-06 08:00:00+00',
   '2026-07-06 08:00:00+00'
 ) on conflict (id) do update set
@@ -35,6 +40,7 @@ insert into subcontractors (
   contact_name,
   phone,
   email,
+  public_id,
   created_at
 ) values (
   '22222222-2222-4222-8222-222222222222',
@@ -43,6 +49,7 @@ insert into subcontractors (
   'Nagy Peter',
   '+36 20 444 7788',
   'burkolo@example.invalid',
+  'ALV-001',
   '2026-07-06 08:05:00+00'
 ) on conflict (id) do update set
   name = excluded.name,
@@ -391,6 +398,7 @@ insert into work_logs (
 
 insert into blocker_list (
   id,
+  public_id,
   project_id,
   created_by_profile_id,
   responsible_profile_id,
@@ -407,6 +415,7 @@ insert into blocker_list (
 ) values
 (
   '12345678-1234-4234-8234-123456789abc',
+  'AKA-001',
   '11111111-1111-4111-8111-111111111111',
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -423,6 +432,7 @@ insert into blocker_list (
 ),
 (
   '23456789-2345-4345-8345-23456789abcd',
+  'AKA-002',
   '11111111-1111-4111-8111-111111111111',
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
