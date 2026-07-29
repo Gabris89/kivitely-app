@@ -954,20 +954,27 @@ export async function getIssue(id: string, projectId?: string) {
 }
 
 export async function getIssueEvidence(issueId: string) {
-  const issueDbId = await getSupabaseIssueDbId(issueId);
   const supabase = await getServerSupabaseClient();
-  const result = issueDbId && supabase
-    ? await supabase
-        .from("issue_evidence")
-        .select("*")
-        .eq("issue_id", issueDbId)
-        .order("uploaded_at", { ascending: true })
-    : null;
-  const rows = result?.data as SupabaseEvidenceRow[] | null | undefined;
+  // Supabase nelkuli demo mod: mock adat, hogy az app vegigkattinthato legyen.
+  if (!supabase) return mockEvidencePhotos.filter((photo) => photo.issueId === issueId);
 
-  logSupabaseReadError("issue_evidence", result?.error || null);
+  // Elesben viszont a hatokoron kivuli (vagy nem letezo) hiba URES listat kap.
+  // Korabban ilyenkor is a mock fotok jottek vissza, mert a "nincs sor" agat
+  // nem lehetett megkulonboztetni a "nincs jogod" agtol.
+  const issueDbId = await getSupabaseIssueDbId(issueId);
+  if (!issueDbId) return [];
 
-  return rows?.length ? rows.map((row) => mapEvidence(row, issueId)) : mockEvidencePhotos.filter((photo) => photo.issueId === issueId);
+  const { data, error } = await supabase
+    .from("issue_evidence")
+    .select("*")
+    .eq("issue_id", issueDbId)
+    .order("uploaded_at", { ascending: true });
+
+  logSupabaseReadError("issue_evidence", error);
+
+  if (error) return [];
+  const rows = (data as SupabaseEvidenceRow[] | null) || [];
+  return rows.map((row) => mapEvidence(row, issueId));
 }
 
 async function createSupabaseIssueEvidence(issueId: string, input: CreateIssueEvidenceInput) {
@@ -1099,20 +1106,25 @@ export async function deleteIssueEvidenceRecord(issueId: string, evidenceId: str
 }
 
 export async function getIssueEvents(issueId: string) {
-  const issueDbId = await getSupabaseIssueDbId(issueId);
   const supabase = await getServerSupabaseClient();
-  const result = issueDbId && supabase
-    ? await supabase
-        .from("issue_events")
-        .select("*")
-        .eq("issue_id", issueDbId)
-        .order("created_at", { ascending: true })
-    : null;
-  const rows = result?.data as SupabaseIssueEventRow[] | null | undefined;
+  // Lasd getIssueEvidence: demo modban mock, elesben a hatokoron kivuli hiba
+  // ures naplot kap, nem demo-esemenyeket.
+  if (!supabase) return mockIssueEvents.filter((event) => event.issueId === issueId);
 
-  logSupabaseReadError("issue_events", result?.error || null);
+  const issueDbId = await getSupabaseIssueDbId(issueId);
+  if (!issueDbId) return [];
 
-  return rows?.length ? rows.map((row) => mapIssueEvent(row, issueId)) : mockIssueEvents.filter((event) => event.issueId === issueId);
+  const { data, error } = await supabase
+    .from("issue_events")
+    .select("*")
+    .eq("issue_id", issueDbId)
+    .order("created_at", { ascending: true });
+
+  logSupabaseReadError("issue_events", error);
+
+  if (error) return [];
+  const rows = (data as SupabaseIssueEventRow[] | null) || [];
+  return rows.map((row) => mapIssueEvent(row, issueId));
 }
 
 export async function listSubcontractors() {
@@ -1560,14 +1572,71 @@ export async function deleteProjectDocumentRecord(documentId: string): Promise<D
   };
 }
 
+/**
+ * Dokumentum-fojtopont: lathatja-e a bejelentkezett felhasznalo ezt a tervet?
+ *
+ * A projekthez (getSupabaseProjectDbId) es a hibahoz (getSupabaseIssueDbId) mar
+ * volt ilyen kapu, a dokumentumhoz nem: a meres- es kalibracio-vegpontok nyers
+ * document uuid-val dolgoztak, igy barmely belepett felhasznalo elerhette
+ * barmely projekt tervenek mereseit. Minden dokumentum-alapu muvelet ezen megy
+ * at, hogy ne maradhasson kifelejtett hivas.
+ *
+ * Visszateres: a dokumentum azonositoja, ha lathato; null, ha nem lathato vagy
+ * nem letezik - a ketto szandekosan megkulonboztethetetlen.
+ */
+async function getScopedDocumentId(documentId: string) {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("project_documents")
+    .select("id,project_id")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  logSupabaseReadError("document scope lookup", error);
+  if (error || !data) return null;
+
+  const row = data as { id: string; project_id: string | null };
+  const scope = await getVisibilityScope();
+  if (scope.unrestricted) return row.id;
+
+  return row.project_id && scopeAllowsProject(scope, row.project_id) ? row.id : null;
+}
+
+/**
+ * Ugyanaz meres-azonositora: a meres a dokumentumon keresztul orokli a
+ * projekt-hatokort. A modosito/torlo vegpontok nyers measurementId-vel
+ * dolgoznak, ezert kell ez a lepes.
+ */
+async function getScopedMeasurementId(measurementId: string) {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("plan_measurements")
+    .select("id,document_id")
+    .eq("id", measurementId)
+    .maybeSingle();
+
+  logSupabaseReadError("measurement scope lookup", error);
+  if (error || !data) return null;
+
+  const row = data as { id: string; document_id: string };
+  return (await getScopedDocumentId(row.document_id)) ? row.id : null;
+}
+
 export async function listPlanMeasurements(documentId: string): Promise<PlanMeasurement[]> {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return [];
 
+  const scopedDocumentId = await getScopedDocumentId(documentId);
+  if (!scopedDocumentId) return [];
+
   const { data, error } = await supabase
     .from("plan_measurements")
     .select("*")
-    .eq("document_id", documentId)
+    .eq("document_id", scopedDocumentId)
     .order("created_at", { ascending: false });
 
   logSupabaseReadError("plan_measurements", error);
@@ -1582,10 +1651,15 @@ export async function createPlanMeasurementRecord(input: CreatePlanMeasurementIn
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { measurement: null, mode: "mock" };
 
+  // A szerep-jog (measurement.create) az epitesvezetot is beengedi, aki viszont
+  // hatokor-korlatozott: csak a sajat projektjei tervere irhat.
+  const scopedDocumentId = await getScopedDocumentId(input.documentId);
+  if (!scopedDocumentId) return { measurement: null, mode: "supabase" };
+
   const { data, error } = await supabase
     .from("plan_measurements")
     .insert({
-      document_id: input.documentId,
+      document_id: scopedDocumentId,
       page_number: input.pageNumber,
       measurement_type: input.measurementType,
       points: input.points,
@@ -1607,7 +1681,10 @@ export async function deletePlanMeasurementRecord(measurementId: string): Promis
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, mode: "mock" };
 
-  const { error } = await supabase.from("plan_measurements").delete().eq("id", measurementId);
+  const scopedMeasurementId = await getScopedMeasurementId(measurementId);
+  if (!scopedMeasurementId) return { ok: false, mode: "supabase" };
+
+  const { error } = await supabase.from("plan_measurements").delete().eq("id", scopedMeasurementId);
 
   logSupabaseWriteError("plan_measurements delete", error);
 
@@ -1619,6 +1696,9 @@ export async function updatePlanMeasurementRecord(input: UpdatePlanMeasurementIn
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { measurement: null, mode: "mock" };
 
+  const scopedMeasurementId = await getScopedMeasurementId(input.measurementId);
+  if (!scopedMeasurementId) return { measurement: null, mode: "supabase" };
+
   const { data, error } = await supabase
     .from("plan_measurements")
     .update({
@@ -1627,7 +1707,7 @@ export async function updatePlanMeasurementRecord(input: UpdatePlanMeasurementIn
       label: input.label || null,
       note: input.note || null
     })
-    .eq("id", input.measurementId)
+    .eq("id", scopedMeasurementId)
     .select("*")
     .single();
 
@@ -1641,10 +1721,13 @@ export async function getPlanCalibration(documentId: string): Promise<number | n
   const supabase = await getServerSupabaseClient();
   if (!supabase) return null;
 
+  const scopedDocumentId = await getScopedDocumentId(documentId);
+  if (!scopedDocumentId) return null;
+
   const { data, error } = await supabase
     .from("plan_calibrations")
     .select("meters_per_unit")
-    .eq("document_id", documentId)
+    .eq("document_id", scopedDocumentId)
     .maybeSingle();
 
   logSupabaseReadError("plan_calibrations", error);
@@ -1658,9 +1741,12 @@ export async function savePlanCalibration(documentId: string, metersPerUnit: num
   const supabase = await getServerSupabaseClient();
   if (!supabase) return { ok: false, mode: "mock" };
 
+  const scopedDocumentId = await getScopedDocumentId(documentId);
+  if (!scopedDocumentId) return { ok: false, mode: "supabase" };
+
   const { error } = await supabase
     .from("plan_calibrations")
-    .upsert({ document_id: documentId, meters_per_unit: metersPerUnit, updated_at: new Date().toISOString() });
+    .upsert({ document_id: scopedDocumentId, meters_per_unit: metersPerUnit, updated_at: new Date().toISOString() });
 
   logSupabaseWriteError("plan_calibrations", error);
 
@@ -1731,13 +1817,22 @@ async function getSupabaseBlockerDbId(publicId: string) {
 
   const { data, error } = await supabase
     .from("blocker_list")
-    .select("id")
+    .select("id,project_id")
     .eq("public_id", publicId)
     .maybeSingle();
 
   logSupabaseReadError("blocker id lookup", error);
 
-  return error ? null : data?.id || null;
+  if (error || !data) return null;
+
+  // Fojtopont: minden AKA-xxx -> DB id forditas hatokorre szurve. Ma a torles
+  // amugy is csak vezetoi (korlatlan) szerepnek megy, de ha a jog kesobb
+  // szelesedik, ne itt nyiljon vissza a res.
+  const row = data as { id: string; project_id: string | null };
+  const scope = await getVisibilityScope();
+  if (scope.unrestricted) return row.id;
+
+  return row.project_id && scopeAllowsProject(scope, row.project_id) ? row.id : null;
 }
 
 async function updateSupabaseBlocker(publicId: string, input: UpdateBlockerInput) {
@@ -1788,12 +1883,22 @@ async function updateSupabaseBlocker(publicId: string, input: UpdateBlockerInput
  * kezzel osszerakott keres sem tud allapotot leptetni a matrix megkerulesevel.
  */
 async function authorizeBlockerUpdate(publicId: string, input: UpdateBlockerInput): Promise<UpdateBlockerInput> {
+  const role = await getCurrentWorkflowRole();
+
+  // Hatokor eloszor, a szerep-jog ELOTT. A getBlockerByPublicId a mar
+  // hatokorre szukitett listabol dolgozik, igy amit nem lat a felhasznalo, azt
+  // nem is szerkesztheti - blocker.update joggal sem. Ez azert kell, mert az
+  // epitesvezetonek van blocker.update joga, de o hatokor-korlatozott: csak a
+  // sajat tagsagi projektjeiben. A nem letezo es a nem lathato akadaly
+  // ugyanazt a valaszt adja, tehat a letezes nem derul ki.
+  const existing = await getBlockerByPublicId(publicId);
+  if (!existing) throw new PermissionError("blocker.update", role);
+
   if (await hasPermission("blocker.update")) return input;
 
-  const role = await getCurrentWorkflowRole();
-  const [user, existing] = await Promise.all([getCurrentUser(), getBlockerByPublicId(publicId)]);
+  const user = await getCurrentUser();
 
-  if (!existing || !canEditBlocker(role, existing, user?.profileId)) {
+  if (!canEditBlocker(role, existing, user?.profileId)) {
     throw new PermissionError("blocker.update", role);
   }
 
@@ -2539,13 +2644,24 @@ export async function getTigPackageDetail(packagePublicId: string): Promise<TigP
   const { data, error } = await supabase
     .from("tig_packages")
     .select(
-      "public_id, status, gross_value_huf, net_value_huf, performance_date, period_start, period_end, note, created_at, subcontractors(name, trade, contact_name, phone), projects(name, address, client), tig_package_issues(issues(public_id, title, location, area, trade, value_huf, issue_evidence(evidence_type, storage_path)))"
+      "public_id, project_id, status, gross_value_huf, net_value_huf, performance_date, period_start, period_end, note, created_at, subcontractors(name, trade, contact_name, phone), projects(name, address, client), tig_package_issues(issues(public_id, title, location, area, trade, value_huf, issue_evidence(evidence_type, storage_path)))"
     )
     .eq("public_id", packagePublicId)
     .maybeSingle();
 
   logSupabaseReadError("tig package detail", error);
   if (error || !data) return null;
+
+  // Hatokor-ellenorzes. A TIG export penzugyi adatot, alvallalkozoi
+  // kapcsolattartot es fotokat is tartalmaz, ezert itt a repositoryban all a
+  // kapu - nem csak a hivo route-ban -, hogy egy kesobbi uj hivo se
+  // felejthesse ki. A nem lathato csomag ugyanugy "nincs ilyen", mint a nem
+  // letezo: a valasz nem arulja el a letezeset.
+  const scope = await getVisibilityScope();
+  const packageProjectId = (data as { project_id?: string | null }).project_id;
+  if (!scope.unrestricted && (!packageProjectId || !scopeAllowsProject(scope, packageProjectId))) {
+    return null;
+  }
 
   const row = data as unknown as {
     public_id: string;

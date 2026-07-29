@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getTigPackageDetail } from "@/lib/repository";
 import { issuerCompany, tigFileSlug, tigStatusLabels } from "@/lib/company";
+import { checkPermission } from "@/lib/permissions.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // TIG csomag Excel (.xlsx) export: Összesítő + Tételek munkalap.
 export async function GET(_request: Request, { params }: { params: Promise<{ packageId: string }> }) {
+  // A csomag bruttó/nettó összeget, alvállalkozói kapcsolattartót és tételenkénti
+  // értékeket tartalmaz, ezért ugyanaz a kapu, mint a pénzügyi adatok
+  // megjelenítésénél. A hatókört a getTigPackageDetail ellenőrzi.
+  const denied = await checkPermission("money.view");
+  if (denied) return denied;
+
   const { packageId } = await params;
   const detail = await getTigPackageDetail(packageId);
   if (!detail) return NextResponse.json({ error: "Nincs ilyen csomag" }, { status: 404 });

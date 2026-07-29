@@ -297,7 +297,7 @@ export function TigWorkspace({
       ) : null}
 
       {packages.length === 0 && !creating ? (
-        <p className="card empty-list">Még nincs TIG csomag. Hozz létre egyet az „Új TIG csomag" gombbal.</p>
+        <p className="card empty-list">Még nincs TIG csomag. Hozz létre egyet az „Új TIG csomag” gombbal.</p>
       ) : (
         <div className="package-list">
           {packages.map((pkg) => {

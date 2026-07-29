@@ -214,9 +214,15 @@ export function AppShell({
 
   // Bármilyen oldalváltáskor csukjuk be a "Több" drawert – így nem maradhat
   // nyitva az auth-váltás (kijelentkezés → bejelentkezés) körül sem.
+  // A zárás egy tickkel később fut: effektben a szinkron setState kaszkádolt
+  // újrarenderelést indít (ugyanaz a minta, mint a fenti effektben).
   useEffect(() => {
-    setIsMenuOpen(false);
-    setPendingMenuHref(null);
+    const timeoutId = window.setTimeout(() => {
+      setIsMenuOpen(false);
+      setPendingMenuHref(null);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [pathname]);
 
   function closeMenuToDashboard() {
