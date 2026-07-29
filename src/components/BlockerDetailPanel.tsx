@@ -141,6 +141,12 @@ export function BlockerDetailPanel({
         </div>
       </div>
 
+      {/* Lasd IssueDetailPanel: a sikeres mentes uzenete az urlapon belul volt,
+          ami mentesnel bezarul - igy a visszajelzes sosem latszott. */}
+      {!isEditing && saveState.status === "saved" ? (
+        <p className="inline-note success-message">{saveState.message}</p>
+      ) : null}
+
       {!isEditing ? (
         <>
           <div className="technical-description">

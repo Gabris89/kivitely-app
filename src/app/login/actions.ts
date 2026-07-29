@@ -25,6 +25,13 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    // A felhasznalonak SZANDEKOSAN altalanos uzenetet adunk: ha kulonbseget
+    // tennenk "nincs ilyen fiok" es "rossz jelszo" kozott, azzal ki lehetne
+    // deriteni, mely e-mail cimek leteznek a rendszerben.
+    //
+    // A szerver-logba viszont kiirjuk a valodi okot, kulonben egy hibas
+    // beallitast (pl. meg nem megerositett fiok) nem lehet kinyomozni.
+    console.warn(`Bejelentkezes sikertelen (${email}): ${error.message}`);
     redirect(`/login?error=${encodeURIComponent("Hibás e-mail cím vagy jelszó.")}&next=${encodeURIComponent(next)}`);
   }
 

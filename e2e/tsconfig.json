@@ -1,0 +1,21 @@
+{
+  // Kulon tsconfig a teszteknek: a gyoker tsconfig.json kizarja az e2e mappat,
+  // hogy a "next build" typecheckje ne lassuljon a teszt-fajloktol. A szerkeszto
+  // viszont ettol a fajltol tudja, hogyan ertelmezze oket.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "esnext"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    // Ugyanaz a sor, mint a gyoker tsconfig.json-ben: a node10 feloldas
+    // elavultsagi hibajat nemitja, amig a projekt nem lep tovabb.
+    "ignoreDeprecations": "6.0",
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["**/*.ts", "../playwright.config.ts"]
+}

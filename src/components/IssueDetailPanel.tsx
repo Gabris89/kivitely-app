@@ -161,6 +161,13 @@ export function IssueDetailPanel({
 
       <WorkflowStepper status={issue.status} nextStatuses={nextStatuses} />
 
+      {/* A mentes visszajelzese a szerkeszto urlapon BELUL volt, az urlap
+          viszont sikeres mentesnel bezarul - igy a felhasznalo soha nem latta,
+          hogy sikerult-e. Ezert az olvaso nezetben is megjelenitjuk. */}
+      {!isEditing && saveState.status === "saved" ? (
+        <p className="inline-note success-message">{saveState.message}</p>
+      ) : null}
+
       {!isEditing ? (
         <>
           <div className="technical-description">

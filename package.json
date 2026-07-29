@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:permissions": "playwright test --project=permissions",
     "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
@@ -22,6 +25,7 @@
     "react-konva": "^19.2.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
