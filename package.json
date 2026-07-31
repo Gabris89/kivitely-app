@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=permissions --project=regression",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:permissions": "playwright test --project=permissions",
+    "test:e2e:rls": "playwright test --project=rls-db",
     "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {

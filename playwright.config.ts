@@ -3,8 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 // A jelszavak a .env.test.local-bol jonnek. Nem hasznalunk dotenv csomagot:
-// a Node 22 process.loadEnvFile() beepitve tudja ezt. A fajl hianya itt meg
-// nem hiba - a globalSetup ad rola ertheto uzenetet, egy helyen.
+// a Node 22 process.loadEnvFile() beepitve tudja ezt.
+//
+// A .env.local-t is betoltjuk (ha van), de CSAK azert, hogy a DB-szintu
+// RLS-teszt (rls-direct.spec.ts) elerje a mar ott konfiguralt Supabase URL-t es
+// publishable kulcsot - igy azt nem kell kulon a .env.test.local-ba masolni. A
+// .env.test.local UTANA toltodik, tehat az E2E_* ertekek felulirjak.
+// (A .env.local tartalmat sem a config, sem a teszt nem irja ki sehova.)
 const envFile = path.join(__dirname, ".env.test.local");
 if (fs.existsSync(envFile)) {
   process.loadEnvFile(envFile);
@@ -43,6 +48,18 @@ export default defineConfig({
       // ne akadjanak egymasba (pl. ket teszt ugyanazt a hibat lepteti).
       name: "regression",
       testDir: "./e2e/regression",
+      fullyParallel: false,
+      workers: 1,
+      use: { ...devices["Desktop Chrome"] }
+    },
+    {
+      // DB-szintu RLS-tesztek. KULON projekt es KULON futas (npm run
+      // test:e2e:rls), mert ezek signInWithPassword-del jelentkeznek be a hat
+      // fiokra - ez elrontja azokat a munkameneteket (storageState), amikre az
+      // app-alapu tesztek epulnek. Egyutt futtatva a ket csomag osszeakadna,
+      // ezert a default `test:e2e` szandekosan NEM tartalmazza ezt a projektet.
+      name: "rls-db",
+      testDir: "./e2e/rls",
       fullyParallel: false,
       workers: 1,
       use: { ...devices["Desktop Chrome"] }
