@@ -22,3 +22,9 @@ test-results
 playwright-report
 blob-report
 e2e/.auth
+
+# Demo-prezentacio GENERALT tartalma. A scripts/capture-screenshots.mjs es a
+# scripts/build-demo-deck.py barmikor ujraeloallitja - nem verziokovetjuk a
+# binaris kimenetet.
+docs/screenshots/
+docs/*.pptx
