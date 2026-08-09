@@ -1,26 +1,28 @@
 :root {
-  /* Rétegzett felületek – prémium, kontrasztosabb sötét téma.
-     bg (alap) < panel (kártya) < panel-strong (kiemelt). */
-  --bg: #070b14;
-  --panel: rgba(20, 30, 51, 0.72);
-  --panel-strong: rgba(28, 41, 68, 0.92);
+  /* KISERLETI ARCULAT: "Lime Spark" (#B6FF2E) + "Graphite" (#23262F).
+     Retegzett feluletek: bg (alap) < panel (kartya) < panel-strong (kiemelt).
+     Az alap kicsit sotetebb a graphite-nal, hogy a kartyak folotte uljenek. */
+  --bg: #17191f;
+  --panel: rgba(35, 38, 47, 0.78);
+  --panel-strong: rgba(45, 49, 60, 0.94);
   --panel-2: rgba(255, 255, 255, 0.05);
-  --line: rgba(255, 255, 255, 0.12);
-  --line-strong: rgba(255, 255, 255, 0.2);
-  --text: #f2f7ff;
-  --muted: #93a7c6;
-  --soft: #cddef3;
-  --brand: #5ad1f5;
-  --brand-hi: #86e6ff;
-  --brand-2: #8b5cf6;
-  --brand-ink: #05121c;
-  --ok: #48d597;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #f4f6f4;
+  --muted: #9aa1ab;
+  --soft: #d3d8dd;
+  --brand: #b6ff2e;
+  --brand-hi: #caff5e;
+  --brand-2: #6fb50a;
+  /* Sotet graphite szoveg a vilagos lime feluleteken (gombok) - eros kontraszt. */
+  --brand-ink: #16181d;
+  --ok: #34d399;
   --warn: #ffd166;
   --danger: #ff6b6b;
-  /* Rétegzett, feszesebb árnyék + finom üvegél-highlight külön tokenben. */
-  --shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.62), 0 4px 12px -6px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 10px 30px -8px rgba(90, 209, 245, 0.42);
-  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  /* Retegzett, feszesebb arnyek + finom uvegél-highlight kulon tokenben. */
+  --shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.66), 0 4px 12px -6px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 10px 30px -8px rgba(182, 255, 46, 0.38);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --radius: 20px;
   --radius-sm: 13px;
 }
@@ -36,8 +38,8 @@ body {
   /* Tiszta, mély alap finom márka-fényekkel felül (a korábbi zavaros
      zöld/lila diagonál helyett) – ettől "drágább" a benyomás. */
   background:
-    radial-gradient(1100px 560px at 50% -8%, rgba(90, 209, 245, 0.1), transparent 60%),
-    radial-gradient(820px 460px at 100% 0%, rgba(139, 92, 246, 0.1), transparent 55%),
+    radial-gradient(1100px 560px at 50% -8%, rgba(182, 255, 46, 0.08), transparent 60%),
+    radial-gradient(820px 460px at 100% 0%, rgba(182, 255, 46, 0.05), transparent 55%),
     var(--bg);
   background-attachment: fixed;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -126,7 +128,7 @@ select option { color: var(--text); background: var(--bg); }
 .mobile-menu-section button:hover,
 .mobile-menu-group button:hover {
   color: #fff;
-  background: rgba(104, 225, 253, 0.12);
+  background: rgba(182, 255, 46, 0.12);
 }
 .nav-icon {
   display: grid;
@@ -226,7 +228,7 @@ select option { color: var(--text); background: var(--bg); }
   border: 0;
   box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
-.button.primary:hover { box-shadow: 0 12px 34px -8px rgba(90, 209, 245, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.button.primary:hover { box-shadow: 0 12px 34px -8px rgba(182, 255, 46, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
 .button.ghost { background: rgba(255, 255, 255, 0.05); border-color: var(--line-strong); }
 .button.ghost:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.28); }
 .button.danger { color: #ffb3b1; background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.32); }
@@ -263,7 +265,7 @@ select option { color: var(--text); background: var(--bg); }
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 .entity-row:last-child { border-bottom: 0; }
-a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px 0 0 var(--brand); }
+a.entity-row:hover { background: rgba(182, 255, 46, 0.08); box-shadow: inset 3px 0 0 var(--brand); }
 .entity-row-main { display: grid; gap: 4px; min-width: 0; }
 .entity-row-main strong { font-size: 15px; letter-spacing: -0.02em; }
 .entity-row-main span { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
@@ -282,7 +284,7 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
   border: 1px solid var(--line);
   border-radius: 10px;
 }
-.icon-btn:hover { color: #fff; background: rgba(104, 225, 253, 0.14); }
+.icon-btn:hover { color: #fff; background: rgba(182, 255, 46, 0.14); }
 .icon-btn.danger:hover { color: #ffaaa8; background: rgba(255, 107, 107, 0.14); }
 .icon-btn:disabled { opacity: 0.5; cursor: default; }
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -436,7 +438,7 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
   cursor: pointer;
   flex-shrink: 0;
 }
-.edit-toggle-btn:hover { color: var(--brand); border-color: rgba(104, 225, 253, 0.4); }
+.edit-toggle-btn:hover { color: var(--brand); border-color: rgba(182, 255, 46, 0.4); }
 .edit-toggle-btn.active { color: var(--bg); background: var(--brand); border-color: var(--brand); }
 .edit-toggle-btn svg {
   width: 16px;
@@ -479,7 +481,7 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
   white-space: nowrap;
 }
 .status-draft { color: #b9c8dd; background: rgba(255, 255, 255, 0.08); }
-.status-open { color: #91f1ff; background: rgba(104, 225, 253, 0.12); }
+.status-open { color: #d6ff9a; background: rgba(182, 255, 46, 0.12); }
 .status-assigned { color: #d2c2ff; background: rgba(139, 92, 246, 0.16); }
 .status-in_progress { color: #ffe08d; background: rgba(255, 209, 102, 0.14); }
 .status-ready_for_review { color: #8af0bd; background: rgba(72, 213, 151, 0.14); }
@@ -652,7 +654,7 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
   border: 1px solid var(--line);
   border-radius: 18px;
   background:
-    linear-gradient(135deg, rgba(104, 225, 253, 0.34), rgba(139, 92, 246, 0.28)),
+    linear-gradient(135deg, rgba(182, 255, 46, 0.30), rgba(35, 38, 47, 0.42)),
     repeating-linear-gradient(45deg, rgba(255,255,255,.08) 0 8px, rgba(255,255,255,.02) 8px 16px);
 }
 .photo-open-link {
@@ -1131,7 +1133,7 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
   color: #ffaaa8;
   border-color: rgba(255, 107, 107, 0.32);
 }
-.timeline div { padding: 12px 12px 12px 16px; border-left: 2px solid rgba(104, 225, 253, 0.5); border-radius: 0 14px 14px 0; background: rgba(255, 255, 255, 0.04); }
+.timeline div { padding: 12px 12px 12px 16px; border-left: 2px solid rgba(182, 255, 46, 0.5); border-radius: 0 14px 14px 0; background: rgba(255, 255, 255, 0.04); }
 .timeline strong, .timeline span { display: block; }
 .timeline span { margin-top: 4px; color: var(--muted); font-size: 12px; }
 .timeline-disclosure {
@@ -1231,7 +1233,7 @@ a.entity-row:hover { background: rgba(90, 209, 245, 0.08); box-shadow: inset 3px
 }
 .form-grid textarea { min-height: 110px; resize: vertical; }
 .full { grid-column: 1 / -1; }
-.upload-box { display: grid; min-height: 150px; place-items: center; padding: 20px; color: var(--soft); text-align: center; border: 1.5px dashed rgba(104, 225, 253, 0.44); border-radius: 20px; background: rgba(104, 225, 253, 0.06); }
+.upload-box { display: grid; min-height: 150px; place-items: center; padding: 20px; color: var(--soft); text-align: center; border: 1.5px dashed rgba(182, 255, 46, 0.44); border-radius: 20px; background: rgba(182, 255, 46, 0.06); }
 .upload-box span { display: block; margin-top: 8px; color: var(--muted); }
 .form-help {
   margin: 0;
@@ -2186,12 +2188,12 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 }
 .document-type {
   color: #b7e4ff;
-  background: rgba(104, 225, 253, 0.12);
+  background: rgba(182, 255, 46, 0.12);
 }
 .document-type-architectural_plan,
 .document-type-technical_plan {
   color: #b7e4ff;
-  background: rgba(104, 225, 253, 0.12);
+  background: rgba(182, 255, 46, 0.12);
 }
 .document-type-material_spec {
   color: #ffe08d;
@@ -2505,6 +2507,56 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 }
 .measure-base-image, .measure-base-canvas { display: block; }
 .measure-konva-stage { position: absolute; top: 0; left: 0; touch-action: pan-x pan-y; }
+
+/* AI helyiseg-elemzes: kijeloles-teglalap overlay a Konva-stage folott. A
+   pointer-events:none, hogy a koppintasok tovabbra is a Konva-stage-be jussanak. */
+.ai-selection-rect {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  border: 2px solid var(--brand);
+  background: rgba(182, 255, 46, 0.14);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(22, 24, 29, 0.6);
+}
+.ai-result-card {
+  margin: 0 14px 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  box-shadow: var(--edge);
+}
+.ai-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.ai-confidence { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ai-confidence-low { color: var(--warn); }
+.ai-result-warning { margin: 4px 0 10px; color: var(--warn); font-size: 13px; }
+.ai-result-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 12px; }
+.ai-result-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.ai-result-fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 11px;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.ai-result-fields input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.ai-result-warnings { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+.ai-result-warnings li { margin: 2px 0; }
+.ai-result-raw { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.ai-result-raw summary { cursor: pointer; }
+.ai-result-raw p { margin: 6px 0 0; padding: 8px 10px; border: 1px dashed var(--line-strong); border-radius: 8px; color: var(--soft); word-break: break-word; font-family: ui-monospace, monospace; }
+.ai-result-raw-empty { margin-top: 10px; font-size: 12px; color: var(--warn); }
+.ai-result-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ai-list-title { margin: 0 0 6px; font-size: 14px; }
+@media (max-width: 720px) {
+  .ai-result-card { margin: 0 10px 8px; }
+  .ai-list-title { margin-left: 0; }
+}
 .measure-list {
   flex: 0 0 auto;
   max-height: 160px;
@@ -2922,8 +2974,8 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   transition: 0.18s ease;
 }
 .project-switcher-trigger:hover {
-  border-color: rgba(104, 225, 253, 0.4);
-  background: rgba(104, 225, 253, 0.08);
+  border-color: rgba(182, 255, 46, 0.4);
+  background: rgba(182, 255, 46, 0.08);
 }
 .project-switcher-badge {
   flex-shrink: 0;
@@ -3002,10 +3054,10 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 }
 .project-switcher-option:hover {
   color: #fff;
-  background: rgba(104, 225, 253, 0.12);
+  background: rgba(182, 255, 46, 0.12);
 }
 .project-switcher-option.active {
-  background: rgba(104, 225, 253, 0.16);
+  background: rgba(182, 255, 46, 0.16);
 }
 .project-switcher-option-main {
   display: grid;
@@ -3043,7 +3095,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   font-weight: 700;
 }
 .project-switcher-new:hover {
-  background: rgba(104, 225, 253, 0.1);
+  background: rgba(182, 255, 46, 0.1);
 }
 
 /* A mobil felső sáv csak keskeny nézetben jelenik meg (a sidebar ott rejtve
@@ -3120,7 +3172,7 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .tig-status-draft { color: var(--muted); }
 .tig-status-ready_for_review { color: var(--warn); border-color: rgba(255, 209, 102, 0.4); }
 .tig-status-approved { color: var(--ok); border-color: rgba(72, 213, 151, 0.4); }
-.tig-status-sent { color: var(--brand); border-color: rgba(90, 209, 245, 0.4); }
+.tig-status-sent { color: var(--brand); border-color: rgba(182, 255, 46, 0.4); }
 
 @media (max-width: 720px) {
   /* Időszak egymás alá; a create-panel alja átlátható, gombok teljes szélesen
@@ -3184,12 +3236,12 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .wf-label { font-size: 0.72rem; line-height: 1.25; color: var(--muted); }
 .wf-step.done .wf-node { background: #0e2620; border-color: rgba(72, 213, 151, 0.55); color: var(--ok); }
 .wf-step.done .wf-label { color: var(--soft); }
-.wf-step.next .wf-node { border-color: rgba(90, 209, 245, 0.45); color: var(--soft); }
+.wf-step.next .wf-node { border-color: rgba(182, 255, 46, 0.45); color: var(--soft); }
 .wf-step.current .wf-node {
   background: var(--brand);
   border-color: var(--brand-hi);
   color: var(--brand-ink);
-  box-shadow: 0 0 0 4px rgba(90, 209, 245, 0.18);
+  box-shadow: 0 0 0 4px rgba(182, 255, 46, 0.18);
   transform: scale(1.1);
 }
 .wf-step.current .wf-label { color: var(--text); font-weight: 600; }
