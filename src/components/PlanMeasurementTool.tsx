@@ -15,7 +15,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs
 import type { PlanAnalysis, PlanAnalysisResult, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, PlanSelectionRect, ProjectDocument } from "@/types";
 import type { SelectedPoint } from "./PlanMeasurementCanvas";
 import { colorForMeasurementId } from "@/lib/measurementColors";
-import { extractTextItemsInRect } from "@/lib/ai/pdfTextExtract";
+import { extractAllTextItems, extractTextItemsInRect, findRoomMatches, type RoomMatch } from "@/lib/ai/pdfTextExtract";
 
 // The whole Konva canvas loads as one client-only unit - see the comment
 // in PlanMeasurementCanvas.tsx for why it can't be split per-primitive.
@@ -166,6 +166,14 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   // lassuk, pontosan mit ad a pdf.js (pl. hogyan jon a "m²").
   const [aiRawText, setAiRawText] = useState<string>("");
   const [savedAnalyses, setSavedAnalyses] = useState<PlanAnalysis[]>([]);
+  // Kodra kereses: a felhasznalo beirja a helyiseg kodjat/nevet, a tervrol
+  // megkeressuk. Ha tobb illik (a kod lakasonkent ismetlodik), valaszto-lista.
+  const [aiCodeQuery, setAiCodeQuery] = useState("");
+  const [aiMatches, setAiMatches] = useState<RoomMatch[]>([]);
+  // A felismert-kartya alapbol tomor (osszefoglalo + Mentes), a terv kapja a
+  // helyet; egy kattintasra kinyilik szerkesztesre. Kulonosen telefonon fontos.
+  const [aiCardExpanded, setAiCardExpanded] = useState(false);
+  const [aiListOpen, setAiListOpen] = useState(false);
 
   const [savedMeasurements, setSavedMeasurements] = useState<PlanMeasurement[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(true);
@@ -300,8 +308,11 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       // logikai (CSS) meret valtozatlan marad, ezert a stage es a kijeloles is
       // pontosan kovet - csak a nagyitott kep lesz kicsit lagyabb a hatar felett.
       const MAX_CANVAS_DIM = 4096;
-      const MAX_CANVAS_AREA = 4_000_000;
-      let backingScale = window.devicePixelRatio || 1;
+      const MAX_CANVAS_AREA = 2_800_000;
+      // A pixel-aranyt 1.5-re sapkazuk: telefonon a DPR 2-3, ami 4-9x annyi
+      // rajzolando pixel -> lassu render. 1.5x meg eleg eles egy CAD-tervhez,
+      // de sokkal gyorsabb, igy a zoom is folyekonyabb.
+      let backingScale = Math.min(window.devicePixelRatio || 1, 1.5);
       backingScale = Math.min(backingScale, MAX_CANVAS_DIM / viewport.width, MAX_CANVAS_DIM / viewport.height);
       const backingArea = viewport.width * viewport.height * backingScale * backingScale;
       if (backingArea > MAX_CANVAS_AREA) backingScale *= Math.sqrt(MAX_CANVAS_AREA / backingArea);
@@ -494,6 +505,8 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     setAiResult(null);
     setAiFields(EMPTY_AI_FIELDS);
     setAiRawText("");
+    setAiCodeQuery("");
+    setAiMatches([]);
   }
 
   // Editing an existing measurement reuses the draw flow. Its scale might
@@ -590,10 +603,8 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       const page = await pdf.getPage(pageNumber);
       const textItems = await extractTextItemsInRect(page, rect);
 
-      // Diagnosztika: mutassuk meg (kartyan + konzolon) a nyers szoveget.
+      // Diagnosztika: a nyers szoveg a kartyan (a "Kiolvasott szoveg" lenyilo).
       setAiRawText(textItems.map((item) => item.text).join(" | "));
-      // eslint-disable-next-line no-console
-      console.log("[AI elemzes] kiolvasott text-itemek:", textItems);
 
       const response = await fetch(`/api/documents/${doc.id}/analyze`, {
         method: "POST",
@@ -613,6 +624,111 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     } finally {
       setAiAnalyzing(false);
     }
+  }
+
+  // Kodra/nevre kereses: megkeressuk az OSSZES illeszkedo helyiseget a lapon.
+  // Ha tobb van (a kod lakasonkent ismetlodik), valaszto-listat mutatunk.
+  async function runCodeSearch() {
+    const query = aiCodeQuery.trim();
+    if (!query) return;
+    const pdf = pdfDocRef.current;
+    if (!pdf) return;
+
+    setAiAnalyzing(true);
+    setMessage("");
+    setAiResult(null);
+    setAiRawText("");
+    setAiMatches([]);
+    try {
+      const page = await pdf.getPage(pageNumber);
+      const allItems = await extractAllTextItems(page);
+      const matches = findRoomMatches(allItems, query);
+
+      if (matches.length === 0) {
+        showMessage(`Nem találom: „${query}". Próbáld pontosabban (pl. „B3.06 fürdő").`, "error");
+        setAiSelection(null);
+        return;
+      }
+      if (matches.length === 1) {
+        await analyzeMatch(matches[0]);
+        return;
+      }
+      // Tobb talalat -> a felhasznalo valasszon (a kod lakasonkent ismetlodik).
+      setAiMatches(matches);
+      setAiSelection(null);
+    } finally {
+      setAiAnalyzing(false);
+    }
+  }
+
+  // Egy kivalasztott (vagy egyertelmu) helyiseg felismerese + ragorgetes.
+  async function analyzeMatch(match: RoomMatch) {
+    setAiMatches([]);
+    setAiAnalyzing(true);
+    setMessage("");
+    setAiResult(null);
+    try {
+      const xs = match.items.map((it) => it.x);
+      const ys = match.items.map((it) => it.y);
+      const pad = 0.012;
+      const rect: PlanSelectionRect = {
+        x: Math.min(...xs) - pad,
+        y: Math.min(...ys) - pad,
+        w: Math.max(...xs) - Math.min(...xs) + 2 * pad,
+        h: Math.max(...ys) - Math.min(...ys) + 2 * pad
+      };
+      setAiSelection(rect);
+      setAiCorners([]);
+      setAiRawText(match.items.map((it) => it.text).join(" | "));
+
+      const response = await fetch(`/api/documents/${doc.id}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageNumber, selection: rect, calculationType: "room_info", textItems: match.items })
+      }).catch(() => undefined);
+
+      const payload = await response?.json().catch(() => null);
+      if (!response?.ok || !payload?.data?.result) {
+        showMessage("Az elemzés nem sikerült. Próbáld újra.", "error");
+        return;
+      }
+
+      const result = payload.data.result as PlanAnalysisResult;
+      setAiResult(result);
+      setAiFields(fieldsFromResult(result));
+
+      // Ragorgetes a megtalalt helyisegre (mindket koordinata a szelesseghez
+      // normalizalt -> pixel = frac * stageWidth).
+      requestAnimationFrame(() => {
+        const container = containerRef.current;
+        if (container && stageWidth) {
+          container.scrollLeft = match.center.x * stageWidth - container.clientWidth / 2;
+          container.scrollTop = match.center.y * stageWidth - container.clientHeight / 2;
+        }
+      });
+    } finally {
+      setAiAnalyzing(false);
+    }
+  }
+
+  // Mentett elemzes megnyitasa szerkesztesre: betoltjuk a kartyaba, es ragorgetunk.
+  // A "Mentes" utana a dedup (kod+nev) miatt a meglevot frissiti (felulirja).
+  function openAnalysisForEdit(analysis: PlanAnalysis) {
+    resetDrawing();
+    setMode("ai-select");
+    setAiResult(analysis.result);
+    setAiFields(fieldsFromResult(analysis.result));
+    setAiSelection(analysis.selection);
+
+    requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (container && stageWidth) {
+        const cx = analysis.selection.x + analysis.selection.w / 2;
+        const cy = analysis.selection.y + analysis.selection.h / 2;
+        container.scrollLeft = cx * stageWidth - container.clientWidth / 2;
+        container.scrollTop = cy * stageWidth - container.clientHeight / 2;
+      }
+    });
   }
 
   async function saveAnalysis() {
@@ -661,7 +777,20 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     }
 
     const payload = await response.json().catch(() => null);
-    if (payload?.data) setSavedAnalyses((current) => [payload.data, ...current]);
+    if (payload?.data) {
+      const saved = payload.data as PlanAnalysis;
+      const savedCode = saved.result.room.code?.trim();
+      const savedName = saved.result.room.name?.trim();
+      // A kliens-listat is dedupaljuk (kod+nev), ahogy a szerver: kulonben a
+      // regi ugyanolyan bejegyzes optikailag ottmaradna az uj mellett.
+      setSavedAnalyses((current) => {
+        const withoutDupes =
+          savedCode && savedName
+            ? current.filter((a) => !(a.result.room.code?.trim() === savedCode && a.result.room.name?.trim() === savedName))
+            : current;
+        return [saved, ...withoutDupes];
+      });
+    }
     showMessage("Helyiség-elemzés elmentve.");
     resetDrawing();
   }
@@ -953,68 +1082,117 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       ) : null}
 
       {mode === "ai-select" && !aiResult ? (
-        <p className="measure-hint">
-          <span className="measure-hint-full">
-            {aiAnalyzing
-              ? "Elemzés folyamatban…"
-              : "Jelölj ki egy helyiséget: koppints a terület két átlós sarkára (bal-felső és jobb-alsó)."}
-          </span>
-          <span className="measure-hint-compact">{aiAnalyzing ? "Elemzés…" : `${aiCorners.length}/2 sarok`}</span>
-        </p>
+        <>
+          <div className="ai-code-search">
+            <input
+              type="text"
+              value={aiCodeQuery}
+              onChange={(event) => {
+                const value = event.target.value;
+                setAiCodeQuery(value);
+                // Ures kereses -> a talalati lista es az aktiv jeloles eltunik.
+                if (!value.trim()) { setAiMatches([]); setAiSelection(null); }
+              }}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); runCodeSearch(); } }}
+              placeholder="Helyiség kódja (pl. B3.12)"
+              suppressHydrationWarning
+            />
+            <button type="button" className="button primary" disabled={aiAnalyzing || !aiCodeQuery.trim()} onClick={runCodeSearch}>
+              Keresés
+            </button>
+          </div>
+          {aiMatches.length > 0 ? (
+            <div className="ai-match-list">
+              <p className="ai-match-title">Több helyiség illik – válaszd ki:</p>
+              {aiMatches.map((match, index) => (
+                <button key={`${match.code}-${index}`} type="button" className="ai-match-item" onClick={() => analyzeMatch(match)}>
+                  {match.label}
+                </button>
+              ))}
+              <button type="button" className="ai-match-cancel" onClick={() => { setAiMatches([]); setAiCodeQuery(""); setAiSelection(null); }}>
+                Mégse
+              </button>
+            </div>
+          ) : null}
+          <p className="measure-hint">
+            <span className="measure-hint-full">
+              {aiAnalyzing
+                ? "Elemzés folyamatban…"
+                : "Írd be a helyiség kódját fent, VAGY koppints a terület két átlós sarkára (bal-felső és jobb-alsó)."}
+            </span>
+            <span className="measure-hint-compact">{aiAnalyzing ? "Elemzés…" : `${aiCorners.length}/2 sarok`}</span>
+          </p>
+        </>
       ) : null}
 
       {mode === "ai-select" && aiResult ? (
         <div className="ai-result-card">
-          <div className="ai-result-head">
+          <button type="button" className="ai-result-head" onClick={() => setAiCardExpanded((v) => !v)}>
             <strong>Felismert helyiség</strong>
             <span className={aiResult.confidence < 0.55 ? "ai-confidence ai-confidence-low" : "ai-confidence"}>
-              biztonság: {Math.round(aiResult.confidence * 100)}%
+              {Math.round(aiResult.confidence * 100)}%
             </span>
-          </div>
+            <span className="ai-card-toggle">{aiCardExpanded ? "▾ Bezár" : "▸ Szerkeszt"}</span>
+          </button>
+
+          {/* Tomor osszefoglalo - mindig lathato, a terv nem szorul ossze. */}
+          <p className="ai-result-summary">
+            {[
+              aiFields.code,
+              aiFields.name,
+              aiFields.area ? `${aiFields.area} m²` : null,
+              aiFields.height ? `bm ${aiFields.height} m` : null,
+              aiFields.finish
+            ]
+              .filter(Boolean)
+              .join(" · ") || "nincs kiolvasott adat"}
+          </p>
 
           {aiResult.confidence < 0.55 ? (
-            <p className="ai-result-warning">⚠ Bizonytalan felismerés – ellenőrizd az értékeket mentés előtt.</p>
+            <p className="ai-result-warning">⚠ Bizonytalan – ellenőrizd mentés előtt.</p>
           ) : null}
 
-          <div className="ai-result-fields">
-            <label>
-              Helyiség kódja
-              <input type="text" value={aiFields.code} onChange={(e) => setAiFields((f) => ({ ...f, code: e.target.value }))} placeholder="pl. B3.08" suppressHydrationWarning />
-            </label>
-            <label>
-              Megnevezés
-              <input type="text" value={aiFields.name} onChange={(e) => setAiFields((f) => ({ ...f, name: e.target.value }))} placeholder="pl. FÜRDŐ" suppressHydrationWarning />
-            </label>
-            <label>
-              Alapterület (m²)
-              <input type="text" inputMode="decimal" value={aiFields.area} onChange={(e) => setAiFields((f) => ({ ...f, area: e.target.value }))} placeholder="pl. 4,33" suppressHydrationWarning />
-            </label>
-            <label>
-              Belmagasság (m)
-              <input type="text" inputMode="decimal" value={aiFields.height} onChange={(e) => setAiFields((f) => ({ ...f, height: e.target.value }))} placeholder="pl. 2,70" suppressHydrationWarning />
-            </label>
-            <label>
-              Padlóburkolat
-              <input type="text" value={aiFields.finish} onChange={(e) => setAiFields((f) => ({ ...f, finish: e.target.value }))} placeholder="pl. greslap" suppressHydrationWarning />
-            </label>
-          </div>
+          {aiCardExpanded ? (
+            <>
+              <div className="ai-result-fields">
+                <label>
+                  Helyiség kódja
+                  <input type="text" value={aiFields.code} onChange={(e) => setAiFields((f) => ({ ...f, code: e.target.value }))} placeholder="pl. B3.08" suppressHydrationWarning />
+                </label>
+                <label>
+                  Megnevezés
+                  <input type="text" value={aiFields.name} onChange={(e) => setAiFields((f) => ({ ...f, name: e.target.value }))} placeholder="pl. FÜRDŐ" suppressHydrationWarning />
+                </label>
+                <label>
+                  Alapterület (m²)
+                  <input type="text" inputMode="decimal" value={aiFields.area} onChange={(e) => setAiFields((f) => ({ ...f, area: e.target.value }))} placeholder="pl. 4,33" suppressHydrationWarning />
+                </label>
+                <label>
+                  Belmagasság (m)
+                  <input type="text" inputMode="decimal" value={aiFields.height} onChange={(e) => setAiFields((f) => ({ ...f, height: e.target.value }))} placeholder="pl. 2,70" suppressHydrationWarning />
+                </label>
+                <label>
+                  Padlóburkolat
+                  <input type="text" value={aiFields.finish} onChange={(e) => setAiFields((f) => ({ ...f, finish: e.target.value }))} placeholder="pl. greslap" suppressHydrationWarning />
+                </label>
+              </div>
 
-          {aiResult.warnings.length ? (
-            <ul className="ai-result-warnings">
-              {aiResult.warnings.map((warning, index) => (
-                <li key={index}>{warning}</li>
-              ))}
-            </ul>
+              {aiResult.warnings.length ? (
+                <ul className="ai-result-warnings">
+                  {aiResult.warnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {aiRawText ? (
+                <details className="ai-result-raw">
+                  <summary>Kiolvasott szöveg (diagnosztika)</summary>
+                  <p>{aiRawText}</p>
+                </details>
+              ) : null}
+            </>
           ) : null}
-
-          {aiRawText ? (
-            <details className="ai-result-raw">
-              <summary>Kiolvasott szöveg (diagnosztika)</summary>
-              <p>{aiRawText}</p>
-            </details>
-          ) : (
-            <p className="ai-result-raw-empty">Diagnosztika: a kijelölt régióban nem volt kiolvasható szöveg (üres text-layer).</p>
-          )}
 
           <div className="ai-result-actions">
             <button type="button" className="button ghost" onClick={() => { setAiResult(null); setAiCorners([]); setAiSelection(null); setAiRawText(""); }}>
@@ -1111,19 +1289,6 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
           </>
         ) : null}
 
-        {mode === "ai-select" && aiSelection && stageWidth > 0 ? (
-          <div
-            className="ai-selection-rect"
-            style={{
-              left: `${aiSelection.x * stageWidth}px`,
-              top: `${aiSelection.y * stageWidth}px`,
-              width: `${aiSelection.w * stageWidth}px`,
-              height: `${aiSelection.h * stageWidth}px`
-            }}
-            aria-hidden="true"
-          />
-        ) : null}
-
         {stageWidth > 0 && stageHeight > 0 ? (
           <PlanMeasurementCanvas
             stageWidth={stageWidth}
@@ -1141,6 +1306,22 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
             measurementType={measurementType}
             metersPerUnit={metersPerUnit}
             selectedPoint={selectedPoint}
+            aiSavedRects={
+              mode === "ai-select"
+                ? savedAnalyses
+                    .filter((analysis) => !isPdf || analysis.pageNumber === pageNumber)
+                    .map((analysis) => ({
+                      id: analysis.id,
+                      x: analysis.selection.x,
+                      y: analysis.selection.y,
+                      w: analysis.selection.w,
+                      h: analysis.selection.h,
+                      color: colorForMeasurementId(analysis.id),
+                      label: analysis.result.room.code || analysis.result.room.name || "?"
+                    }))
+                : []
+            }
+            aiActiveRect={mode === "ai-select" ? aiSelection : null}
             onDragCalibrationPoint={moveCalibrationPoint}
             onDragDrawPoint={moveDrawPoint}
             onSelectCalibrationPoint={selectCalibrationPoint}
@@ -1189,27 +1370,39 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
 
       {savedAnalyses.length ? (
         <div className="measure-list">
-          <h3 className="ai-list-title">AI helyiség-elemzések ({savedAnalyses.length})</h3>
-          {savedAnalyses
+          <button type="button" className="measure-list-toggle" onClick={() => setAiListOpen((current) => !current)}>
+            <h3>AI helyiség-elemzések ({savedAnalyses.length})</h3>
+            <span aria-hidden="true">{aiListOpen ? "▾" : "▸"}</span>
+          </button>
+          {aiListOpen
+            ? savedAnalyses
             .filter((analysis) => !isPdf || analysis.pageNumber === pageNumber)
-            .map((analysis) => (
-              <div className="measure-list-item" key={analysis.id}>
-                <div>
-                  <strong>
-                    {[analysis.result.room.code, analysis.result.room.name].filter(Boolean).join(" · ") || "Helyiség"}
-                  </strong>
-                  <small>
-                    {[
-                      analysis.result.room.printedFloorAreaM2 !== null ? `${formatValue(analysis.result.room.printedFloorAreaM2, "area")}` : null,
-                      analysis.result.room.ceilingHeightM !== null ? `bm ${formatValue(analysis.result.room.ceilingHeightM, "length")}` : null,
-                      analysis.result.room.floorFinish
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "nincs kiolvasott adat"}
-                  </small>
+            .map((analysis) => {
+              const info =
+                [analysis.result.room.code, analysis.result.room.name].filter(Boolean).join(" · ") || "Helyiség";
+              const detail =
+                [
+                  analysis.result.room.printedFloorAreaM2 !== null ? `${formatValue(analysis.result.room.printedFloorAreaM2, "area")}` : null,
+                  analysis.result.room.ceilingHeightM !== null ? `bm ${formatValue(analysis.result.room.ceilingHeightM, "length")}` : null,
+                  analysis.result.room.floorFinish
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "nincs kiolvasott adat";
+              return (
+                <div className="measure-list-item" key={analysis.id}>
+                  <div>
+                    <strong>{info}</strong>
+                    <small>{detail}</small>
+                  </div>
+                  {canMeasure ? (
+                    <button type="button" className="measure-undo" onClick={() => openAnalysisForEdit(analysis)}>
+                      Szerkesztés
+                    </button>
+                  ) : null}
                 </div>
-              </div>
-            ))}
+              );
+            })
+            : null}
         </div>
       ) : null}
     </div>

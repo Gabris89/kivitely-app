@@ -7,13 +7,18 @@
 // this whole component is loaded as a single next/dynamic(..., { ssr:false })
 // unit from PlanMeasurementTool, and everything inside it uses plain static
 // imports so react-konva only ever sees its own real component references.
-import { Circle, Group, Label, Layer, Line, Stage, Tag, Text } from "react-konva";
+import { Circle, Group, Label, Layer, Line, Rect, Stage, Tag, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType } from "@/types";
 import { colorForMeasurementId } from "@/lib/measurementColors";
 
 export type StagePointerEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 export type SelectedPoint = { kind: "calibration" | "draw"; index: number } | null;
+
+/** AI-elemzes teglalapja a canvason (normalizalt koordinatak, szelesseghez). A
+ *  canvasban rajzolva pontosan ugy skalazodik/gorgeteshez tapad, mint a meresek
+ *  - nem csusznak el zoomkor (ellentetben a korabbi HTML-div overlay-jel). */
+export type AiRect = { id: string; x: number; y: number; w: number; h: number; color: string; label: string };
 
 type Props = {
   stageWidth: number;
@@ -25,6 +30,10 @@ type Props = {
   measurementType: PlanMeasurementType;
   metersPerUnit: number | null;
   selectedPoint: SelectedPoint;
+  /** Mar felmert AI-helyisegek szines teglalapjai (mi van meg). */
+  aiSavedRects?: AiRect[];
+  /** Az eppen aktiv kijeloles/talalat teglalapja. */
+  aiActiveRect?: { x: number; y: number; w: number; h: number } | null;
   onDragCalibrationPoint: (index: number, point: PlanMeasurementPoint) => void;
   onDragDrawPoint: (index: number, point: PlanMeasurementPoint) => void;
   onSelectCalibrationPoint: (index: number) => void;
@@ -113,6 +122,8 @@ export default function PlanMeasurementCanvas({
   measurementType,
   metersPerUnit,
   selectedPoint,
+  aiSavedRects = [],
+  aiActiveRect = null,
   onDragCalibrationPoint,
   onDragDrawPoint,
   onSelectCalibrationPoint,
@@ -149,6 +160,39 @@ export default function PlanMeasurementCanvas({
   return (
     <Stage width={stageWidth} height={stageHeight} className="measure-konva-stage" onClick={handleStageClick}>
       <Layer>
+        {/* AI-elemzesek: mar felmert helyisegek szines teglalapja + a kod cimke. */}
+        {aiSavedRects.map((rect) => (
+          <Group key={rect.id} listening={false}>
+            <Rect
+              x={rect.x * stageWidth}
+              y={rect.y * stageWidth}
+              width={rect.w * stageWidth}
+              height={rect.h * stageWidth}
+              stroke={rect.color}
+              strokeWidth={2}
+              fill={`${rect.color}22`}
+              cornerRadius={3}
+            />
+            <Label x={rect.x * stageWidth} y={rect.y * stageWidth}>
+              <Tag fill={rect.color} cornerRadius={2} />
+              <Text text={rect.label} fontSize={11} fontStyle="bold" fill="#06231a" padding={3} />
+            </Label>
+          </Group>
+        ))}
+        {aiActiveRect ? (
+          <Rect
+            x={aiActiveRect.x * stageWidth}
+            y={aiActiveRect.y * stageWidth}
+            width={aiActiveRect.w * stageWidth}
+            height={aiActiveRect.h * stageWidth}
+            stroke="#b6ff2e"
+            strokeWidth={2.5}
+            fill="rgba(182,255,46,0.14)"
+            cornerRadius={3}
+            listening={false}
+          />
+        ) : null}
+
         {savedMeasurements.map((measurement) => {
           const flat = flattenPoints(measurement.points, stageWidth);
           const color = colorForMeasurementId(measurement.id);

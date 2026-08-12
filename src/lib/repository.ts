@@ -1836,6 +1836,31 @@ export async function createPlanAnalysis(input: CreatePlanAnalysisInput): Promis
   const scopedDocumentId = await getScopedDocumentId(input.documentId);
   if (!scopedDocumentId) return { analysis: null, mode: "supabase" };
 
+  // Deduplikalas: egy helyiseg = egy rekord. FONTOS: a kod a LAKAS szama, ami
+  // minden szobaban ismetlodik (B3.01 NAPPALI, B3.01 FURDO, ...), ezert a kod
+  // ONMAGABAN nem azonosit egy helyiseget - a KOD + NEV egyutt igen. Csak akkor
+  // dedupalunk, ha mindketto megvan; a talalatot JS-ben szurjuk (megbizhatobb,
+  // mint a jsonb-szuro), es id szerint toroljuk a korabbi(ak)at beszuras elott.
+  const dedupCode = input.result.room.code?.trim();
+  const dedupName = input.result.room.name?.trim();
+  if (dedupCode && dedupName) {
+    const { data: existing, error: listError } = await supabase
+      .from("plan_analyses")
+      .select("id,result")
+      .eq("document_id", scopedDocumentId)
+      .eq("calculation_type", input.calculationType);
+    logSupabaseReadError("plan_analyses dedup lookup", listError);
+
+    const dupIds = ((existing as { id: string; result: PlanAnalysisResult }[] | null) || [])
+      .filter((row) => row.result?.room?.code?.trim() === dedupCode && row.result?.room?.name?.trim() === dedupName)
+      .map((row) => row.id);
+
+    if (dupIds.length) {
+      const { error: dedupError } = await supabase.from("plan_analyses").delete().in("id", dupIds);
+      logSupabaseWriteError("plan_analyses dedup", dedupError);
+    }
+  }
+
   const { data, error } = await supabase
     .from("plan_analyses")
     .insert({

@@ -2512,13 +2512,68 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
    pointer-events:none, hogy a koppintasok tovabbra is a Konva-stage-be jussanak. */
 .ai-selection-rect {
   position: absolute;
-  z-index: 5;
+  z-index: 6;
   pointer-events: none;
   border: 2px solid var(--brand);
   background: rgba(182, 255, 46, 0.14);
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(22, 24, 29, 0.6);
 }
+/* Mar felmert helyisegek szines jelolese a terven (mi van meg). */
+.ai-saved-rect {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 2px solid;
+  border-radius: 4px;
+}
+.ai-saved-tag {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #06231a;
+  padding: 1px 5px;
+  border-radius: 4px 0 4px 0;
+  white-space: nowrap;
+}
+/* Kodra kereso mezo az AI-modban. */
+.ai-code-search {
+  display: flex;
+  gap: 8px;
+  margin: 0 14px 8px;
+}
+.ai-code-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.ai-code-search input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.ai-code-search .button { flex: 0 0 auto; }
+.ai-match-list { margin: 0 14px 8px; display: flex; flex-direction: column; gap: 6px; }
+.ai-match-title { margin: 0 0 2px; font-size: 12px; color: var(--muted); }
+.ai-match-item {
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ai-match-item:hover { background: color-mix(in srgb, var(--brand) 14%, transparent); border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); }
+.ai-match-cancel { align-self: flex-start; margin-top: 2px; padding: 6px 4px; font-family: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; cursor: pointer; text-decoration: underline; }
+.ai-match-cancel:hover { color: var(--soft); }
 .ai-result-card {
   margin: 0 14px 10px;
   padding: 12px 14px;
@@ -2527,7 +2582,10 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   background: var(--panel-strong);
   box-shadow: var(--edge);
 }
-.ai-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.ai-result-head { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; padding: 0; background: none; border: 0; cursor: pointer; font-family: inherit; color: var(--text); text-align: left; }
+.ai-result-head strong { font-size: 0.95rem; }
+.ai-card-toggle { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--brand); white-space: nowrap; }
+.ai-result-summary { margin: 0 0 8px; font-size: 0.95rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .ai-confidence { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ai-confidence-low { color: var(--warn); }
 .ai-result-warning { margin: 4px 0 10px; color: var(--warn); font-size: 13px; }
@@ -2616,7 +2674,8 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   .measure-nudge { width: 26px; height: 26px; font-size: 12px; }
   .measure-undo { padding: 3px 7px; font-size: 10px; }
   .measure-calibrate-input, .measure-save-row { margin: 6px 10px 0; }
-  .measure-stage-wrap { margin: 6px 10px; min-height: 0; }
+  /* A terv a fo nezet telefonon: kapja a helyet, ne szoruljon csikba. */
+  .measure-stage-wrap { margin: 6px 10px; min-height: 50vh; flex: 1 1 auto; }
   .measure-list { margin: 0 10px 10px; }
 }
 .pdf-viewer {

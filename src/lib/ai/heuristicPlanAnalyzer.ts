@@ -39,8 +39,9 @@ const FLOOR_FINISHES = [
 ];
 
 // Ismert helyiseg-nevek (a terven nagybetuvel). A leghosszabb egyezes nyer,
-// hogy a "KONYHA, ETKEZO" egyben jojjon at.
-const ROOM_NAME_KEYWORDS = [
+// hogy a "KONYHA, ETKEZO" egyben jojjon at. Exportalt: a kodra-kereses
+// valaszto-listaja is ezt hasznalja a cimkehez (ne "MG"-fele annotaciot vegyen).
+export const ROOM_NAME_KEYWORDS = [
   "FÜRDŐ",
   "FÜRDŐSZOBA",
   "ZUHANYZÓ",
