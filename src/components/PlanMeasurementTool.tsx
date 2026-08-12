@@ -120,6 +120,12 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   // container's visible top-left corner (viewport center for buttons/pinch,
   // the mouse cursor for wheel-zoom).
   const pendingZoomCenterRef = useRef<{ x: number; y: number; anchorLeft: number; anchorTop: number } | null>(null);
+  // Zoom-arany alapu, ABSZOLUT gorgetes-cel (px). A zoomBy ezt hasznalja a
+  // scrollWidth-fuggo tort helyett: gyors gorgetesnel a scrollWidth kesve
+  // frissul (aszinkron render), ezert csuszott a kep. Az arany-modszer a
+  // gorgetes-poziciobol dolgozik, es a meg nem alkalmazott (virtualis) celbol
+  // lancolodik, igy tobb gyors lepes is pontosan komponalodik.
+  const pendingScrollRef = useRef<{ left: number; top: number } | null>(null);
   const pendingPinchDistanceRef = useRef<number | null>(null);
   const panStateRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
 
@@ -342,12 +348,23 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   // in between and see (and act on) a stale position.
   useLayoutEffect(() => {
     const container = containerRef.current;
-    const center = pendingZoomCenterRef.current;
-    if (!container || !center || stageWidth === 0) return;
+    if (!container || stageWidth === 0) return;
 
-    pendingZoomCenterRef.current = null;
-    container.scrollLeft = center.x * container.scrollWidth - center.anchorLeft;
-    container.scrollTop = center.y * container.scrollHeight - center.anchorTop;
+    // 1) Abszolut gorgetes-cel (zoomBy, arany-alapu) - ez az elsodleges.
+    const scroll = pendingScrollRef.current;
+    if (scroll) {
+      pendingScrollRef.current = null;
+      container.scrollLeft = scroll.left;
+      container.scrollTop = scroll.top;
+      return;
+    }
+    // 2) Tort-alapu kozepre-allitas (pl. meres szerkesztesekor rakozelites).
+    const center = pendingZoomCenterRef.current;
+    if (center) {
+      pendingZoomCenterRef.current = null;
+      container.scrollLeft = center.x * container.scrollWidth - center.anchorLeft;
+      container.scrollTop = center.y * container.scrollHeight - center.anchorTop;
+    }
   }, [stageWidth, stageHeight, editingMeasurementId]);
 
   // anchor: where on screen (px from the container's visible top-left) the
@@ -355,17 +372,24 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   // the +/- buttons and pinch-zoom); wheel-zoom passes the cursor position.
   function zoomBy(delta: number, anchor?: { left: number; top: number }) {
     const container = containerRef.current;
-    if (container && container.scrollWidth > 0 && container.scrollHeight > 0) {
-      const anchorLeft = anchor?.left ?? container.clientWidth / 2;
-      const anchorTop = anchor?.top ?? container.clientHeight / 2;
-      pendingZoomCenterRef.current = {
-        x: (container.scrollLeft + anchorLeft) / container.scrollWidth,
-        y: (container.scrollTop + anchorTop) / container.scrollHeight,
-        anchorLeft,
-        anchorTop
-      };
-    }
-    setZoom((current) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(current + delta).toFixed(1))));
+    setZoom((current) => {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(current + delta).toFixed(1)));
+      if (container && next !== current) {
+        const anchorLeft = anchor?.left ?? container.clientWidth / 2;
+        const anchorTop = anchor?.top ?? container.clientHeight / 2;
+        // Ha van meg nem alkalmazott zoom-cel, abbol lancolunk (virtualis
+        // gorgetes) - kulonben a meg nem mozdult DOM-poziciobol. Igy a gyors,
+        // egymast koveto lepesek pontosan komponalodnak: (s+a)*r1*r2 = (s+a)*R.
+        const baseLeft = pendingScrollRef.current?.left ?? container.scrollLeft;
+        const baseTop = pendingScrollRef.current?.top ?? container.scrollTop;
+        const ratio = next / current;
+        pendingScrollRef.current = {
+          left: (baseLeft + anchorLeft) * ratio - anchorLeft,
+          top: (baseTop + anchorTop) * ratio - anchorTop
+        };
+      }
+      return next;
+    });
   }
 
   // Desktop: scroll wheel zooms the plan. Attached as a raw, non-passive
@@ -498,6 +522,8 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     const xs = measurement.points.map((point) => point.x);
     const ys = measurement.points.map((point) => point.y);
     const container = containerRef.current;
+    // Esetleges fuggő zoom-cel torlese, hogy a kozepre-allitas nyerjen.
+    pendingScrollRef.current = null;
     pendingZoomCenterRef.current = {
       x: (Math.min(...xs) + Math.max(...xs)) / 2,
       y: (Math.min(...ys) + Math.max(...ys)) / 2,
