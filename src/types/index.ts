@@ -214,6 +214,58 @@ export type PlanMeasurement = {
   createdAt: string;
 };
 
+// ── AI-alapu tervelemzes (tervfeldolgozas MVP) ──────────────────────────────
+
+/** Honnan szarmazik egy ertek. A "PRINTED" (a terven kiirt szoveg) elonyben a
+ *  kepbol becsulttel szemben - lasd a tervfeldolgozas kovetelmenyeit. */
+export type PlanValueSource = "PRINTED" | "DIMENSION" | "CALCULATED" | "USER_ENTERED";
+
+/** Normalizalt teglalap-kijeloles a tervlapon (0..1, a szelesseghez viszonyitva,
+ *  ugyanugy mint a PlanMeasurementPoint). Igy barmilyen render-felbontasnal
+ *  reprodukalhato. */
+export type PlanSelectionRect = { x: number; y: number; w: number; h: number };
+
+/** Egy, a PDF text-layerbol kiolvasott szoveg-elem, normalizalt kozeppel. A
+ *  kliens gyujti ossze a kijelolt regioban, es kuldi a backendnek. */
+export type PlanTextItem = { text: string; x: number; y: number };
+
+/** Az elemzes strukturalt eredmenye. Az elemzo SOHA nem talal ki hianyzo
+ *  erteket: ami nem olvashato biztosan, az null + warnings + alacsonyabb
+ *  confidence. */
+export type PlanAnalysisResult = {
+  room: {
+    code: string | null;
+    name: string | null;
+    printedFloorAreaM2: number | null;
+    ceilingHeightM: number | null;
+    floorFinish: string | null;
+  };
+  /** Mezonkenti forras (pl. { printedFloorAreaM2: "PRINTED" }). */
+  fieldSources: Partial<Record<string, PlanValueSource>>;
+  /** 0..1 kozotti osszesitett biztonsag. */
+  confidence: number;
+  warnings: string[];
+};
+
+/** A tervelemzeshez tarolt bemenet (mit szeretne szamitani a felhasznalo).
+ *  MVP-ben csak a "room_info". A tobbi (kerulet, falfelulet, ...) kesobbi
+ *  iteracio. */
+export type PlanCalculationType = "room_info";
+
+/** Elmentett tervelemzes (plan_analyses tabla). */
+export type PlanAnalysis = {
+  id: string;
+  documentId: string;
+  pageNumber: number;
+  selection: PlanSelectionRect;
+  calculationType: PlanCalculationType;
+  result: PlanAnalysisResult;
+  confidence: number;
+  userVerified: boolean;
+  createdByProfileId?: string;
+  createdAt: string;
+};
+
 export type DashboardMetrics = {
   openIssues: number;
   overdueIssues: number;

@@ -11,10 +11,11 @@ import {
 } from "react";
 import dynamic from "next/dynamic";
 import type { KonvaEventObject } from "konva/lib/Node";
-import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
-import type { PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, ProjectDocument } from "@/types";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import type { PlanAnalysis, PlanAnalysisResult, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, PlanSelectionRect, ProjectDocument } from "@/types";
 import type { SelectedPoint } from "./PlanMeasurementCanvas";
 import { colorForMeasurementId } from "@/lib/measurementColors";
+import { extractTextItemsInRect } from "@/lib/ai/pdfTextExtract";
 
 // The whole Konva canvas loads as one client-only unit - see the comment
 // in PlanMeasurementCanvas.tsx for why it can't be split per-primitive.
@@ -31,7 +32,34 @@ type Props = {
   canDeleteMeasurement?: boolean;
 };
 
-type Mode = "idle" | "calibrate-pick" | "calibrate-input" | "measure";
+type Mode = "idle" | "calibrate-pick" | "calibrate-input" | "measure" | "ai-select";
+
+// A helyiseg-kartya szerkesztheto (szoveges) mezoi. A szam-mezok (terulet,
+// belmagassag) is stringkent elnek itt, hogy a felhasznalo szabadon javithassa;
+// mentéskor parse-oljuk.
+type AiFields = { code: string; name: string; area: string; height: string; finish: string };
+
+const EMPTY_AI_FIELDS: AiFields = { code: "", name: "", area: "", height: "", finish: "" };
+
+function rectFromCorners(a: PlanMeasurementPoint, b: PlanMeasurementPoint): PlanSelectionRect {
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) };
+}
+
+function fieldsFromResult(result: PlanAnalysisResult): AiFields {
+  const numToStr = (value: number | null) => (value === null ? "" : new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 2 }).format(value));
+  return {
+    code: result.room.code || "",
+    name: result.room.name || "",
+    area: numToStr(result.room.printedFloorAreaM2),
+    height: numToStr(result.room.ceilingHeightM),
+    finish: result.room.floorFinish || ""
+  };
+}
+
+function parseHuNumber(value: string): number | null {
+  const n = Number(value.trim().replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 14;
@@ -83,6 +111,10 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
   const loadingTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
+  // A folyamatban levo PDF-render taskja. Zoom/lapozas gyors valtasakor az
+  // elozot meg kell szakitani, kulonben a pdf.js "canvas busy" hibat dob
+  // ugyanarra a canvasra -> festetlen (fekete) canvas marad.
+  const renderTaskRef = useRef<RenderTask | null>(null);
   // x/y: fractional content coordinate to keep fixed under the anchor point.
   // anchorLeft/anchorTop: where that point should land, in CSS px from the
   // container's visible top-left corner (viewport center for buttons/pinch,
@@ -117,6 +149,18 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     setMessageStatus(status);
   }
 
+  // ── AI helyiseg-elemzes allapota ──
+  const [aiCorners, setAiCorners] = useState<PlanMeasurementPoint[]>([]);
+  const [aiSelection, setAiSelection] = useState<PlanSelectionRect | null>(null);
+  const [aiResult, setAiResult] = useState<PlanAnalysisResult | null>(null);
+  const [aiFields, setAiFields] = useState<AiFields>(EMPTY_AI_FIELDS);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  // Diagnosztika: a kijelolt regiobol kiolvasott nyers szoveg-elemek, hogy
+  // lassuk, pontosan mit ad a pdf.js (pl. hogyan jon a "m²").
+  const [aiRawText, setAiRawText] = useState<string>("");
+  const [savedAnalyses, setSavedAnalyses] = useState<PlanAnalysis[]>([]);
+
   const [savedMeasurements, setSavedMeasurements] = useState<PlanMeasurement[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(true);
   // Collapsed by default: the saved-measurements list was eating most of
@@ -135,6 +179,21 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
         setSavedMeasurements(result?.data || []);
         setLoadingSaved(false);
       }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [doc.id]);
+
+  // Load previously saved AI analyses for this document.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const response = await fetch(`/api/documents/${doc.id}/analyses`).catch(() => null);
+      const result = await response?.json().catch(() => null);
+      if (!cancelled) setSavedAnalyses(result?.data || []);
     })();
 
     return () => {
@@ -224,18 +283,39 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       const containerWidth = containerRef.current?.clientWidth || 0;
       if (!canvas || !containerWidth) return;
 
-      const outputScale = window.devicePixelRatio || 1;
       const baseViewport = page.getViewport({ scale: 1 });
       const fitScale = (containerWidth / baseViewport.width) * zoom;
       const viewport = page.getViewport({ scale: fitScale });
 
-      canvas.width = Math.floor(viewport.width * outputScale);
-      canvas.height = Math.floor(viewport.height * outputScale);
+      // A canvas HATTERTARANAK felbontasat maximaljuk. Nagy zoomnal a
+      // viewport.width * devicePixelRatio konnyen atlepi a mobil (iOS Safari)
+      // canvas-korlatot (~4096 px/tengely, ~16 Mpx osszterulet): a render ilyenkor
+      // csendben elhasal -> festetlen (fekete) canvas, sot ful-osszeomlas. A
+      // logikai (CSS) meret valtozatlan marad, ezert a stage es a kijeloles is
+      // pontosan kovet - csak a nagyitott kep lesz kicsit lagyabb a hatar felett.
+      const MAX_CANVAS_DIM = 4096;
+      const MAX_CANVAS_AREA = 4_000_000;
+      let backingScale = window.devicePixelRatio || 1;
+      backingScale = Math.min(backingScale, MAX_CANVAS_DIM / viewport.width, MAX_CANVAS_DIM / viewport.height);
+      const backingArea = viewport.width * viewport.height * backingScale * backingScale;
+      if (backingArea > MAX_CANVAS_AREA) backingScale *= Math.sqrt(MAX_CANVAS_AREA / backingArea);
+      backingScale = Math.max(0.1, backingScale);
+
+      canvas.width = Math.max(1, Math.floor(viewport.width * backingScale));
+      canvas.height = Math.max(1, Math.floor(viewport.height * backingScale));
       canvas.style.width = `${Math.floor(viewport.width)}px`;
       canvas.style.height = `${Math.floor(viewport.height)}px`;
 
-      const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
-      await page.render({ canvas, viewport, transform }).promise.catch(() => undefined);
+      // Az elozo, meg futo render megszakitasa, mielott ujat inditunk ugyanarra
+      // a canvasra (kulonben "canvas busy" -> fekete canvas).
+      renderTaskRef.current?.cancel();
+
+      const transform = backingScale !== 1 ? [backingScale, 0, 0, backingScale, 0, 0] : undefined;
+      const renderTask = page.render({ canvas, viewport, transform });
+      renderTaskRef.current = renderTask;
+      // A megszakitas RenderingCancelledException-t dob - ez vart, elnyeljuk.
+      await renderTask.promise.catch(() => undefined);
+      if (renderTaskRef.current === renderTask) renderTaskRef.current = null;
 
       if (!cancelled) {
         setStageWidth(Math.floor(viewport.width));
@@ -245,6 +325,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
 
     return () => {
       cancelled = true;
+      renderTaskRef.current?.cancel();
     };
   }, [isPdf, pdfStatus, pageNumber, zoom]);
 
@@ -384,6 +465,11 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     setNote("");
     setSelectedPoint(null);
     setEditingMeasurementId(null);
+    setAiCorners([]);
+    setAiSelection(null);
+    setAiResult(null);
+    setAiFields(EMPTY_AI_FIELDS);
+    setAiRawText("");
   }
 
   // Editing an existing measurement reuses the draw flow. Its scale might
@@ -442,7 +528,116 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
 
     if (mode === "measure") {
       setDrawPoints((current) => [...current, point]);
+      return;
     }
+
+    if (mode === "ai-select") {
+      // Ket atlos sarok jeloli ki a helyiseget. FONTOS: ha mar van kesz eredmeny,
+      // vagy mar 2 sarok megvolt, az uj koppintas FRISS kijelolest kezd - nem
+      // csusztatja az ablakot. Kulonben egy tovabbi koppintas [regi_2, uj] parost
+      // adna, ujra lefuttatna egy ertelmetlen regiot, es felulirna a jo talalatot.
+      const startFresh = aiResult !== null || aiCorners.length >= 2;
+      const next = startFresh ? [point] : [...aiCorners, point];
+      setAiCorners(next);
+      setAiResult(null);
+      setAiRawText("");
+      if (next.length === 2) runAiAnalysis(next[0], next[1]);
+    }
+  }
+
+  async function runAiAnalysis(cornerA: PlanMeasurementPoint, cornerB: PlanMeasurementPoint) {
+    const rect = rectFromCorners(cornerA, cornerB);
+    setAiSelection(rect);
+
+    if (rect.w < 0.01 || rect.h < 0.01) {
+      showMessage("A kijelölés túl kicsi – jelölj ki egy nagyobb helyiség-területet.", "error");
+      setAiCorners([]);
+      return;
+    }
+
+    const pdf = pdfDocRef.current;
+    if (!pdf) return;
+
+    setAiAnalyzing(true);
+    setMessage("");
+    try {
+      const page = await pdf.getPage(pageNumber);
+      const textItems = await extractTextItemsInRect(page, rect);
+
+      // Diagnosztika: mutassuk meg (kartyan + konzolon) a nyers szoveget.
+      setAiRawText(textItems.map((item) => item.text).join(" | "));
+      // eslint-disable-next-line no-console
+      console.log("[AI elemzes] kiolvasott text-itemek:", textItems);
+
+      const response = await fetch(`/api/documents/${doc.id}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageNumber, selection: rect, calculationType: "room_info", textItems })
+      }).catch(() => undefined);
+
+      const payload = await response?.json().catch(() => null);
+      if (!response?.ok || !payload?.data?.result) {
+        showMessage("Az elemzés nem sikerült. Próbáld újra.", "error");
+        return;
+      }
+
+      const result = payload.data.result as PlanAnalysisResult;
+      setAiResult(result);
+      setAiFields(fieldsFromResult(result));
+    } finally {
+      setAiAnalyzing(false);
+    }
+  }
+
+  async function saveAnalysis() {
+    if (!aiResult || !aiSelection) return;
+    setAiSaving(true);
+    setMessage("");
+
+    // A szerkesztett mezokbol allitjuk ossze az eredmenyt. Ahol a felhasznalo
+    // beleirt/javitott, ott a forras USER_ENTERED; amit valtozatlanul hagyott,
+    // ott megtartjuk az eredeti (PRINTED) forrast.
+    const area = parseHuNumber(aiFields.area);
+    const height = parseHuNumber(aiFields.height);
+    const code = aiFields.code.trim() || null;
+    const name = aiFields.name.trim() || null;
+    const finish = aiFields.finish.trim() || null;
+
+    const original = aiResult.room;
+    const fieldSources: PlanAnalysisResult["fieldSources"] = { ...aiResult.fieldSources };
+    const markEdited = (key: string, changed: boolean) => {
+      if (changed) fieldSources[key] = "USER_ENTERED";
+    };
+    markEdited("code", code !== original.code);
+    markEdited("name", name !== original.name);
+    markEdited("printedFloorAreaM2", area !== original.printedFloorAreaM2);
+    markEdited("ceilingHeightM", height !== original.ceilingHeightM);
+    markEdited("floorFinish", finish !== original.floorFinish);
+
+    const result: PlanAnalysisResult = {
+      room: { code, name, printedFloorAreaM2: area, ceilingHeightM: height, floorFinish: finish },
+      fieldSources,
+      confidence: aiResult.confidence,
+      warnings: aiResult.warnings
+    };
+
+    const response = await fetch(`/api/documents/${doc.id}/analyses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pageNumber, selection: aiSelection, calculationType: "room_info", result, userVerified: true })
+    }).catch(() => undefined);
+
+    setAiSaving(false);
+
+    if (!response?.ok) {
+      showMessage("Az elemzés mentése nem sikerült.", "error");
+      return;
+    }
+
+    const payload = await response.json().catch(() => null);
+    if (payload?.data) setSavedAnalyses((current) => [payload.data, ...current]);
+    showMessage("Helyiség-elemzés elmentve.");
+    resetDrawing();
   }
 
   function moveCalibrationPoint(index: number, point: PlanMeasurementPoint) {
@@ -649,6 +844,20 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
           </div>
         ) : null}
 
+        {canMeasure && isPdf ? (
+          <div className="measure-toolbar-group">
+            {mode !== "ai-select" ? (
+              <button type="button" className="button primary" onClick={() => { resetDrawing(); setMode("ai-select"); }}>
+                AI helyiség-elemzés
+              </button>
+            ) : (
+              <button type="button" className="button ghost" onClick={resetDrawing}>
+                AI elemzés vége
+              </button>
+            )}
+          </div>
+        ) : null}
+
         {isPdf && numPages > 1 ? (
           <div className="measure-toolbar-group">
             <button type="button" className="button ghost" disabled={pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)}>
@@ -715,6 +924,81 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
           </span>
           {liveValue !== null ? <span className="measure-hint-compact">Eddig: {formatValue(liveValue, measurementType)}</span> : null}
         </p>
+      ) : null}
+
+      {mode === "ai-select" && !aiResult ? (
+        <p className="measure-hint">
+          <span className="measure-hint-full">
+            {aiAnalyzing
+              ? "Elemzés folyamatban…"
+              : "Jelölj ki egy helyiséget: koppints a terület két átlós sarkára (bal-felső és jobb-alsó)."}
+          </span>
+          <span className="measure-hint-compact">{aiAnalyzing ? "Elemzés…" : `${aiCorners.length}/2 sarok`}</span>
+        </p>
+      ) : null}
+
+      {mode === "ai-select" && aiResult ? (
+        <div className="ai-result-card">
+          <div className="ai-result-head">
+            <strong>Felismert helyiség</strong>
+            <span className={aiResult.confidence < 0.55 ? "ai-confidence ai-confidence-low" : "ai-confidence"}>
+              biztonság: {Math.round(aiResult.confidence * 100)}%
+            </span>
+          </div>
+
+          {aiResult.confidence < 0.55 ? (
+            <p className="ai-result-warning">⚠ Bizonytalan felismerés – ellenőrizd az értékeket mentés előtt.</p>
+          ) : null}
+
+          <div className="ai-result-fields">
+            <label>
+              Helyiség kódja
+              <input type="text" value={aiFields.code} onChange={(e) => setAiFields((f) => ({ ...f, code: e.target.value }))} placeholder="pl. B3.08" suppressHydrationWarning />
+            </label>
+            <label>
+              Megnevezés
+              <input type="text" value={aiFields.name} onChange={(e) => setAiFields((f) => ({ ...f, name: e.target.value }))} placeholder="pl. FÜRDŐ" suppressHydrationWarning />
+            </label>
+            <label>
+              Alapterület (m²)
+              <input type="text" inputMode="decimal" value={aiFields.area} onChange={(e) => setAiFields((f) => ({ ...f, area: e.target.value }))} placeholder="pl. 4,33" suppressHydrationWarning />
+            </label>
+            <label>
+              Belmagasság (m)
+              <input type="text" inputMode="decimal" value={aiFields.height} onChange={(e) => setAiFields((f) => ({ ...f, height: e.target.value }))} placeholder="pl. 2,70" suppressHydrationWarning />
+            </label>
+            <label>
+              Padlóburkolat
+              <input type="text" value={aiFields.finish} onChange={(e) => setAiFields((f) => ({ ...f, finish: e.target.value }))} placeholder="pl. greslap" suppressHydrationWarning />
+            </label>
+          </div>
+
+          {aiResult.warnings.length ? (
+            <ul className="ai-result-warnings">
+              {aiResult.warnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+
+          {aiRawText ? (
+            <details className="ai-result-raw">
+              <summary>Kiolvasott szöveg (diagnosztika)</summary>
+              <p>{aiRawText}</p>
+            </details>
+          ) : (
+            <p className="ai-result-raw-empty">Diagnosztika: a kijelölt régióban nem volt kiolvasható szöveg (üres text-layer).</p>
+          )}
+
+          <div className="ai-result-actions">
+            <button type="button" className="button ghost" onClick={() => { setAiResult(null); setAiCorners([]); setAiSelection(null); setAiRawText(""); }}>
+              Új kijelölés
+            </button>
+            <button type="button" className="button primary" disabled={aiSaving} onClick={saveAnalysis}>
+              {aiSaving ? "Mentés…" : "Elemzés mentése"}
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {(mode === "calibrate-pick" && calibrationPoints.length > 0) || (mode === "measure" && drawPoints.length > 0) ? (
@@ -801,6 +1085,19 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
           </>
         ) : null}
 
+        {mode === "ai-select" && aiSelection && stageWidth > 0 ? (
+          <div
+            className="ai-selection-rect"
+            style={{
+              left: `${aiSelection.x * stageWidth}px`,
+              top: `${aiSelection.y * stageWidth}px`,
+              width: `${aiSelection.w * stageWidth}px`,
+              height: `${aiSelection.h * stageWidth}px`
+            }}
+            aria-hidden="true"
+          />
+        ) : null}
+
         {stageWidth > 0 && stageHeight > 0 ? (
           <PlanMeasurementCanvas
             stageWidth={stageWidth}
@@ -863,6 +1160,32 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
           </>
         ) : null}
       </div>
+
+      {savedAnalyses.length ? (
+        <div className="measure-list">
+          <h3 className="ai-list-title">AI helyiség-elemzések ({savedAnalyses.length})</h3>
+          {savedAnalyses
+            .filter((analysis) => !isPdf || analysis.pageNumber === pageNumber)
+            .map((analysis) => (
+              <div className="measure-list-item" key={analysis.id}>
+                <div>
+                  <strong>
+                    {[analysis.result.room.code, analysis.result.room.name].filter(Boolean).join(" · ") || "Helyiség"}
+                  </strong>
+                  <small>
+                    {[
+                      analysis.result.room.printedFloorAreaM2 !== null ? `${formatValue(analysis.result.room.printedFloorAreaM2, "area")}` : null,
+                      analysis.result.room.ceilingHeightM !== null ? `bm ${formatValue(analysis.result.room.ceilingHeightM, "length")}` : null,
+                      analysis.result.room.floorFinish
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "nincs kiolvasott adat"}
+                  </small>
+                </div>
+              </div>
+            ))}
+        </div>
+      ) : null}
     </div>
   );
 }
