@@ -118,10 +118,22 @@ function findFloorFinish(joined: string): string | null {
   return found[0] || null;
 }
 
-/** Helyiseg-kod, pl. "B3.08". Betu? + szam + pont/kotojel + szam. */
+/** Helyiseg-kod, pl. "B3.12".
+ *  A tervek a helyiseg-kodot BETUVEL + PONTTAL irjak (B3.12), a mereteket/
+ *  reviziot viszont betu nelkul, gyakran KOTOJELLEL (pl. "80-160"). Ezert
+ *  eloszor a SZIGORU mintat keressuk (betu-prefix + pont-elvalaszto), es csak
+ *  ha az nincs, esunk vissza a lazabbra - de a "szam-KOTOJEL-szam" formatumot
+ *  (meret/revizio) SOHA nem fogadjuk el kodkent. */
 function findRoomCode(items: PlanTextItem[]): string | null {
+  // 1) Szigoru: betu + szam(ok) + pont + szam(ok) -> valodi helyiseg-kod.
   for (const item of items) {
-    const m = item.text.match(/\b([A-ZÁÉÍÓÖŐÚÜŰ]?\d+[.\-]\d+)\b/);
+    const m = item.text.match(/\b([A-ZÁÉÍÓÖŐÚÜŰ]\d+\.\d+)\b/);
+    if (m) return m[1];
+  }
+  // 2) Visszaeses: betu-prefixes (pont vagy kotojel), VAGY betu nelkuli, de csak
+  //    PONTTAL (pl. "3.08"). A betu nelkuli kotojeles szam (meret) kimarad.
+  for (const item of items) {
+    const m = item.text.match(/\b([A-ZÁÉÍÓÖŐÚÜŰ]\d+[.\-]\d+|\d+\.\d+)\b/);
     if (m) return m[1];
   }
   return null;
