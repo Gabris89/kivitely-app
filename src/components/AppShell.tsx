@@ -246,6 +246,13 @@ export function AppShell({
     return <main className="content login-shell">{children}</main>;
   }
 
+  // Munkas kezdokepernyo ("Mai munka rogzitese"): szandekosan CSUPASZ - se
+  // sidebar, se also sav, se modul-menu. A cel a legegyszerubb terepi flow:
+  // megnyit -> egy gomb -> rogzit -> kesz. A vezetoi feluletet ez nem erinti.
+  if (pathname === "/ma") {
+    return <main className="content worker-shell">{children}</main>;
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">

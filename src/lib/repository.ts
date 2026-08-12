@@ -105,6 +105,21 @@ export type CreateBlockerResult = {
   mode: "supabase" | "mock";
 };
 
+export type CreateWorkLogInput = {
+  /** A projekt publikus azonositoja (PRJ-xxx). */
+  projectId: string;
+  description: string;
+  workDate?: string;
+  trade?: string;
+  quantity?: number;
+  unit?: string;
+};
+
+export type CreateWorkLogResult = {
+  workLog: WorkLog | null;
+  mode: "supabase" | "mock";
+};
+
 export type UpdateBlockerInput = {
   title: string;
   description: string;
@@ -1419,6 +1434,40 @@ export async function listWorkLogs(projectId: string) {
   if (error) return mockWorkLogs;
   const rows = (data as SupabaseWorkLogRow[] | null) || [];
   return rows.map(mapWorkLog);
+}
+
+export async function createWorkLog(input: CreateWorkLogInput): Promise<CreateWorkLogResult> {
+  await requirePermission("worklog.create");
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { workLog: null, mode: "mock" };
+
+  // Hatokor: a getSupabaseProjectDbId fojtopont csak a sajat projekt DB id-jat
+  // adja vissza - masik projektbe nem lehet naplot irni.
+  const projectDbId = await getSupabaseProjectDbId(input.projectId);
+  if (!projectDbId) return { workLog: null, mode: "supabase" };
+
+  const currentUser = await getCurrentUser();
+  const workDate = input.workDate || new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("work_logs")
+    .insert({
+      project_id: projectDbId,
+      profile_id: currentUser?.profileId || null,
+      trade: input.trade || null,
+      work_date: workDate,
+      description: input.description,
+      quantity: input.quantity ?? null,
+      unit: input.unit || null,
+      status: "submitted"
+    })
+    .select("*,projects(name),profiles(display_name)")
+    .single();
+
+  logSupabaseWriteError("work_logs", error);
+
+  if (error || !data) return { workLog: null, mode: "mock" };
+  return { workLog: mapWorkLog(data as SupabaseWorkLogRow), mode: "supabase" };
 }
 
 export async function listProjectDocuments(projectId: string) {
