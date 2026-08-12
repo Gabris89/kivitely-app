@@ -2830,6 +2830,108 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   min-height: 100vh;
   padding: 24px;
 }
+
+/* ── Munkas kezdokepernyo ("Mai munka rogzitese") ──────────────────────────
+   Szandekosan nagy, magas kontrasztu, egy-kezes hasznalatra a terepen. */
+.worker-shell { display: grid; place-items: center; width: 100%; min-height: 100vh; padding: 20px; }
+.worker-flow { width: 100%; max-width: 480px; }
+.worker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+  box-shadow: var(--shadow), var(--edge);
+  text-align: center;
+}
+.worker-greeting { display: flex; flex-direction: column; gap: 4px; }
+.worker-hello { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+.worker-date { font-size: 0.95rem; color: var(--muted); text-transform: capitalize; }
+
+/* A nagy gomb: a kepernyo dominans eleme - nagy talalofelulet, nagy betu. */
+.worker-big-button {
+  width: 100%;
+  min-height: 120px;
+  padding: 20px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--brand-ink);
+  background: linear-gradient(135deg, var(--brand-hi), var(--brand));
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+.worker-big-button:active { transform: translateY(1px) scale(0.995); }
+.worker-big-button:disabled { opacity: 0.6; cursor: default; }
+.worker-big-button.worker-save { min-height: 88px; font-size: 1.35rem; }
+
+.worker-textlink {
+  padding: 8px;
+  font-size: 0.95rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.worker-textlink:hover { color: var(--soft); }
+.worker-lead { font-size: 1.05rem; color: var(--text); }
+
+/* Urlap */
+.worker-form { align-items: stretch; text-align: left; }
+.worker-form-title, .worker-done-title { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--text); text-align: center; }
+.worker-project-fixed {
+  margin: 0;
+  padding: 12px 14px;
+  font-weight: 700;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: center;
+}
+.worker-field { display: flex; flex-direction: column; gap: 8px; font-size: 1rem; font-weight: 600; color: var(--soft); }
+.worker-optional { font-weight: 500; color: var(--muted); font-size: 0.85rem; }
+.worker-field input, .worker-field textarea, .worker-field select {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px;
+  font-size: 1.05rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.worker-field textarea { min-height: 96px; resize: vertical; }
+.worker-field input:focus-visible, .worker-field textarea:focus-visible, .worker-field select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.worker-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.worker-error { margin: 0; padding: 10px 12px; color: #ffd7d6; background: rgba(255, 107, 107, 0.14); border-radius: 10px; font-weight: 600; }
+
+/* Kesz-kepernyo */
+.worker-done { padding-top: 34px; }
+.worker-check {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--brand-ink);
+  background: var(--brand);
+  border-radius: 50%;
+  box-shadow: var(--shadow-glow);
+}
+.worker-done-summary { margin: 0; display: flex; flex-direction: column; gap: 6px; color: var(--soft); font-size: 1.05rem; }
+.worker-done-summary strong { color: var(--text); font-size: 1.15rem; }
 .login-page {
   display: grid;
   place-items: center;

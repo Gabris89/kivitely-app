@@ -10,7 +10,7 @@ import {
   tigPackages as mockTigPackages,
   workLogs as mockWorkLogs
 } from "@/data/mock";
-import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
+import type { BlockerItem, BlockerSeverity, BlockerStatus, EvidencePhoto, EvidenceType, Issue, IssueEvent, IssueStatus, PlanAnalysis, PlanAnalysisResult, PlanCalculationType, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, PlanSelectionRect, Priority, Project, ProjectDocument, ProjectDocumentType, ProjectDocumentVisibility, Subcontractor, TigItem, TigPackage, WorkLog, WorkLogStatus } from "@/types";
 import { canMoveIssue, isBackwardTransition, issueStatusLabels } from "@/lib/workflow";
 import { getCurrentUser, getCurrentWorkflowRole } from "@/lib/currentUser";
 import { canEditBlocker, workflowRoleLabels } from "@/lib/permissions";
@@ -102,6 +102,21 @@ export type CreateBlockerInput = {
 
 export type CreateBlockerResult = {
   blocker: BlockerItem;
+  mode: "supabase" | "mock";
+};
+
+export type CreateWorkLogInput = {
+  /** A projekt publikus azonositoja (PRJ-xxx). */
+  projectId: string;
+  description: string;
+  workDate?: string;
+  trade?: string;
+  quantity?: number;
+  unit?: string;
+};
+
+export type CreateWorkLogResult = {
+  workLog: WorkLog | null;
   mode: "supabase" | "mock";
 };
 
@@ -229,6 +244,21 @@ export type UpdatePlanMeasurementInput = {
 
 export type SavePlanCalibrationResult = {
   ok: boolean;
+  mode: "supabase" | "mock";
+};
+
+export type CreatePlanAnalysisInput = {
+  documentId: string;
+  pageNumber: number;
+  selection: PlanSelectionRect;
+  calculationType: PlanCalculationType;
+  result: PlanAnalysisResult;
+  confidence: number;
+  userVerified?: boolean;
+};
+
+export type CreatePlanAnalysisResult = {
+  analysis: PlanAnalysis | null;
   mode: "supabase" | "mock";
 };
 
@@ -382,6 +412,19 @@ type SupabasePlanMeasurementRow = {
   calculated_value: number;
   label: string | null;
   note: string | null;
+  created_by_profile_id: string | null;
+  created_at: string;
+};
+
+type SupabasePlanAnalysisRow = {
+  id: string;
+  document_id: string;
+  page_number: number;
+  selection: PlanSelectionRect;
+  calculation_type: PlanCalculationType;
+  result: PlanAnalysisResult;
+  confidence: number | string;
+  user_verified: boolean;
   created_by_profile_id: string | null;
   created_at: string;
 };
@@ -636,6 +679,21 @@ function mapPlanMeasurement(row: SupabasePlanMeasurementRow): PlanMeasurement {
     calculatedValue: row.calculated_value,
     label: row.label || undefined,
     note: row.note || undefined,
+    createdByProfileId: row.created_by_profile_id || undefined,
+    createdAt: row.created_at
+  };
+}
+
+function mapPlanAnalysis(row: SupabasePlanAnalysisRow): PlanAnalysis {
+  return {
+    id: row.id,
+    documentId: row.document_id,
+    pageNumber: row.page_number,
+    selection: row.selection,
+    calculationType: row.calculation_type,
+    result: row.result,
+    confidence: Number(row.confidence),
+    userVerified: row.user_verified,
     createdByProfileId: row.created_by_profile_id || undefined,
     createdAt: row.created_at
   };
@@ -1378,6 +1436,40 @@ export async function listWorkLogs(projectId: string) {
   return rows.map(mapWorkLog);
 }
 
+export async function createWorkLog(input: CreateWorkLogInput): Promise<CreateWorkLogResult> {
+  await requirePermission("worklog.create");
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { workLog: null, mode: "mock" };
+
+  // Hatokor: a getSupabaseProjectDbId fojtopont csak a sajat projekt DB id-jat
+  // adja vissza - masik projektbe nem lehet naplot irni.
+  const projectDbId = await getSupabaseProjectDbId(input.projectId);
+  if (!projectDbId) return { workLog: null, mode: "supabase" };
+
+  const currentUser = await getCurrentUser();
+  const workDate = input.workDate || new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("work_logs")
+    .insert({
+      project_id: projectDbId,
+      profile_id: currentUser?.profileId || null,
+      trade: input.trade || null,
+      work_date: workDate,
+      description: input.description,
+      quantity: input.quantity ?? null,
+      unit: input.unit || null,
+      status: "submitted"
+    })
+    .select("*,projects(name),profiles(display_name)")
+    .single();
+
+  logSupabaseWriteError("work_logs", error);
+
+  if (error || !data) return { workLog: null, mode: "mock" };
+  return { workLog: mapWorkLog(data as SupabaseWorkLogRow), mode: "supabase" };
+}
+
 export async function listProjectDocuments(projectId: string) {
   const supabase = await getServerSupabaseClient();
   if (!supabase) return mockProjectDocuments;
@@ -1751,6 +1843,66 @@ export async function savePlanCalibration(documentId: string, metersPerUnit: num
   logSupabaseWriteError("plan_calibrations", error);
 
   return { ok: !error, mode: error ? "mock" : "supabase" };
+}
+
+/**
+ * Publikus hatokor-ellenorzes API-rol: lathatja-e a felhasznalo a dokumentumot?
+ * A getScopedDocumentId fojtopont vekony burka, hogy a route-ok is elerjek anelkul,
+ * hogy a belso segedet exportalnank. Visszateres: a dokumentum id-ja vagy null.
+ */
+export async function getScopedDocumentIdForApi(documentId: string): Promise<string | null> {
+  return getScopedDocumentId(documentId);
+}
+
+export async function listPlanAnalyses(documentId: string): Promise<PlanAnalysis[]> {
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return [];
+
+  const scopedDocumentId = await getScopedDocumentId(documentId);
+  if (!scopedDocumentId) return [];
+
+  const { data, error } = await supabase
+    .from("plan_analyses")
+    .select("*")
+    .eq("document_id", scopedDocumentId)
+    .order("created_at", { ascending: false });
+
+  logSupabaseReadError("plan_analyses", error);
+
+  const rows = data as SupabasePlanAnalysisRow[] | null;
+  if (error || !rows) return [];
+  return rows.map(mapPlanAnalysis);
+}
+
+export async function createPlanAnalysis(input: CreatePlanAnalysisInput): Promise<CreatePlanAnalysisResult> {
+  // Ugyanaz a terv-munka kontextus, mint a meresnel: aki merhet, az elemezhet is.
+  await requirePermission("measurement.create");
+  const supabase = await getServerSupabaseClient();
+  if (!supabase) return { analysis: null, mode: "mock" };
+
+  // Hatokor: az epitesvezetot a measurement.create beengedi, de csak a sajat
+  // projektjei tervere irhat - a dokumentum-fojtoponton at ellenorizzuk.
+  const scopedDocumentId = await getScopedDocumentId(input.documentId);
+  if (!scopedDocumentId) return { analysis: null, mode: "supabase" };
+
+  const { data, error } = await supabase
+    .from("plan_analyses")
+    .insert({
+      document_id: scopedDocumentId,
+      page_number: input.pageNumber,
+      selection: input.selection,
+      calculation_type: input.calculationType,
+      result: input.result,
+      confidence: input.confidence,
+      user_verified: input.userVerified ?? false
+    })
+    .select("*")
+    .single();
+
+  logSupabaseWriteError("plan_analyses", error);
+
+  if (error || !data) return { analysis: null, mode: "mock" };
+  return { analysis: mapPlanAnalysis(data as SupabasePlanAnalysisRow), mode: "supabase" };
 }
 
 export async function listActiveBlockers(projectId: string) {

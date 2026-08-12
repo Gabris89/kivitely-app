@@ -22,6 +22,7 @@ export type PermissionAction =
   | "blocker.create"
   | "blocker.update"
   | "blocker.delete"
+  | "worklog.create"
   | "subcontractor.create"
   | "subcontractor.update"
   | "subcontractor.delete"
@@ -66,6 +67,10 @@ export const permissionMatrix: Record<PermissionAction, UserRole[]> = {
   "blocker.create": SITE_TEAM_AND_SUBCONTRACTOR,
   "blocker.update": SITE_TEAM,
   "blocker.delete": MANAGEMENT,
+
+  // Teljesitmenynaplo: a terepi munkat a munkavallalo (worker -> subcontractor
+  // jogszint) es a projekt csapata rogziti. A sajat napi munka bevitele.
+  "worklog.create": SITE_TEAM_AND_SUBCONTRACTOR,
 
   // Alvallalkozo-torzsadat: szerzodeses adat, ezert csak vezetoi szint.
   "subcontractor.create": MANAGEMENT,
@@ -142,6 +147,7 @@ const actionLabels: Record<PermissionAction, string> = {
   "blocker.create": "akadály bejelentéséhez",
   "blocker.update": "akadály módosításához",
   "blocker.delete": "akadály törléséhez",
+  "worklog.create": "napi munka rögzítéséhez",
   "subcontractor.create": "alvállalkozó felviteléhez",
   "subcontractor.update": "alvállalkozó módosításához",
   "subcontractor.delete": "alvállalkozó törléséhez",
