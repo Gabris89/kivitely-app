@@ -232,6 +232,30 @@ export type PlanTextItem = { text: string; x: number; y: number };
 /** Az elemzes strukturalt eredmenye. Az elemzo SOHA nem talal ki hianyzo
  *  erteket: ami nem olvashato biztosan, az null + warnings + alacsonyabb
  *  confidence. */
+/** A helyiseg jellege - a szabaly-motor mas keptet hasznal furdo/wc vs terasz. */
+export type RoomTakeoffKind = "wet" | "terrace" | "other";
+
+/** A felmeresi mennyiseg-szamitas felmero-altal-allithato bemenetei. Ezekbol
+ *  szamolja a szabaly-motor az AUTO tetel-mennyisegeket; a `manual` a kezi
+ *  tetelek erteke ES az AUTO tetelek felulirasa (munkanem-kulcs -> mennyiseg). */
+export type RoomTakeoff = {
+  roomKind: RoomTakeoffKind;
+  /** A padlo hidegburkolt-e (parketta/laminalt -> false, greslap/csempe -> true). */
+  floorTiled: boolean;
+  /** Mennyezetig burkolt-e a fal (ekkor a Fal magassaga = belmagassag). */
+  tiledToCeiling: boolean;
+  /** Burkolasi magassag (m), ha NEM mennyezetig. */
+  tilingHeightM: number | null;
+  /** Kell-e kiegyenlites (a Kiegyenl. csak ekkor szamolodik). */
+  levelingNeeded: boolean;
+  /** A Falbol levonando nyilaszaro-terulet a burkolt zonaban (m2). */
+  wallOpeningDeductM2: number | null;
+  /** A Labazatbol levonando (ajtok szelessege) (fm). */
+  skirtingDeductM: number | null;
+  /** Kezi tetel-ertekek + AUTO tetel felulirasa (munkanem-kulcs -> mennyiseg). */
+  manual: Record<string, number>;
+};
+
 export type PlanAnalysisResult = {
   room: {
     code: string | null;
@@ -239,6 +263,8 @@ export type PlanAnalysisResult = {
     printedFloorAreaM2: number | null;
     ceilingHeightM: number | null;
     floorFinish: string | null;
+    /** Felmeresi mennyiseg-szamitas bemenetei (a felmero allitja; opcionalis). */
+    takeoff?: RoomTakeoff | null;
     /** A felmero altal megadott (vagy kotabol felkinalt) meretek. A kerulet a
      *  fal/labazat/szalag/alapozas szamitas KULCSA - a felmero a terv kiirt
      *  kotaibol adja meg, nem rajzbol (pontosabb). */

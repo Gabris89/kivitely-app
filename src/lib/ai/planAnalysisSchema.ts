@@ -1,4 +1,4 @@
-import type { PlanAnalysisResult, PlanValueSource } from "@/types";
+import type { PlanAnalysisResult, PlanValueSource, RoomTakeoff, RoomTakeoffKind } from "@/types";
 
 /**
  * A tervelemzes strukturalt eredmenyenek KEZI validatora.
@@ -28,6 +28,46 @@ function asSource(value: unknown): PlanValueSource | null {
   return VALUE_SOURCES.includes(value as PlanValueSource) ? (value as PlanValueSource) : null;
 }
 
+function asNonNegativeNumberOrNull(value: unknown): number | null {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value.replace(",", ".")) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function asBool(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function asRoomKind(value: unknown): RoomTakeoffKind {
+  return value === "wet" || value === "terrace" || value === "other" ? value : "other";
+}
+
+function asManual(value: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (value && typeof value === "object") {
+    for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+      const n = typeof raw === "number" ? raw : Number(String(raw).replace(",", "."));
+      if (Number.isFinite(n)) out[key] = n;
+    }
+  }
+  return out;
+}
+
+/** A felmeresi takeoff-blokk megtisztitasa (a felmero bemenetei). Ha nincs, undefined. */
+function asTakeoff(value: unknown): RoomTakeoff | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const o = value as Record<string, unknown>;
+  return {
+    roomKind: asRoomKind(o.roomKind),
+    floorTiled: asBool(o.floorTiled, false),
+    tiledToCeiling: asBool(o.tiledToCeiling, true),
+    tilingHeightM: asPositiveNumberOrNull(o.tilingHeightM),
+    levelingNeeded: asBool(o.levelingNeeded, false),
+    wallOpeningDeductM2: asNonNegativeNumberOrNull(o.wallOpeningDeductM2),
+    skirtingDeductM: asNonNegativeNumberOrNull(o.skirtingDeductM),
+    manual: asManual(o.manual)
+  };
+}
+
 function clampConfidence(value: unknown): number {
   const n = typeof value === "number" ? value : NaN;
   if (!Number.isFinite(n)) return 0;
@@ -49,6 +89,7 @@ export function validatePlanAnalysisResult(raw: unknown): PlanAnalysisResult {
     printedFloorAreaM2: asPositiveNumberOrNull(roomInput.printedFloorAreaM2),
     ceilingHeightM: asPositiveNumberOrNull(roomInput.ceilingHeightM),
     floorFinish: asStringOrNull(roomInput.floorFinish),
+    takeoff: asTakeoff(roomInput.takeoff),
     widthM: asPositiveNumberOrNull(roomInput.widthM),
     depthM: asPositiveNumberOrNull(roomInput.depthM),
     perimeterM: asPositiveNumberOrNull(roomInput.perimeterM)
