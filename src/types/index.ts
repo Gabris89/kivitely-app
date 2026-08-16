@@ -239,6 +239,12 @@ export type PlanAnalysisResult = {
     printedFloorAreaM2: number | null;
     ceilingHeightM: number | null;
     floorFinish: string | null;
+    /** A felmero altal megadott (vagy kotabol felkinalt) meretek. A kerulet a
+     *  fal/labazat/szalag/alapozas szamitas KULCSA - a felmero a terv kiirt
+     *  kotaibol adja meg, nem rajzbol (pontosabb). */
+    widthM?: number | null;
+    depthM?: number | null;
+    perimeterM?: number | null;
   };
   /** Mezonkenti forras (pl. { printedFloorAreaM2: "PRINTED" }). */
   fieldSources: Partial<Record<string, PlanValueSource>>;

@@ -17,6 +17,10 @@ export type PlanAnalyzeInput = {
   textItems: PlanTextItem[];
   /** Opcionalis: a canvasbol vagott PNG (base64) a vision-fallbackhez. */
   imageBase64?: string;
+  /** Opcionalis: a helyiseg pontos horgony-pozicioja (normalizalt). A kliens a
+   *  kereseskor tudja; ehhez valasztjuk a mezoket a legkozelebbrol (a kod
+   *  ismetlodik a lakasban, ezert a szerver-oldali talalgatas tevedhet). */
+  anchor?: { x: number; y: number };
 };
 
 export interface AiPlanAnalyzer {
@@ -28,7 +32,7 @@ export interface AiPlanAnalyzer {
 const heuristicAnalyzer: AiPlanAnalyzer = {
   name: "heuristic",
   async analyze(input) {
-    return validatePlanAnalysisResult(analyzeTextItems(input.textItems));
+    return validatePlanAnalysisResult(analyzeTextItems(input.textItems, input.anchor));
   }
 };
 

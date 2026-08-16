@@ -154,14 +154,102 @@ function findRoomName(items: PlanTextItem[]): string | null {
   return null;
 }
 
-export function analyzeTextItems(items: PlanTextItem[]): PlanAnalysisResult {
+/** A helyiseg-kod ITEMje (pozicioval): ehhez a horgonyhoz valasztjuk a tobbi
+ *  mezot a LEGKOZELEBBRE - igy a szomszed helyiseg (nyitott ter!) ertekeit nem
+ *  huzzuk be. */
+function findCodeItem(items: PlanTextItem[]): PlanTextItem | null {
+  for (const item of items) if (/\b[A-ZÁÉÍÓÖŐÚÜŰ]\d+\.\d+\b/.test(item.text)) return item;
+  for (const item of items) if (/\b([A-ZÁÉÍÓÖŐÚÜŰ]\d+[.\-]\d+|\d+\.\d+)\b/.test(item.text)) return item;
+  return null;
+}
+
+function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** A horgony: a kod-item, kulonben a legelso ismert nev-item, kulonben az
+ *  itemek atlaga (kozeppont). */
+function anchorPoint(items: PlanTextItem[]): { x: number; y: number } {
+  const code = findCodeItem(items);
+  if (code) return { x: code.x, y: code.y };
+  const nameItem = items.find((it) => ROOM_NAME_KEYWORDS.some((k) => it.text.toUpperCase().includes(k)));
+  if (nameItem) return { x: nameItem.x, y: nameItem.y };
+  const n = items.length || 1;
+  return { x: items.reduce((s, i) => s + i.x, 0) / n, y: items.reduce((s, i) => s + i.y, 0) / n };
+}
+
+/** Terulet-jeloltek pozicioval: "N m²" egy itemben, VAGY szam-item, amit a
+ *  kozelben (kulon elemkent) egy "m²" kovet (a CAD gyakran szetszedi). */
+function areaCandidates(items: PlanTextItem[]): { value: number; x: number; y: number }[] {
+  const out: { value: number; x: number; y: number }[] = [];
+  for (const it of items) {
+    const full = it.text.match(/(\d+(?:[.,]\d+)?)\s*m\s*(?:2|²)(?![\dA-Za-z.,])/i);
+    if (full) {
+      const v = Number(full[1].replace(",", "."));
+      if (v > 0 && v < 10000) out.push({ value: v, x: it.x, y: it.y });
+      continue;
+    }
+    const bare = it.text.trim().match(/^(\d+(?:[.,]\d+)?)$/);
+    if (!bare) continue;
+    const v = Number(bare[1].replace(",", "."));
+    if (!(v > 0 && v < 10000)) continue;
+    const hasUnit = items.some((o) => o !== it && dist(o, it) <= 0.02 && /(?:m\s*(?:2|²)|²)/i.test(o.text));
+    if (hasUnit) out.push({ value: v, x: it.x, y: it.y });
+  }
+  return out;
+}
+
+/** Belmagassag-jeloltek pozicioval: a "bm"-et tartalmazo item + kozeli szoveg. */
+function ceilingCandidates(items: PlanTextItem[]): { value: number; x: number; y: number }[] {
+  const out: { value: number; x: number; y: number }[] = [];
+  for (const it of items) {
+    if (!/bm/i.test(it.text)) continue;
+    const local = items.filter((o) => dist(o, it) <= 0.03).map((o) => o.text).join(" ");
+    const v = findCeilingHeight(local);
+    if (v !== null) out.push({ value: v, x: it.x, y: it.y });
+  }
+  return out;
+}
+
+function nearest<T extends { x: number; y: number }>(cands: T[], anchor: { x: number; y: number }): T | null {
+  if (!cands.length) return null;
+  return [...cands].sort((a, b) => dist(a, anchor) - dist(b, anchor))[0];
+}
+
+export function analyzeTextItems(items: PlanTextItem[], anchorOverride?: { x: number; y: number }): PlanAnalysisResult {
   const joined = items.map((item) => item.text).join("  ");
+  // A horgony: ha a kliens megadta a helyiseg pontos poziciojat (a kod ismetlodik
+  // a lakasban, ezert a szerver-oldali talalgatas tevedhet), azt hasznaljuk; a
+  // tobbi mezot (terulet/nev/burkolat/belm.) EHHEZ valasztjuk a legkozelebbrol.
+  const anchor = anchorOverride ?? anchorPoint(items);
 
   const code = findRoomCode(items);
-  const name = findRoomName(items);
-  const printedFloorAreaM2 = findFloorArea(joined);
-  const ceilingHeightM = findCeilingHeight(joined);
-  const floorFinish = findFloorFinish(joined);
+
+  // A nev / terulet / burkolat / belmagassag a KOD-horgonyhoz LEGKOZELEBBRE -
+  // igy a szomszed helyiseg (nyitott ter) ertekeit nem huzzuk be. Ha nincs
+  // pozicionalt talalat, visszaesunk a regi, joined-alapu keresesre.
+  const nameHit = nearest(
+    items
+      .filter((it) => ROOM_NAME_KEYWORDS.some((k) => it.text.toUpperCase().includes(k)))
+      .map((it) => ({ value: it.text.trim(), x: it.x, y: it.y })),
+    anchor
+  );
+  const name = nameHit?.value ?? findRoomName(items);
+
+  const printedFloorAreaM2 = nearest(areaCandidates(items), anchor)?.value ?? findFloorArea(joined);
+  const ceilingHeightM = nearest(ceilingCandidates(items), anchor)?.value ?? findCeilingHeight(joined);
+
+  const finishHit = nearest(
+    items
+      .map((it) => {
+        const lower = it.text.toLowerCase();
+        const f = FLOOR_FINISHES.filter((x) => lower.includes(x)).sort((a, b) => b.length - a.length)[0];
+        return f ? { value: f, x: it.x, y: it.y } : null;
+      })
+      .filter((v): v is { value: string; x: number; y: number } => v !== null),
+    anchor
+  );
+  const floorFinish = finishHit?.value ?? findFloorFinish(joined);
 
   const fieldSources: PlanAnalysisResult["fieldSources"] = {};
   const warnings: string[] = [];

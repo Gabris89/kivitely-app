@@ -2486,27 +2486,16 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   flex: 1 1 auto;
   min-height: 260px;
   margin: 12px 14px;
-  overflow: auto;
-  /* The browser's own scroll-anchoring tries to keep whatever it thinks
-     was "in view" fixed whenever the content inside resizes (exactly what
-     zooming does) - it was fighting our own cursor/pinch-anchored scroll
-     math below, each zoom step pulling toward whatever the browser's
-     heuristic picked instead of the point the user was actually zooming
-     into. Disabling it here leaves scroll positioning entirely to our JS. */
-  overflow-anchor: none;
+  /* A Konva Stage tolti ki es birtokolja a zoom/pan-t; a kontener maga nem
+     gorget (nincs scroll-matek tobbe). A tulcsordulo Stage-tartalmat elrejtjuk. */
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.25);
-  /* pan-x pan-y (not pinch-zoom): a two-finger pinch is handled by our own
-     JS (see PlanMeasurementTool's touch handlers) so it zooms the plan
-     itself instead of the whole browser page. Explicitly listing only
-     pan-x/pan-y stops the browser from also trying to natively pinch-zoom
-     this element, so the two don't fight each other; single-finger
-     scrolling/panning still works exactly as before. */
-  touch-action: pan-x pan-y;
 }
-.measure-base-image, .measure-base-canvas { display: block; }
-.measure-konva-stage { position: absolute; top: 0; left: 0; touch-action: pan-x pan-y; }
+/* A Konva Stage konteneт: a pinch/pan-t a Stage sajat gesztus-kezeloi
+   vegzik, ezert a bongeszo natv erintes-kezeleset teljesen kikapcsoljuk. */
+.measure-konva-stage { touch-action: none; }
 
 /* AI helyiseg-elemzes: kijeloles-teglalap overlay a Konva-stage folott. A
    pointer-events:none, hogy a koppintasok tovabbra is a Konva-stage-be jussanak. */
@@ -2603,6 +2592,41 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
   border-radius: 10px;
 }
 .ai-result-fields input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* Meretek (kotakbol) - a kerulethez. */
+.ai-dims { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.ai-dims-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.ai-dims-sub { font-weight: 400; color: var(--muted); }
+.ai-dims-row { display: flex; align-items: flex-end; gap: 10px; }
+.ai-dims-row label { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.ai-dims-row input { width: 100%; min-height: 40px; padding: 9px 11px; font-size: 14px; color: var(--text); background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 10px; }
+.ai-dims-row input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.ai-dims-x { padding-bottom: 10px; color: var(--muted); }
+.ai-dims-perimeter { margin-top: 8px; }
+.ai-dims-perimeter label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.ai-dims-perimeter input { width: 100%; min-height: 40px; padding: 9px 11px; font-size: 14px; color: var(--text); background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 10px; }
+.ai-dims-perimeter input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.ai-dims-note { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.ai-dims-kota { margin-top: 10px; }
+.ai-dims-kota-btn { width: 100%; }
+.ai-dims-kota-live { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.ai-dims-kota-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-dims-kota-chip { cursor: pointer; }
+.ai-dims-kota-actions { display: flex; gap: 8px; }
+.ai-dims-kota-actions .button { flex: 1; }
+/* Vekony kota-valaszto sav: kota-modban ez all a nagy kartya-torzs helyett, hogy
+   a TERV kapja a helyet (a kotakra koppintasz rajta). */
+.ai-kota-bar { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.ai-kota-bar-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ai-kota-bar-sum { font-size: 14px; color: var(--soft); white-space: nowrap; }
+.ai-kota-bar-sum b { color: var(--text); }
+.ai-kota-bar .ai-dims-kota-actions { flex: 1; min-width: 180px; }
+.ai-dims-candidates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.ai-dims-hint { font-size: 11px; color: var(--muted); margin-right: 4px; }
+.ai-dims-chip { font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text); padding: 5px 10px; background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.ai-dims-chip:hover { background: color-mix(in srgb, var(--brand) 16%, transparent); border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); }
+.ai-dims-calc { margin: 8px 0 0; font-size: 13px; color: var(--soft); }
+.ai-dims-calc b { color: var(--text); }
+.ai-dims-calc-warn { color: var(--warn); }
 .ai-result-warnings { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
 .ai-result-warnings li { margin: 2px 0; }
 .ai-result-raw { margin-top: 10px; font-size: 12px; color: var(--muted); }
@@ -2611,6 +2635,9 @@ dd, strong, p, h1, h2 { overflow-wrap: anywhere; }
 .ai-result-raw-empty { margin-top: 10px; font-size: 12px; color: var(--warn); }
 .ai-result-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .ai-list-title { margin: 0 0 6px; font-size: 14px; }
+.ai-list-head { display: flex; align-items: center; gap: 10px; }
+.ai-list-head .measure-list-toggle { flex: 1; }
+.ai-export-btn { flex: 0 0 auto; min-height: 34px; padding: 7px 12px; font-size: 13px; }
 @media (max-width: 720px) {
   .ai-result-card { margin: 0 10px 8px; }
   .ai-list-title { margin-left: 0; }

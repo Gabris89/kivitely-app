@@ -30,13 +30,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const selection = parseSelection(body?.selection);
   const textItems = parseTextItems(body?.textItems);
   const calculationType = asCalculationType(body?.calculationType);
+  // A helyiseg pontos horgonya (a kliens a kereseskor tudja) - ehhez valasztja az
+  // elemzo a mezoket a legkozelebbrol, hogy a szomszed (nyitott ter) / ismetlodo
+  // kod ne kevertesse be a rossz erteket.
+  const rawAnchor = body?.anchor;
+  const anchor =
+    rawAnchor && typeof rawAnchor.x === "number" && typeof rawAnchor.y === "number" && Number.isFinite(rawAnchor.x) && Number.isFinite(rawAnchor.y)
+      ? { x: rawAnchor.x, y: rawAnchor.y }
+      : undefined;
 
   if (!selection) {
     return NextResponse.json({ error: "Ervenytelen kijeloles" }, { status: 400 });
   }
 
   const analyzer = getPlanAnalyzer();
-  const result = await analyzer.analyze({ calculationType, textItems });
+  const result = await analyzer.analyze({ calculationType, textItems, anchor });
 
   return NextResponse.json({ data: { result, analyzer: analyzer.name }, mode: "supabase" });
 }

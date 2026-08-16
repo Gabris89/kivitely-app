@@ -48,7 +48,10 @@ export function validatePlanAnalysisResult(raw: unknown): PlanAnalysisResult {
     name: asStringOrNull(roomInput.name),
     printedFloorAreaM2: asPositiveNumberOrNull(roomInput.printedFloorAreaM2),
     ceilingHeightM: asPositiveNumberOrNull(roomInput.ceilingHeightM),
-    floorFinish: asStringOrNull(roomInput.floorFinish)
+    floorFinish: asStringOrNull(roomInput.floorFinish),
+    widthM: asPositiveNumberOrNull(roomInput.widthM),
+    depthM: asPositiveNumberOrNull(roomInput.depthM),
+    perimeterM: asPositiveNumberOrNull(roomInput.perimeterM)
   };
 
   // Mezonkenti forras: csak ervenyes forras-ertekek maradnak.

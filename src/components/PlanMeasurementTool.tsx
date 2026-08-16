@@ -1,27 +1,16 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-  type TouchEvent as ReactTouchEvent,
-  type TouchList as ReactTouchList
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { KonvaEventObject } from "konva/lib/Node";
-import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
-import type { PlanAnalysis, PlanAnalysisResult, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, PlanSelectionRect, ProjectDocument } from "@/types";
-import type { SelectedPoint } from "./PlanMeasurementCanvas";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
+import type { PlanAnalysis, PlanAnalysisResult, PlanMeasurement, PlanMeasurementPoint, PlanMeasurementType, PlanSelectionRect, PlanTextItem, ProjectDocument } from "@/types";
+import type { DetailImage, SelectedPoint, ViewTransform } from "./PlanMeasurementCanvas";
 import { colorForMeasurementId } from "@/lib/measurementColors";
-import { extractAllTextItems, extractTextItemsInRect, findRoomMatches, type RoomMatch } from "@/lib/ai/pdfTextExtract";
+import { extractAllTextItems, extractTextItemsInRect, findNearestDimension, findRoomMatches, suggestDimensionPairs, type DimensionPair, type RoomMatch } from "@/lib/ai/pdfTextExtract";
 
 // The whole Konva canvas loads as one client-only unit - see the comment
 // in PlanMeasurementCanvas.tsx for why it can't be split per-primitive.
 const PlanMeasurementCanvas = dynamic(() => import("./PlanMeasurementCanvas"), { ssr: false });
-
-type StagePointerEvent = KonvaEventObject<MouseEvent | TouchEvent>;
 
 type Props = {
   doc: ProjectDocument;
@@ -61,12 +50,10 @@ function parseHuNumber(value: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 14;
-const ZOOM_STEP = 0.5;
-const WHEEL_ZOOM_STEP = 0.1;
-const EDIT_FOCUS_ZOOM = 5;
-const PINCH_ZOOM_THRESHOLD = 1.15;
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 40;
+const ZOOM_BUTTON_FACTOR = 1.4; // a +/- gombok nagyitas-szorzoja
+const EDIT_FOCUS_SCALE = 5; // szerkeszteskor ekkora nagyitasra kozelitunk
 
 function distance(a: PlanMeasurementPoint, b: PlanMeasurementPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -107,31 +94,33 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   const isPdf = doc.mimeType === "application/pdf";
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
   const loadingTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
-  // A folyamatban levo PDF-render taskja. Zoom/lapozas gyors valtasakor az
-  // elozot meg kell szakitani, kulonben a pdf.js "canvas busy" hibat dob
-  // ugyanarra a canvasra -> festetlen (fekete) canvas marad.
+  // A folyamatban levo PDF-render taskja (base-render). Gyors valtasnal az
+  // elozot meg kell szakitani, kulonben a pdf.js "canvas busy" hibat dob.
   const renderTaskRef = useRef<RenderTask | null>(null);
-  // x/y: fractional content coordinate to keep fixed under the anchor point.
-  // anchorLeft/anchorTop: where that point should land, in CSS px from the
-  // container's visible top-left corner (viewport center for buttons/pinch,
-  // the mouse cursor for wheel-zoom).
-  const pendingZoomCenterRef = useRef<{ x: number; y: number; anchorLeft: number; anchorTop: number } | null>(null);
-  // Zoom-arany alapu, ABSZOLUT gorgetes-cel (px). A zoomBy ezt hasznalja a
-  // scrollWidth-fuggo tort helyett: gyors gorgetesnel a scrollWidth kesve
-  // frissul (aszinkron render), ezert csuszott a kep. Az arany-modszer a
-  // gorgetes-poziciobol dolgozik, es a meg nem alkalmazott (virtualis) celbol
-  // lancolodik, igy tobb gyors lepes is pontosan komponalodik.
-  const pendingScrollRef = useRef<{ left: number; top: number } | null>(null);
-  const pendingPinchDistanceRef = useRef<number | null>(null);
-  const panStateRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  // A detail-render (lathato resz) taszkja + a megallasra varo idozito, es az
+  // aktualis oldal-proxy (a base-render allitja be, hogy a detail is elerje).
+  const detailTaskRef = useRef<RenderTask | null>(null);
+  const detailIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageProxyRef = useRef<PDFPageProxy | null>(null);
+  // A base-kep merete PDF-pontban -> base-egyseg atvaltas (a detail-renderhez).
+  const baseScaleRef = useRef<number>(1);
+  // A nezet EGYETLEN transzformacioja (Konva Stage): nagyitas + eltolas. A refbe
+  // is tukrozzuk, hogy a renderDetail stale-closure nelkul lassa a friss erteket.
+  const viewRef = useRef<ViewTransform>({ scale: 1, x: 0, y: 0 });
 
-  const [zoom, setZoom] = useState(MIN_ZOOM);
-  const [stageWidth, setStageWidth] = useState(0);
-  const [stageHeight, setStageHeight] = useState(0);
+  const [view, setView] = useState<ViewTransform>({ scale: 1, x: 0, y: 0 });
+  // A viewport (kontener) merete - a Stage ezt tolti ki.
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+  // A teljes-lapos attekinto kep (base) + a lathato reszrol keszult eles darab
+  // (detail). A base merete (baseImg.w/h) a normalizalt koordinatak referenciaja
+  // - a regi "stageWidth" szerepet veszi at.
+  const [baseImg, setBaseImg] = useState<{ canvas: HTMLCanvasElement; w: number; h: number } | null>(null);
+  const [detailImg, setDetailImg] = useState<DetailImage | null>(null);
+  // A base-kep merete = a normalizalt koordinatak referenciaja (base-egyseg).
+  const baseW = baseImg?.w ?? 0;
+  const baseH = baseImg?.h ?? 0;
   const [pageNumber, setPageNumber] = useState(1);
   const [numPages, setNumPages] = useState(1);
   const [pdfStatus, setPdfStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -174,6 +163,24 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   // helyet; egy kattintasra kinyilik szerkesztesre. Kulonosen telefonon fontos.
   const [aiCardExpanded, setAiCardExpanded] = useState(false);
   const [aiListOpen, setAiListOpen] = useState(false);
+  // Meretek (a kerulethez): a felkinalt SZELESSEG x HOSSZ parok kozul valaszt a
+  // felmero (a parok szorzata ~ a kiirt terulet), VAGY kezzel beir.
+  const [aiWidth, setAiWidth] = useState("");
+  const [aiDepth, setAiDepth] = useState("");
+  const [aiDimPairs, setAiDimPairs] = useState<DimensionPair[]>([]);
+  // Kozvetlen kerulet-bevitel (nyitott ter / L-alak / a falak osszege), ami
+  // FELULIRJA a teglalapbol (szel x hossz) szamolt kerueletet. Igy a Fal/Labazat/
+  // Szalag akkor is megvan, ha a szoba nem sima teglalap vagy hianyzik egy kota.
+  const [aiPerimeter, setAiPerimeter] = useState("");
+  // "Koppints a kotakra" mod: a felmero a falak KOTAIRA koppint, a program a
+  // legkozelebbi kiirt szam EGZAKT erteket veszi es osszegzi. Pontos (nem mer,
+  // nem tippel) es keves munka. A marks a kivalasztott kotak (ertek + pozicio).
+  const [aiKotaMode, setAiKotaMode] = useState(false);
+  // A kivalasztott SZELESSEG-kota (ertek + pozicio) - vizualis visszajelzeshez.
+  const [aiWidthMark, setAiWidthMark] = useState<{ x: number; y: number; value: number } | null>(null);
+  // A lap OSSZES text-eleme (a kota-valasztashoz kell, hogy a koppintashoz
+  // legkozelebbi kiirt szamot megtalaljuk).
+  const aiAllItemsRef = useRef<PlanTextItem[]>([]);
 
   const [savedMeasurements, setSavedMeasurements] = useState<PlanMeasurement[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(true);
@@ -231,28 +238,6 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     };
   }, [doc.id]);
 
-  // Image: keep the stage matched to the image's actual rendered size,
-  // including after the zoom buttons resize it via CSS - a plain onLoad
-  // handler only fires once and goes stale the moment zoom changes.
-  useEffect(() => {
-    if (!isImage) return;
-    const img = imageRef.current;
-    if (!img) return;
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const { width, height } = entry.contentRect;
-      if (width > 0 && height > 0) {
-        setStageWidth(Math.round(width));
-        setStageHeight(Math.round(height));
-      }
-    });
-
-    observer.observe(img);
-    return () => observer.disconnect();
-  }, [isImage, url]);
-
   // PDF: load the document once.
   useEffect(() => {
     if (!isPdf || !url) return;
@@ -282,7 +267,109 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     };
   }, [isPdf, url]);
 
-  // PDF: render the current page to the canvas whenever page/zoom/container width changes.
+  // Egy PDF-regio kirajzolasa uj (offscreen) canvasba - a detail-reteghez.
+  // offX/offY: a viewport-pixelben ertett bal-felso levagas; kimenet outW x outH.
+  const renderRegion = useCallback(
+    async (page: PDFPageProxy, pdfScale: number, offX: number, offY: number, outW: number, outH: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.floor(outW));
+      canvas.height = Math.max(1, Math.floor(outH));
+      const viewport = page.getViewport({ scale: pdfScale });
+      const transform = [1, 0, 0, 1, -offX, -offY];
+      detailTaskRef.current?.cancel();
+      const task = page.render({ canvas, viewport, transform });
+      detailTaskRef.current = task;
+      await task.promise.catch(() => undefined);
+      if (detailTaskRef.current === task) detailTaskRef.current = null;
+      return canvas;
+    },
+    []
+  );
+
+  // Az EPP LATHATO kivagas ELES ujrarajzolasa a Stage aktualis nezetebol
+  // (viewRef). Csak egy kepernyonyi terulet, a keszulek valodi felbontasan ->
+  // eles barmilyen nagyitason, a teljes-lap memoria-robbanasa nelkul. A base-egyseg
+  // koordinatakat (a base-kep merete) hasznaljuk, ugyanabban a terben, mint a
+  // meresek. Kepnel (nincs page) nincs detail.
+  const renderDetail = useCallback(async () => {
+    const page = pageProxyRef.current;
+    const base = baseImg;
+    if (!page || !base) return;
+    const { scale: S, x: stageX, y: stageY } = viewRef.current;
+    const vw0 = stageSize.w;
+    const vh0 = stageSize.h;
+    if (!vw0 || !vh0) return;
+
+    // Lathato teglalap a base-egyseg (Stage-lokalis) terben, a laphatarra vagva.
+    let x = (0 - stageX) / S;
+    let y = (0 - stageY) / S;
+    let w = vw0 / S;
+    let h = vh0 / S;
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > base.w) w = base.w - x;
+    if (y + h > base.h) h = base.h - y;
+    if (w <= 0 || h <= 0) return;
+
+    const baseScale = baseScaleRef.current;
+    let dpr = Math.min(window.devicePixelRatio || 1, 3);
+    let outW = w * S * dpr;
+    let outH = h * S * dpr;
+    const DETAIL_MAX_AREA = 10_000_000;
+    const areaPx = outW * outH;
+    if (areaPx > DETAIL_MAX_AREA) {
+      const k = Math.sqrt(DETAIL_MAX_AREA / areaPx);
+      dpr *= k;
+      outW *= k;
+      outH *= k;
+    }
+    // pdfScale = pontok -> detail-pixel; a base-egyseg = baseScale-pixel.
+    const pdfScale = baseScale * S * dpr;
+    const canvas = await renderRegion(page, pdfScale, x * S * dpr, y * S * dpr, outW, outH);
+    setDetailImg({ canvas, x, y, w, h });
+  }, [baseImg, stageSize.w, stageSize.h, renderRegion]);
+
+  // Gesztus (zoom/pan) megallasa utan (rovid tetlensegre) eles ujrarajzolas.
+  const scheduleDetail = useCallback(() => {
+    if (detailIdleRef.current) clearTimeout(detailIdleRef.current);
+    detailIdleRef.current = setTimeout(() => void renderDetail(), 140);
+  }, [renderDetail]);
+
+  // A Canvas gesztus-callbackjei: a nezet frissitese (viewRef azonnal, hogy a
+  // renderDetail a friss erteket lassa) + megallaskor eles ujrarajzolas.
+  const handleViewChange = useCallback((next: ViewTransform) => {
+    viewRef.current = next;
+    setView(next);
+  }, []);
+
+  // Kilepeskor a fuggo idozito + reszlet-render leallitasa.
+  useEffect(
+    () => () => {
+      if (detailIdleRef.current) clearTimeout(detailIdleRef.current);
+      detailTaskRef.current?.cancel();
+    },
+    []
+  );
+
+  // A viewport (kontener) meretenek kovetese - a Stage ezt tolti ki.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const apply = () => setStageSize({ w: el.clientWidth, h: el.clientHeight });
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // A view refbe tukrozese (stale-closure nelkul a renderDetailhez).
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  // PDF: a lap teljes-lapos, ALACSONY felbontasu attekinto kepe (base). Az
+  // elesseget a detail-reteg adja; ez az attekintes + a koordinata-referencia
+  // (baseImg.w = a regi stageWidth szerepe). Stage-scale 1 = teljes szelesseg.
   useEffect(() => {
     if (!isPdf || pdfStatus !== "ready" || !pdfDocRef.current) return;
     let cancelled = false;
@@ -292,204 +379,112 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       if (!pdf) return;
       const page = await pdf.getPage(pageNumber);
       if (cancelled) return;
+      pageProxyRef.current = page;
 
-      const canvas = canvasRef.current;
-      const containerWidth = containerRef.current?.clientWidth || 0;
-      if (!canvas || !containerWidth) return;
+      const cw = containerRef.current?.clientWidth || 0;
+      if (!cw) return;
+      const v1 = page.getViewport({ scale: 1 });
+      const baseScale = cw / v1.width;
+      baseScaleRef.current = baseScale;
+      const bw = v1.width * baseScale;
+      const bh = v1.height * baseScale;
 
-      const baseViewport = page.getViewport({ scale: 1 });
-      const fitScale = (containerWidth / baseViewport.width) * zoom;
-      const viewport = page.getViewport({ scale: fitScale });
+      // Az attekinto kep felbontasa sapkazva (a detail adja az elesseget).
+      const BASE_MAX_AREA = 4_000_000;
+      let renderScale = baseScale;
+      const bArea = bw * bh;
+      if (bArea > BASE_MAX_AREA) renderScale *= Math.sqrt(BASE_MAX_AREA / bArea);
 
-      // A canvas HATTERTARANAK felbontasat maximaljuk. Nagy zoomnal a
-      // viewport.width * devicePixelRatio konnyen atlepi a mobil (iOS Safari)
-      // canvas-korlatot (~4096 px/tengely, ~16 Mpx osszterulet): a render ilyenkor
-      // csendben elhasal -> festetlen (fekete) canvas, sot ful-osszeomlas. A
-      // logikai (CSS) meret valtozatlan marad, ezert a stage es a kijeloles is
-      // pontosan kovet - csak a nagyitott kep lesz kicsit lagyabb a hatar felett.
-      const MAX_CANVAS_DIM = 4096;
-      const MAX_CANVAS_AREA = 2_800_000;
-      // A pixel-aranyt 1.5-re sapkazuk: telefonon a DPR 2-3, ami 4-9x annyi
-      // rajzolando pixel -> lassu render. 1.5x meg eleg eles egy CAD-tervhez,
-      // de sokkal gyorsabb, igy a zoom is folyekonyabb.
-      let backingScale = Math.min(window.devicePixelRatio || 1, 1.5);
-      backingScale = Math.min(backingScale, MAX_CANVAS_DIM / viewport.width, MAX_CANVAS_DIM / viewport.height);
-      const backingArea = viewport.width * viewport.height * backingScale * backingScale;
-      if (backingArea > MAX_CANVAS_AREA) backingScale *= Math.sqrt(MAX_CANVAS_AREA / backingArea);
-      backingScale = Math.max(0.1, backingScale);
-
-      canvas.width = Math.max(1, Math.floor(viewport.width * backingScale));
-      canvas.height = Math.max(1, Math.floor(viewport.height * backingScale));
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
-
-      // Az elozo, meg futo render megszakitasa, mielott ujat inditunk ugyanarra
-      // a canvasra (kulonben "canvas busy" -> fekete canvas).
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.floor(v1.width * renderScale));
+      canvas.height = Math.max(1, Math.floor(v1.height * renderScale));
+      const viewport = page.getViewport({ scale: renderScale });
       renderTaskRef.current?.cancel();
+      const task = page.render({ canvas, viewport });
+      renderTaskRef.current = task;
+      await task.promise.catch(() => undefined);
+      if (renderTaskRef.current === task) renderTaskRef.current = null;
+      if (cancelled) return;
 
-      const transform = backingScale !== 1 ? [backingScale, 0, 0, backingScale, 0, 0] : undefined;
-      const renderTask = page.render({ canvas, viewport, transform });
-      renderTaskRef.current = renderTask;
-      // A megszakitas RenderingCancelledException-t dob - ez vart, elnyeljuk.
-      await renderTask.promise.catch(() => undefined);
-      if (renderTaskRef.current === renderTask) renderTaskRef.current = null;
-
-      if (!cancelled) {
-        setStageWidth(Math.floor(viewport.width));
-        setStageHeight(Math.floor(viewport.height));
-      }
+      setDetailImg(null);
+      setView({ scale: 1, x: 0, y: 0 });
+      viewRef.current = { scale: 1, x: 0, y: 0 };
+      setBaseImg({ canvas, w: bw, h: bh });
     })();
 
     return () => {
       cancelled = true;
       renderTaskRef.current?.cancel();
     };
-  }, [isPdf, pdfStatus, pageNumber, zoom]);
+  }, [isPdf, pdfStatus, pageNumber]);
 
-  // Restore the same content point under its anchor after a zoom change
-  // resizes the stage - without this, zooming in always snaps back to the
-  // top-left corner instead of staying where you were looking (or, for
-  // wheel-zoom, out from under the cursor). Also re-runs on
-  // editingMeasurementId so "edit" can recenter immediately even when the
-  // zoom level doesn't actually change (no resize to hook into).
-  // useLayoutEffect (not useEffect): runs synchronously right after the DOM
-  // is updated but before the browser paints, so the corrected scroll
-  // position is what actually gets painted - no flash of the wrong
-  // position, and no window for the browser's own scroll handling to run
-  // in between and see (and act on) a stale position.
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container || stageWidth === 0) return;
+  // Kep-dokumentum: a kepet base-kanvaszba rajzoljuk (nincs detail-reteg, a kep
+  // maga raszter). A base merete a koordinata-referencia.
+  useEffect(() => {
+    if (!isImage || !url) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const cw = containerRef.current?.clientWidth || img.naturalWidth || 1;
+      const MAX_IMG_DIM = 4096;
+      const natW = img.naturalWidth || 1;
+      const natH = img.naturalHeight || 1;
+      let scale = Math.min(1, cw / natW);
+      scale = Math.min(scale, MAX_IMG_DIM / natW, MAX_IMG_DIM / natH);
+      const w = Math.max(1, Math.round(natW * scale));
+      const h = Math.max(1, Math.round(natH * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+      baseScaleRef.current = scale;
+      setDetailImg(null);
+      setView({ scale: 1, x: 0, y: 0 });
+      viewRef.current = { scale: 1, x: 0, y: 0 };
+      setBaseImg({ canvas, w, h });
+    };
+    img.src = url;
+    return () => {
+      cancelled = true;
+    };
+  }, [isImage, url]);
 
-    // 1) Abszolut gorgetes-cel (zoomBy, arany-alapu) - ez az elsodleges.
-    const scroll = pendingScrollRef.current;
-    if (scroll) {
-      pendingScrollRef.current = null;
-      container.scrollLeft = scroll.left;
-      container.scrollTop = scroll.top;
-      return;
-    }
-    // 2) Tort-alapu kozepre-allitas (pl. meres szerkesztesekor rakozelites).
-    const center = pendingZoomCenterRef.current;
-    if (center) {
-      pendingZoomCenterRef.current = null;
-      container.scrollLeft = center.x * container.scrollWidth - center.anchorLeft;
-      container.scrollTop = center.y * container.scrollHeight - center.anchorTop;
-    }
-  }, [stageWidth, stageHeight, editingMeasurementId]);
+  // Base kesz -> az EPP LATHATO reszt is elesitjuk.
+  useEffect(() => {
+    if (baseImg) scheduleDetail();
+  }, [baseImg, scheduleDetail]);
 
-  // anchor: where on screen (px from the container's visible top-left) the
-  // zoomed-in point should stay. Defaults to the viewport center (used by
-  // the +/- buttons and pinch-zoom); wheel-zoom passes the cursor position.
-  function zoomBy(delta: number, anchor?: { left: number; top: number }) {
-    const container = containerRef.current;
-    setZoom((current) => {
-      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(current + delta).toFixed(1)));
-      if (container && next !== current) {
-        const anchorLeft = anchor?.left ?? container.clientWidth / 2;
-        const anchorTop = anchor?.top ?? container.clientHeight / 2;
-        // Ha van meg nem alkalmazott zoom-cel, abbol lancolunk (virtualis
-        // gorgetes) - kulonben a meg nem mozdult DOM-poziciobol. Igy a gyors,
-        // egymast koveto lepesek pontosan komponalodnak: (s+a)*r1*r2 = (s+a)*R.
-        const baseLeft = pendingScrollRef.current?.left ?? container.scrollLeft;
-        const baseTop = pendingScrollRef.current?.top ?? container.scrollTop;
-        const ratio = next / current;
-        pendingScrollRef.current = {
-          left: (baseLeft + anchorLeft) * ratio - anchorLeft,
-          top: (baseTop + anchorTop) * ratio - anchorTop
-        };
-      }
+  // A +/- gombok: nagyitas a viewport KOZEPPONTJA fele (a Canvas ugyanezt a
+  // kepletet hasznalja a kurzor/ujj ala). A wheel/pinch/pan mostantol a Konva
+  // Stage-en van (a Canvasban), nem itt.
+  function zoomBy(factor: number) {
+    setView((v) => {
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, v.scale * factor));
+      const cx = stageSize.w / 2;
+      const cy = stageSize.h / 2;
+      const wx = (cx - v.x) / v.scale;
+      const wy = (cy - v.y) / v.scale;
+      const next = { scale: newScale, x: cx - wx * newScale, y: cy - wy * newScale };
+      viewRef.current = next;
       return next;
     });
+    scheduleDetail();
   }
 
-  // Desktop: scroll wheel zooms the plan. Attached as a raw, non-passive
-  // listener (not a JSX onWheel prop) because React/browsers default wheel
-  // listeners to passive for scroll performance, which silently makes
-  // preventDefault a no-op - without it the page would scroll AND zoom at once.
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    function handleWheel(event: WheelEvent) {
-      event.preventDefault();
-      const rect = container!.getBoundingClientRect();
-      const anchor = { left: event.clientX - rect.left, top: event.clientY - rect.top };
-      zoomBy(event.deltaY < 0 ? WHEEL_ZOOM_STEP : -WHEEL_ZOOM_STEP, anchor);
-    }
-
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleWheel);
-  });
-
-  // Mobile: a real two-finger pinch that zooms the plan itself, not the
-  // browser page. touch-action on the stage/wrap already tells the browser
-  // not to handle pinch natively there, so no preventDefault fight needed -
-  // we just track the distance between the two touches ourselves.
-  function pinchTouchDistance(touches: ReactTouchList) {
-    const [a, b] = [touches[0], touches[1]];
-    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  }
-
-  function handleTouchStart(event: ReactTouchEvent) {
-    if (event.touches.length === 2) pendingPinchDistanceRef.current = pinchTouchDistance(event.touches);
-  }
-
-  function handleTouchMove(event: ReactTouchEvent) {
-    if (event.touches.length !== 2 || pendingPinchDistanceRef.current === null) return;
-
-    const newDistance = pinchTouchDistance(event.touches);
-    const ratio = newDistance / pendingPinchDistanceRef.current;
-    if (ratio <= PINCH_ZOOM_THRESHOLD && ratio >= 1 / PINCH_ZOOM_THRESHOLD) return;
-
-    // Anchor the zoom on the midpoint between the two fingers - not the
-    // viewport center - so the spot you're actually pinching is what grows,
-    // matching how pinch-to-zoom behaves everywhere else on a phone.
-    const container = containerRef.current;
-    let anchor: { left: number; top: number } | undefined;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
-      const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
-      anchor = { left: midX - rect.left, top: midY - rect.top };
-    }
-
-    zoomBy(ratio > PINCH_ZOOM_THRESHOLD ? ZOOM_STEP : -ZOOM_STEP, anchor);
-    pendingPinchDistanceRef.current = newDistance;
-  }
-
-  function handleTouchEnd(event: ReactTouchEvent) {
-    if (event.touches.length < 2) pendingPinchDistanceRef.current = null;
-  }
-
-  // Desktop: press-and-hold the middle mouse button (scroll wheel click) to
-  // grab-and-drag pan around a zoomed-in plan, the same gesture CAD/map/image
-  // tools use - separate from left-click, which places/selects points.
-  function handleStageWrapMouseDown(event: ReactMouseEvent) {
-    if (event.button !== 1) return;
-    event.preventDefault();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    panStateRef.current = { x: event.clientX, y: event.clientY, scrollLeft: container.scrollLeft, scrollTop: container.scrollTop };
-
-    function handlePanMove(moveEvent: MouseEvent) {
-      const start = panStateRef.current;
-      if (!start || !container) return;
-      container.scrollLeft = start.scrollLeft - (moveEvent.clientX - start.x);
-      container.scrollTop = start.scrollTop - (moveEvent.clientY - start.y);
-    }
-
-    function stopPanning() {
-      panStateRef.current = null;
-      window.removeEventListener("mousemove", handlePanMove);
-      window.removeEventListener("mouseup", stopPanning);
-    }
-
-    window.addEventListener("mousemove", handlePanMove);
-    window.addEventListener("mouseup", stopPanning);
-  }
+  // A nezet kozeppontba allitasa egy NORMALIZALT pontra, adott nagyitason
+  // (szerkesztes-fokusz, AI-talalat kozepre hozasa).
+  const centerViewOn = useCallback(
+    (normX: number, normY: number, targetScale?: number) => {
+      if (!stageSize.w || !stageSize.h || !baseW) return;
+      const S = Math.max(MIN_SCALE, Math.min(MAX_SCALE, targetScale ?? viewRef.current.scale));
+      const next = { scale: S, x: stageSize.w / 2 - normX * baseW * S, y: stageSize.h / 2 - normY * baseW * S };
+      viewRef.current = next;
+      setView(next);
+      scheduleDetail();
+    },
+    [baseW, stageSize.w, stageSize.h, scheduleDetail]
+  );
 
   function resetDrawing() {
     setMode("idle");
@@ -507,6 +502,12 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     setAiRawText("");
     setAiCodeQuery("");
     setAiMatches([]);
+    setAiWidth("");
+    setAiDepth("");
+    setAiPerimeter("");
+    setAiKotaMode(false);
+    setAiWidthMark(null);
+    setAiDimPairs([]);
   }
 
   // Editing an existing measurement reuses the draw flow. Its scale might
@@ -530,33 +531,37 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     }
 
     // A small room can occupy a tiny corner of the whole plan - zoom in and
-    // center on its bounding box instead of leaving the user to hunt for it
-    // and drag points around in a cramped, mostly-unrelated view.
+    // center on its bounding box instead of leaving the user to hunt for it.
     const xs = measurement.points.map((point) => point.x);
     const ys = measurement.points.map((point) => point.y);
-    const container = containerRef.current;
-    // Esetleges fuggő zoom-cel torlese, hogy a kozepre-allitas nyerjen.
-    pendingScrollRef.current = null;
-    pendingZoomCenterRef.current = {
-      x: (Math.min(...xs) + Math.max(...xs)) / 2,
-      y: (Math.min(...ys) + Math.max(...ys)) / 2,
-      anchorLeft: (container?.clientWidth || 0) / 2,
-      anchorTop: (container?.clientHeight || 0) / 2
-    };
-    setZoom((current) => Math.min(MAX_ZOOM, Math.max(current, EDIT_FOCUS_ZOOM)));
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    centerViewOn(cx, cy, Math.max(viewRef.current.scale, EDIT_FOCUS_SCALE));
   }
 
-  function pointFromStageEvent(event: StagePointerEvent): PlanMeasurementPoint | null {
-    const stage = event.target.getStage();
-    const pos = stage?.getPointerPosition();
-    if (!pos || !stageWidth) return null;
-    return { x: pos.x / stageWidth, y: pos.y / stageWidth };
-  }
-
-  function handleStagePointer(event: StagePointerEvent) {
+  // A koppintas mar NORMALIZALT pontja a Canvasbol jon
+  // (getRelativePointerPosition / baseW), igy fuggetlen a Stage-transzformaciotol.
+  function handleStagePointer(point: PlanMeasurementPoint) {
     setSelectedPoint(null);
-    const point = pointFromStageEvent(event);
-    if (!point) return;
+
+    // Szelesseg-kota valasztasa: a koppintashoz legkozelebbi kiirt kotat vesszuk
+    // (egzakt, "pattintas") -> ez a SZELESSEG, a MELYSEGET pedig a kiirt teruletbol
+    // szamoljuk (terulet / szelesseg). A hianyzo kotat nem kell megkeresni.
+    if (aiKotaMode) {
+      const hit = findNearestDimension(aiAllItemsRef.current, point, 0.03);
+      if (hit) {
+        setAiWidth(numToStr(hit.value));
+        setAiWidthMark(hit);
+        const printedArea = parseHuNumber(aiFields.area);
+        if (printedArea !== null && hit.value > 0) {
+          setAiDepth(numToStr(Math.round((printedArea / hit.value) * 100) / 100));
+        }
+        setAiPerimeter("");
+        // Bent maradunk a modban: ha felrekoppintottal, a jora koppintva felulirod;
+        // a "Kesz" zarja le (lasd a kota-sav).
+      }
+      return;
+    }
 
     if (mode === "calibrate-pick") {
       const next = [...calibrationPoints, point].slice(-2);
@@ -609,7 +614,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       const response = await fetch(`/api/documents/${doc.id}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageNumber, selection: rect, calculationType: "room_info", textItems })
+        body: JSON.stringify({ pageNumber, selection: rect, calculationType: "room_info", textItems, anchor: { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 } })
       }).catch(() => undefined);
 
       const payload = await response?.json().catch(() => null);
@@ -621,6 +626,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       const result = payload.data.result as PlanAnalysisResult;
       setAiResult(result);
       setAiFields(fieldsFromResult(result));
+      await loadDimensionCandidates({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }, result.room.printedFloorAreaM2);
     } finally {
       setAiAnalyzing(false);
     }
@@ -650,7 +656,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
         return;
       }
       if (matches.length === 1) {
-        await analyzeMatch(matches[0]);
+        await analyzeMatch(matches[0], allItems);
         return;
       }
       // Tobb talalat -> a felhasznalo valasszon (a kod lakasonkent ismetlodik).
@@ -661,8 +667,50 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     }
   }
 
+  // A helyiseg korul felkinaljuk a szelesseg x hossz parokat (a kiirt terulettel
+  // egyezo szorzatu kozeli kotak), es a meret-mezoket kiuritjuk (uj felismeresnel).
+  async function loadDimensionCandidates(center: PlanMeasurementPoint, targetAreaM2: number | null, allItems?: PlanTextItem[]) {
+    setAiWidth("");
+    setAiDepth("");
+    let items = allItems;
+    if (!items) {
+      const pdf = pdfDocRef.current;
+      if (!pdf) { setAiDimPairs([]); return; }
+      try {
+        const page = await pdf.getPage(pageNumber);
+        items = await extractAllTextItems(page);
+      } catch {
+        setAiDimPairs([]);
+        return;
+      }
+    }
+    setAiDimPairs(suggestDimensionPairs(items, center, targetAreaM2));
+  }
+
+  const numToStr = (v: number) => new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 2 }).format(v);
+
+  // Kota-valaszto mod inditasa: betoltjuk a lap OSSZES text-elemet (hogy a
+  // koppintashoz legkozelebbi kotat megtalaljuk), es urites.
+  async function startKotaPick() {
+    const pdf = pdfDocRef.current;
+    if (pdf) {
+      try {
+        const page = await pdf.getPage(pageNumber);
+        aiAllItemsRef.current = await extractAllTextItems(page);
+      } catch {
+        aiAllItemsRef.current = [];
+      }
+    }
+    setAiKotaMode(true);
+  }
+
+  function pickPair(pair: DimensionPair) {
+    setAiWidth(numToStr(pair.w));
+    setAiDepth(numToStr(pair.d));
+  }
+
   // Egy kivalasztott (vagy egyertelmu) helyiseg felismerese + ragorgetes.
-  async function analyzeMatch(match: RoomMatch) {
+  async function analyzeMatch(match: RoomMatch, allItems?: PlanTextItem[]) {
     setAiMatches([]);
     setAiAnalyzing(true);
     setMessage("");
@@ -684,7 +732,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       const response = await fetch(`/api/documents/${doc.id}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageNumber, selection: rect, calculationType: "room_info", textItems: match.items })
+        body: JSON.stringify({ pageNumber, selection: rect, calculationType: "room_info", textItems: match.items, anchor: match.center })
       }).catch(() => undefined);
 
       const payload = await response?.json().catch(() => null);
@@ -696,16 +744,10 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
       const result = payload.data.result as PlanAnalysisResult;
       setAiResult(result);
       setAiFields(fieldsFromResult(result));
+      await loadDimensionCandidates(match.center, result.room.printedFloorAreaM2, allItems);
 
-      // Ragorgetes a megtalalt helyisegre (mindket koordinata a szelesseghez
-      // normalizalt -> pixel = frac * stageWidth).
-      requestAnimationFrame(() => {
-        const container = containerRef.current;
-        if (container && stageWidth) {
-          container.scrollLeft = match.center.x * stageWidth - container.clientWidth / 2;
-          container.scrollTop = match.center.y * stageWidth - container.clientHeight / 2;
-        }
-      });
+      // A megtalalt helyiseg kozeppontba hozasa (a nezet-transzformacioval).
+      centerViewOn(match.center.x, match.center.y);
     } finally {
       setAiAnalyzing(false);
     }
@@ -719,16 +761,13 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     setAiResult(analysis.result);
     setAiFields(fieldsFromResult(analysis.result));
     setAiSelection(analysis.selection);
+    // A korabban megadott meretek visszatoltese (ha voltak).
+    setAiWidth(analysis.result.room.widthM ? numToStr(analysis.result.room.widthM) : "");
+    setAiDepth(analysis.result.room.depthM ? numToStr(analysis.result.room.depthM) : "");
+    // Ha a kerulet kozvetlenul volt megadva (nincs szel/hossz), azt toltjuk vissza.
+    setAiPerimeter(analysis.result.room.perimeterM && !analysis.result.room.widthM ? numToStr(analysis.result.room.perimeterM) : "");
 
-    requestAnimationFrame(() => {
-      const container = containerRef.current;
-      if (container && stageWidth) {
-        const cx = analysis.selection.x + analysis.selection.w / 2;
-        const cy = analysis.selection.y + analysis.selection.h / 2;
-        container.scrollLeft = cx * stageWidth - container.clientWidth / 2;
-        container.scrollTop = cy * stageWidth - container.clientHeight / 2;
-      }
-    });
+    centerViewOn(analysis.selection.x + analysis.selection.w / 2, analysis.selection.y + analysis.selection.h / 2);
   }
 
   async function saveAnalysis() {
@@ -756,8 +795,17 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     markEdited("ceilingHeightM", height !== original.ceilingHeightM);
     markEdited("floorFinish", finish !== original.floorFinish);
 
+    // Meretek -> kerulet (a fal/labazat/szalag/alapozas szamitas kulcsa). A
+    // kozvetlenul megadott kerulet felulirja a teglalapbol (szel x hossz) szamoltat.
+    const width = parseHuNumber(aiWidth);
+    const depth = parseHuNumber(aiDepth);
+    const manualPerimeter = parseHuNumber(aiPerimeter);
+    const rectPerimeter = width !== null && depth !== null ? Math.round((width + depth) * 2 * 100) / 100 : null;
+    const perimeter = manualPerimeter ?? rectPerimeter;
+    if (perimeter !== null) fieldSources.perimeterM = "USER_ENTERED";
+
     const result: PlanAnalysisResult = {
-      room: { code, name, printedFloorAreaM2: area, ceilingHeightM: height, floorFinish: finish },
+      room: { code, name, printedFloorAreaM2: area, ceilingHeightM: height, floorFinish: finish, widthM: width, depthM: depth, perimeterM: perimeter },
       fieldSources,
       confidence: aiResult.confidence,
       warnings: aiResult.warnings
@@ -858,9 +906,9 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   const NUDGE_PIXELS = 3;
 
   function nudgeSelectedPoint(dx: number, dy: number) {
-    if (!selectedPoint || !stageWidth) return;
-    const deltaX = (dx * NUDGE_PIXELS) / stageWidth;
-    const deltaY = (dy * NUDGE_PIXELS) / stageWidth;
+    if (!selectedPoint || !baseW) return;
+    const deltaX = (dx * NUDGE_PIXELS) / baseW;
+    const deltaY = (dy * NUDGE_PIXELS) / baseW;
 
     if (selectedPoint.kind === "calibration") {
       setCalibrationPoints((current) =>
@@ -948,6 +996,16 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
     resetDrawing();
   }
 
+  // Felmeresi Excel letoltese a mentett elemzesekbol (a szerver gyartja).
+  function exportAnalysesExcel() {
+    const link = document.createElement("a");
+    link.href = `/api/documents/${doc.id}/analyses/export/xlsx`;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   async function deleteMeasurement(measurementId: string) {
     const response = await fetch(`/api/documents/${doc.id}/measurements`, {
       method: "DELETE",
@@ -963,6 +1021,24 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
   const canFinishArea = measurementType === "area" && drawPoints.length >= 3;
   const canFinishLength = measurementType === "length" && drawPoints.length >= 2;
   const visibleSavedMeasurements = savedMeasurements.filter((measurement) => !isPdf || measurement.pageNumber === pageNumber);
+
+  // Meret-szamitas a kartyahoz: kerulet + terulet-ellenorzes a kiirt teruletel.
+  const dimW = parseHuNumber(aiWidth);
+  const dimD = parseHuNumber(aiDepth);
+  const dimPerimeter = dimW !== null && dimD !== null ? Math.round((dimW + dimD) * 2 * 100) / 100 : null;
+  const dimArea = dimW !== null && dimD !== null ? Math.round(dimW * dimD * 100) / 100 : null;
+  const dimPrintedArea = parseHuNumber(aiFields.area);
+  // Kozvetlen kerulet (felulirja a teglalapbol szamoltat) + a tenylegesen hasznalt.
+  const dimManualPerimeter = parseHuNumber(aiPerimeter);
+  const effectivePerimeter = dimManualPerimeter ?? dimPerimeter;
+  // A szelesseg-koppintas elonezete a kota-savhoz: a bekoppintott szelessegbol
+  // + a kiirt teruletbol a melyseg es a kerulet.
+  const pickDepth = aiWidthMark && dimPrintedArea !== null && aiWidthMark.value > 0 ? Math.round((dimPrintedArea / aiWidthMark.value) * 100) / 100 : null;
+  const pickPerimeter = aiWidthMark && pickDepth !== null ? Math.round((aiWidthMark.value + pickDepth) * 2 * 100) / 100 : null;
+  // Eltero, ha a beirt meretbol szamolt terulet 5%-nal jobban ter a kiirttol
+  // (csak a teglalap-esetben ertelmes; kozvetlen kerueletnel nincs terulet-check).
+  const dimAreaMismatch =
+    dimManualPerimeter === null && dimArea !== null && dimPrintedArea !== null && Math.abs(dimArea - dimPrintedArea) > Math.max(0.2, dimPrintedArea * 0.05);
 
   return (
     <div className="measure-tool">
@@ -1026,11 +1102,11 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
         ) : null}
 
         <div className="measure-toolbar-group">
-          <button type="button" className="button ghost" disabled={zoom <= MIN_ZOOM} onClick={() => zoomBy(-ZOOM_STEP)}>
+          <button type="button" className="button ghost" disabled={view.scale <= MIN_SCALE} onClick={() => zoomBy(1 / ZOOM_BUTTON_FACTOR)}>
             −
           </button>
-          <span>{Math.round(zoom * 100)}%</span>
-          <button type="button" className="button ghost" disabled={zoom >= MAX_ZOOM} onClick={() => zoomBy(ZOOM_STEP)}>
+          <span>{Math.round(view.scale * 100)}%</span>
+          <button type="button" className="button ghost" disabled={view.scale >= MAX_SCALE} onClick={() => zoomBy(ZOOM_BUTTON_FACTOR)}>
             +
           </button>
         </div>
@@ -1152,7 +1228,34 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
             <p className="ai-result-warning">⚠ Bizonytalan – ellenőrizd mentés előtt.</p>
           ) : null}
 
-          {aiCardExpanded ? (
+          {/* Kota-valasztas kozben a nagy torzs helyett csak ez a vekony sav
+              latszik, hogy a TERV kapja a helyet (a kotakra koppintasz rajta). */}
+          {aiKotaMode ? (
+            <div className="ai-kota-bar">
+              <span className="ai-dims-hint">Koppints a <b>szélesség</b> kótájára az éles terven (pl. 3,95). Félrekoppintottál? Koppints a jóra – felülírja. A mélységet a területből számolom.</span>
+              <div className="ai-kota-bar-foot">
+                {aiWidthMark ? (
+                  <span className="ai-kota-bar-sum">
+                    Szélesség <b>{numToStr(aiWidthMark.value)} m</b>
+                    {pickDepth !== null ? <> · mélység <b>{numToStr(pickDepth)} m</b></> : null}
+                    {pickPerimeter !== null ? <> · kerület <b>{formatValue(pickPerimeter, "length")}</b></> : null}
+                  </span>
+                ) : (
+                  <span className="ai-dims-note">Koppints a szélesség számára a terven.</span>
+                )}
+                <div className="ai-dims-kota-actions">
+                  <button type="button" className="button ghost" disabled={!aiWidthMark} onClick={() => { setAiWidth(""); setAiDepth(""); setAiWidthMark(null); }}>
+                    Töröl
+                  </button>
+                  <button type="button" className="button primary" onClick={() => setAiKotaMode(false)}>
+                    Kész
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {aiCardExpanded && !aiKotaMode ? (
             <>
               <div className="ai-result-fields">
                 <label>
@@ -1175,6 +1278,56 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
                   Padlóburkolat
                   <input type="text" value={aiFields.finish} onChange={(e) => setAiFields((f) => ({ ...f, finish: e.target.value }))} placeholder="pl. greslap" suppressHydrationWarning />
                 </label>
+              </div>
+
+              <div className="ai-dims">
+                <div className="ai-dims-title">Méretek <span className="ai-dims-sub">(kerülethez – fal, lábazat, szalag, alapozás)</span></div>
+                {aiDimPairs.length ? (
+                  <div className="ai-dims-candidates">
+                    <span className="ai-dims-hint">Felkínált méretek (a területből – koppints):</span>
+                    {aiDimPairs.map((p) => (
+                      <button key={`${p.w}x${p.d}`} type="button" className="ai-dims-chip" onClick={() => pickPair(p)}>
+                        {numToStr(p.w)} × {numToStr(p.d)} m
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="ai-dims-row">
+                  <label>
+                    Szélesség (m)
+                    <input type="text" inputMode="decimal" value={aiWidth} onChange={(e) => setAiWidth(e.target.value)} placeholder="pl. 2,45" suppressHydrationWarning />
+                  </label>
+                  <span className="ai-dims-x">×</span>
+                  <label>
+                    Hossz (m)
+                    <input type="text" inputMode="decimal" value={aiDepth} onChange={(e) => setAiDepth(e.target.value)} placeholder="pl. 1,10" suppressHydrationWarning />
+                  </label>
+                </div>
+                <div className="ai-dims-perimeter">
+                  <label>
+                    vagy Kerület közvetlenül (m)
+                    <input type="text" inputMode="decimal" value={aiPerimeter} onChange={(e) => setAiPerimeter(e.target.value)} placeholder="nyitott tér / L-alak: a falak összege" suppressHydrationWarning />
+                  </label>
+                  <span className="ai-dims-note">Ha kitöltöd, ez számít (a téglalap helyett).</span>
+                </div>
+
+                <div className="ai-dims-kota">
+                  <button type="button" className="button ghost ai-dims-kota-btn" onClick={startKotaPick}>
+                    ⊕ Koppints a szélességre (a mélységet a területből számolom)
+                  </button>
+                </div>
+
+                {effectivePerimeter !== null ? (
+                  <p className={dimAreaMismatch ? "ai-dims-calc ai-dims-calc-warn" : "ai-dims-calc"}>
+                    Kerület: <b>{formatValue(effectivePerimeter, "length")}</b>
+                    {dimManualPerimeter !== null ? (
+                      <> (kézzel)</>
+                    ) : dimArea !== null ? (
+                      <> · terület a méretből: <b>{formatValue(dimArea, "area")}</b></>
+                    ) : null}
+                    {dimAreaMismatch ? <> ⚠ eltér a kiírttól ({dimPrintedArea !== null ? formatValue(dimPrintedArea, "area") : "?"}) – ellenőrizd</> : null}
+                  </p>
+                ) : null}
               </div>
 
               {aiResult.warnings.length ? (
@@ -1268,32 +1421,22 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
         </div>
       ) : null}
 
-      <div
-        className="measure-stage-wrap"
-        ref={containerRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        onMouseDown={handleStageWrapMouseDown}
-      >
-        {isImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img ref={imageRef} src={url} alt={doc.title} className="measure-base-image" style={{ width: `${zoom * 100}%` }} />
-        ) : null}
-        {isPdf ? (
-          <>
-            {pdfStatus === "loading" ? <p className="measure-hint">Terv betöltése...</p> : null}
-            {pdfStatus === "error" ? <p className="measure-hint">A terv nem tölthető be a mérőeszközben.</p> : null}
-            <canvas ref={canvasRef} className="measure-base-canvas" />
-          </>
-        ) : null}
+      <div className="measure-stage-wrap" ref={containerRef}>
+        {isPdf && pdfStatus === "loading" ? <p className="measure-hint">Terv betöltése...</p> : null}
+        {isPdf && pdfStatus === "error" ? <p className="measure-hint">A terv nem tölthető be a mérőeszközben.</p> : null}
 
-        {stageWidth > 0 && stageHeight > 0 ? (
+        {stageSize.w > 0 && stageSize.h > 0 ? (
           <PlanMeasurementCanvas
-            stageWidth={stageWidth}
-            stageHeight={stageHeight}
-            onStageClick={handleStagePointer}
+            stageW={stageSize.w}
+            stageH={stageSize.h}
+            view={view}
+            baseImage={baseImg?.canvas ?? null}
+            baseW={baseW}
+            baseH={baseH}
+            detail={detailImg}
+            onViewChange={handleViewChange}
+            onGestureEnd={scheduleDetail}
+            onPlacePoint={handleStagePointer}
             savedMeasurements={
               loadingSaved
                 ? []
@@ -1307,7 +1450,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
             metersPerUnit={metersPerUnit}
             selectedPoint={selectedPoint}
             aiSavedRects={
-              mode === "ai-select"
+              mode === "ai-select" && !aiKotaMode && !aiResult
                 ? savedAnalyses
                     .filter((analysis) => !isPdf || analysis.pageNumber === pageNumber)
                     .map((analysis) => ({
@@ -1322,6 +1465,7 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
                 : []
             }
             aiActiveRect={mode === "ai-select" ? aiSelection : null}
+            kotaMarks={aiWidthMark ? [aiWidthMark] : []}
             onDragCalibrationPoint={moveCalibrationPoint}
             onDragDrawPoint={moveDrawPoint}
             onSelectCalibrationPoint={selectCalibrationPoint}
@@ -1370,10 +1514,15 @@ export function PlanMeasurementTool({ doc, onClose, canMeasure = true, canDelete
 
       {savedAnalyses.length ? (
         <div className="measure-list">
-          <button type="button" className="measure-list-toggle" onClick={() => setAiListOpen((current) => !current)}>
-            <h3>AI helyiség-elemzések ({savedAnalyses.length})</h3>
-            <span aria-hidden="true">{aiListOpen ? "▾" : "▸"}</span>
-          </button>
+          <div className="ai-list-head">
+            <button type="button" className="measure-list-toggle" onClick={() => setAiListOpen((current) => !current)}>
+              <h3>AI helyiség-elemzések ({savedAnalyses.length})</h3>
+              <span aria-hidden="true">{aiListOpen ? "▾" : "▸"}</span>
+            </button>
+            <button type="button" className="button primary ai-export-btn" onClick={exportAnalysesExcel}>
+              Excel export
+            </button>
+          </div>
           {aiListOpen
             ? savedAnalyses
             .filter((analysis) => !isPdf || analysis.pageNumber === pageNumber)
